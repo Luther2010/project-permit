@@ -1,0 +1,72 @@
+import { prisma } from '../src/lib/db'
+
+async function main() {
+  console.log('🌱 Seeding database...')
+
+  // Create sample permits
+  const permits = [
+    {
+      permitNumber: 'BLD-2024-001',
+      title: 'Residential Addition',
+      description: 'Single family residential addition - 500 sq ft',
+      address: '123 Main St',
+      city: 'San Francisco',
+      state: 'CA',
+      zipCode: '94102',
+      permitType: 'Building',
+      status: 'Issued',
+      value: 150000,
+      issuedDate: new Date('2024-01-15'),
+      sourceUrl: 'https://example.com/permits/BLD-2024-001',
+    },
+    {
+      permitNumber: 'ELC-2024-042',
+      title: 'Electrical Service Upgrade',
+      description: 'Upgrade electrical service to 200A',
+      address: '456 Oak Ave',
+      city: 'San Francisco',
+      state: 'CA',
+      zipCode: '94103',
+      permitType: 'Electrical',
+      status: 'In Review',
+      value: 8500,
+      issuedDate: new Date('2024-02-01'),
+      sourceUrl: 'https://example.com/permits/ELC-2024-042',
+    },
+    {
+      permitNumber: 'PLB-2024-128',
+      title: 'Bathroom Remodel',
+      description: 'Complete bathroom remodel with new fixtures',
+      address: '789 Pine St',
+      city: 'Oakland',
+      state: 'CA',
+      zipCode: '94601',
+      permitType: 'Plumbing',
+      status: 'Issued',
+      value: 25000,
+      issuedDate: new Date('2024-02-15'),
+      sourceUrl: 'https://example.com/permits/PLB-2024-128',
+    },
+  ]
+
+  for (const permit of permits) {
+    const created = await prisma.permit.upsert({
+      where: { permitNumber: permit.permitNumber },
+      update: {},
+      create: permit,
+    })
+    console.log(`✅ Created permit: ${created.permitNumber}`)
+  }
+
+  console.log('✨ Seeding completed!')
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Seeding failed:', e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
+
