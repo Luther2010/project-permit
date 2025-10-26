@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model - stores authentication and subscription info
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Subscription info
+  subscription  Subscription?
+
+  // Google OAuth fields
+  googleId      String?   @unique
+
+  @@index([email])
+}
+
+// Subscription model - tracks user's plan (freemium vs premium)
+model Subscription {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status          String   @default("freemium") // freemium | premium | cancelled
+  
+  // Stripe fields
+  stripeCustomerId String? @unique
+  stripeSubscriptionId String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Permit model - stores scraped permit information
+model Permit {
+  id              String   @id @default(cuid())
+  
+  // Basic info
+  permitNumber    String   @unique
+  title           String?
+  description     String?
+  
+  // Location
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  
+  // Details
+  permitType      String?
+  status          String?
+  value           Float?
+  
+  // Dates
+  issuedDate      DateTime?
+  expirationDate  DateTime?
+  
+  // Scraping metadata
+  sourceUrl       String?
+  scrapedAt       DateTime @default(now())
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([permitNumber])
+  @@index([city])
+  @@index([permitType])
+  @@index([issuedDate])
+}
