@@ -1,6 +1,6 @@
 export async function graphqlFetch(
     query: string,
-    variables?: Record<string, any>
+    variables?: Record<string, unknown>
 ) {
     const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/graphql`,

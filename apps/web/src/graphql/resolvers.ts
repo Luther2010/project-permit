@@ -8,19 +8,19 @@ export const resolvers = {
             });
         },
 
-        permit: async (_: any, args: { id: string }) => {
+        permit: async (_: unknown, args: { id: string }) => {
             return await prisma.permit.findUnique({
                 where: { id: args.id },
             });
         },
 
-        permitByNumber: async (_: any, args: { permitNumber: string }) => {
+        permitByNumber: async (_: unknown, args: { permitNumber: string }) => {
             return await prisma.permit.findUnique({
                 where: { permitNumber: args.permitNumber },
             });
         },
 
-        searchPermits: async (_: any, args: { query?: string }) => {
+        searchPermits: async (_: unknown, args: { query?: string }) => {
             if (!args.query) {
                 return await prisma.permit.findMany({
                     orderBy: { issuedDate: "desc" },

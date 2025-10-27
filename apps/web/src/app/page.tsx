@@ -1,7 +1,22 @@
 import { PermitCard } from "./components/permit-card";
 import { graphqlFetch } from "@/lib/graphql-client";
+import type { PermitType, PermitStatus } from "@prisma/client";
 
-async function getPermits() {
+interface Permit {
+    id: string;
+    permitNumber: string;
+    title: string | null;
+    description: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    permitType: PermitType | null;
+    status: PermitStatus | null;
+    value: number | null;
+    issuedDate: string | null;
+}
+
+async function getPermits(): Promise<{ permits: Permit[] }> {
     const query = `
         query {
             permits {
@@ -51,7 +66,7 @@ export default async function Home() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {permits.map((permit: any) => (
+                        {permits.map((permit: Permit) => (
                             <PermitCard key={permit.id} permit={permit} />
                         ))}
                     </div>
