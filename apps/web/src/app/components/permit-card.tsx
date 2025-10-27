@@ -1,17 +1,7 @@
+import type { Permit } from "@/types/permit";
+
 interface PermitCardProps {
-    permit: {
-        id: string;
-        permitNumber: string;
-        title: string | null;
-        description: string | null;
-        address: string | null;
-        city: string | null;
-        state: string | null;
-        permitType: string | null;
-        status: string | null;
-        value: number | null;
-        issuedDate: string | null;
-    };
+    permit: Permit;
 }
 
 export function PermitCard({ permit }: PermitCardProps) {
