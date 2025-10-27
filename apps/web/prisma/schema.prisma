@@ -21,6 +21,17 @@ enum PermitType {
   OTHER
 }
 
+enum PermitStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  APPROVED
+  ISSUED
+  EXPIRED
+  REVOKED
+  CANCELLED
+}
+
 // User model - stores authentication and subscription info
 model User {
   id            String    @id @default(cuid())
@@ -72,7 +83,7 @@ model Permit {
   
   // Details
   permitType      PermitType?
-  status          String?
+  status          PermitStatus?
   value           Float?
   
   // Dates

@@ -1,5 +1,5 @@
 import { prisma } from "../src/lib/db";
-import { PermitType } from "@prisma/client";
+import { PermitType, PermitStatus } from "@prisma/client";
 
 async function main() {
     console.log("🌱 Seeding database...");
@@ -15,7 +15,7 @@ async function main() {
             state: "CA",
             zipCode: "94102",
             permitType: PermitType.BUILDING,
-            status: "Issued",
+            status: PermitStatus.ISSUED,
             value: 150000,
             issuedDate: new Date("2024-01-15"),
             sourceUrl: "https://example.com/permits/BLD-2024-001",
@@ -29,7 +29,7 @@ async function main() {
             state: "CA",
             zipCode: "94103",
             permitType: PermitType.ELECTRICAL,
-            status: "In Review",
+            status: PermitStatus.IN_REVIEW,
             value: 8500,
             issuedDate: new Date("2024-02-01"),
             sourceUrl: "https://example.com/permits/ELC-2024-042",
@@ -43,7 +43,7 @@ async function main() {
             state: "CA",
             zipCode: "94601",
             permitType: PermitType.PLUMBING,
-            status: "Issued",
+            status: PermitStatus.ISSUED,
             value: 25000,
             issuedDate: new Date("2024-02-15"),
             sourceUrl: "https://example.com/permits/PLB-2024-128",

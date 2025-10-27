@@ -9,6 +9,17 @@ export const typeDefs = `
     OTHER
   }
 
+  enum PermitStatus {
+    DRAFT
+    SUBMITTED
+    IN_REVIEW
+    APPROVED
+    ISSUED
+    EXPIRED
+    REVOKED
+    CANCELLED
+  }
+
   type Permit {
     id: String!
     permitNumber: String!
@@ -19,7 +30,7 @@ export const typeDefs = `
     state: String
     zipCode: String
     permitType: PermitType
-    status: String
+    status: PermitStatus
     value: Float
     issuedDate: String
     expirationDate: String

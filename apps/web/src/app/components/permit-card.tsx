@@ -45,16 +45,34 @@ export function PermitCard({ permit }: PermitCardProps) {
         return type.charAt(0) + type.slice(1).toLowerCase();
     };
 
+    const formatStatus = (status: string | null) => {
+        if (!status) return "N/A";
+        // Convert IN_REVIEW -> In Review, DRAFT -> Draft, etc.
+        return status
+            .split("_")
+            .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+            .join(" ");
+    };
+
     const getStatusColor = (status: string | null) => {
-        switch (status?.toLowerCase()) {
-            case "issued":
+        switch (status?.toUpperCase()) {
+            case "ISSUED":
                 return "bg-green-100 text-green-800";
-            case "in review":
+            case "IN_REVIEW":
                 return "bg-yellow-100 text-yellow-800";
-            case "pending":
-                return "bg-gray-100 text-gray-800";
-            default:
+            case "SUBMITTED":
                 return "bg-blue-100 text-blue-800";
+            case "APPROVED":
+                return "bg-emerald-100 text-emerald-800";
+            case "DRAFT":
+                return "bg-gray-100 text-gray-800";
+            case "EXPIRED":
+                return "bg-orange-100 text-orange-800";
+            case "REVOKED":
+            case "CANCELLED":
+                return "bg-red-100 text-red-800";
+            default:
+                return "bg-gray-100 text-gray-800";
         }
     };
 
@@ -75,7 +93,7 @@ export function PermitCard({ permit }: PermitCardProps) {
                     <span
                         className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(permit.status)}`}
                     >
-                        {permit.status}
+                        {formatStatus(permit.status)}
                     </span>
                 )}
             </div>
