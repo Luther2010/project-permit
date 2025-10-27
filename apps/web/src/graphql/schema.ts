@@ -1,4 +1,14 @@
 export const typeDefs = `
+  enum PermitType {
+    BUILDING
+    ELECTRICAL
+    PLUMBING
+    MECHANICAL
+    ROOFING
+    DEMOLITION
+    OTHER
+  }
+
   type Permit {
     id: String!
     permitNumber: String!
@@ -8,7 +18,7 @@ export const typeDefs = `
     city: String
     state: String
     zipCode: String
-    permitType: String
+    permitType: PermitType
     status: String
     value: Float
     issuedDate: String

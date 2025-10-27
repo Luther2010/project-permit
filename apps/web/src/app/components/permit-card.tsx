@@ -39,6 +39,12 @@ export function PermitCard({ permit }: PermitCardProps) {
         }
     };
 
+    const formatPermitType = (type: string | null) => {
+        if (!type) return "N/A";
+        // Convert BUILDING -> Building, ELECTRICAL -> Electrical, etc.
+        return type.charAt(0) + type.slice(1).toLowerCase();
+    };
+
     const getStatusColor = (status: string | null) => {
         switch (status?.toLowerCase()) {
             case "issued":
@@ -84,7 +90,7 @@ export function PermitCard({ permit }: PermitCardProps) {
                 <div>
                     <span className="text-gray-500 font-medium">Type:</span>
                     <span className="ml-2 text-gray-900">
-                        {permit.permitType || "N/A"}
+                        {formatPermitType(permit.permitType)}
                     </span>
                 </div>
                 <div>
