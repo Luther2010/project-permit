@@ -1,6 +1,9 @@
 import { PermitCard } from "./components/permit-card";
 import { graphqlFetch } from "@/lib/graphql-client";
 import type { Permit } from "@/types/permit";
+import { AuthButtons } from "./components/auth-buttons";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
 
 async function getPermits(): Promise<{ permits: Permit[] }> {
     const query = `
@@ -33,17 +36,25 @@ async function getPermits(): Promise<{ permits: Permit[] }> {
 
 export default async function Home() {
     const { permits } = await getPermits();
+    const session = await getServerSession(authOptions);
 
     return (
         <div className="min-h-screen bg-gray-50">
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        Permits
-                    </h1>
-                    <p className="mt-2 text-gray-600">
-                        Browse building permits and project information
-                    </p>
+                <div className="mb-8 flex items-start justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">
+                            Permits
+                        </h1>
+                        <p className="mt-2 text-gray-600">
+                            Browse building permits and project information
+                        </p>
+                    </div>
+                    <AuthButtons
+                        isAuthenticated={!!session}
+                        userName={session?.user?.name}
+                        userEmail={session?.user?.email}
+                    />
                 </div>
 
                 {permits.length === 0 ? (
