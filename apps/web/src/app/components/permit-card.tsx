@@ -10,7 +10,7 @@ interface PermitCardProps {
         permitType: string | null;
         status: string | null;
         value: number | null;
-        issuedDate: Date | null;
+        issuedDate: string | null;
     };
 }
 
@@ -24,13 +24,19 @@ export function PermitCard({ permit }: PermitCardProps) {
         }).format(amount);
     };
 
-    const formatDate = (date: Date | null) => {
+    const formatDate = (date: string | null) => {
         if (!date) return "N/A";
-        return new Intl.DateTimeFormat("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-        }).format(new Date(date));
+        try {
+            const dateObj = new Date(date);
+            if (isNaN(dateObj.getTime())) return "Invalid date";
+            return new Intl.DateTimeFormat("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            }).format(dateObj);
+        } catch {
+            return "Invalid date";
+        }
     };
 
     const getStatusColor = (status: string | null) => {

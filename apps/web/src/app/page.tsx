@@ -1,18 +1,33 @@
 import { PermitCard } from "./components/permit-card";
+import { graphqlFetch } from "@/lib/graphql-client";
 
 async function getPermits() {
-    const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/permits`,
-        {
-            next: { revalidate: 0 }, // Always fetch fresh data
+    const query = `
+        query {
+            permits {
+                id
+                permitNumber
+                title
+                description
+                address
+                city
+                state
+                zipCode
+                permitType
+                status
+                value
+                issuedDate
+            }
         }
-    );
+    `;
 
-    if (!res.ok) {
+    try {
+        const data = await graphqlFetch(query);
+        return { permits: data.permits || [] };
+    } catch (error) {
+        console.error("Error fetching permits:", error);
         return { permits: [] };
     }
-
-    return res.json();
 }
 
 export default async function Home() {
