@@ -29,6 +29,12 @@ export function PermitCard({ permit }: PermitCardProps) {
         }
     };
 
+    const formatPropertyType = (type: string | null) => {
+        if (!type) return "N/A";
+        // Convert RESIDENTIAL -> Residential, COMMERCIAL -> Commercial, etc.
+        return type.charAt(0) + type.slice(1).toLowerCase();
+    };
+
     const formatPermitType = (type: string | null) => {
         if (!type) return "N/A";
         // Convert BUILDING -> Building, ELECTRICAL -> Electrical, etc.
@@ -99,6 +105,12 @@ export function PermitCard({ permit }: PermitCardProps) {
                     <span className="text-gray-500 font-medium">Type:</span>
                     <span className="ml-2 text-gray-900">
                         {formatPermitType(permit.permitType)}
+                    </span>
+                </div>
+                <div>
+                    <span className="text-gray-500 font-medium">Property:</span>
+                    <span className="ml-2 text-gray-900">
+                        {formatPropertyType(permit.propertyType)}
                     </span>
                 </div>
                 <div>

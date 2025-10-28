@@ -17,6 +17,7 @@ async function getPermits(): Promise<{ permits: Permit[] }> {
                 city
                 state
                 zipCode
+                propertyType
                 permitType
                 status
                 value

@@ -1,4 +1,4 @@
-import type { PermitType, PermitStatus } from "@prisma/client";
+import type { PermitType, PermitStatus, PropertyType } from "@prisma/client";
 
 export interface Permit {
     id: string;
@@ -9,6 +9,7 @@ export interface Permit {
     city: string | null;
     state: string | null;
     zipCode: string | null;
+    propertyType: PropertyType | null;
     permitType: PermitType | null;
     status: PermitStatus | null;
     value: number | null;
