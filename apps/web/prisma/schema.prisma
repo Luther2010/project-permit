@@ -112,6 +112,7 @@ model Permit {
   
   // Dates
   issuedDate      DateTime?
+  issuedDateString String?  // Store original date format (e.g., "10/27/2025")
   expirationDate  DateTime?
   
   // Scraping metadata

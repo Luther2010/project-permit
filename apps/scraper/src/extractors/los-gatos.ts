@@ -322,8 +322,15 @@ export class LosGatosExtractor extends BaseExtractor {
                 .text()
                 .trim();
             let issuedDate: Date | undefined;
+            let issuedDateString: string | undefined;
             if (dateStr) {
-                issuedDate = new Date(dateStr);
+                issuedDateString = dateStr; // Store original format
+                // Parse MM/DD/YYYY format and create UTC date
+                const [month, day, year] = dateStr.split('/');
+                if (month && day && year) {
+                    // Create date in UTC to avoid timezone issues
+                    issuedDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+                }
             }
 
             basicPermits.push({
@@ -337,6 +344,7 @@ export class LosGatosExtractor extends BaseExtractor {
                 permitType,
                 sourceUrl: `https://aca-prod.accela.com/TLG/Cap/CapHome.aspx?module=Building&TabName=HOME`,
                 issuedDate,
+                issuedDateString,
             });
         });
 
