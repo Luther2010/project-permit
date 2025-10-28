@@ -1,0 +1,48 @@
+/**
+ * Base extractor interface that all city extractors must implement
+ */
+
+import { PermitData, ScrapeResult } from "./types";
+
+export abstract class BaseExtractor {
+  protected city: string;
+  protected state: string;
+  protected url: string;
+
+  constructor(city: string, state: string, url: string) {
+    this.city = city;
+    this.state = state;
+    this.url = url;
+  }
+
+  /**
+   * Main method to scrape permits
+   * Each extractor implements this differently based on the city's website structure
+   */
+  abstract scrape(): Promise<ScrapeResult>;
+
+  /**
+   * Parse permit data from HTML or API response
+   * Extractors override this to parse their specific data format
+   */
+  protected abstract parsePermitData(rawData: any): PermitData[];
+
+  /**
+   * Validate that extracted permit data is valid
+   */
+  protected validatePermitData(permit: PermitData): boolean {
+    return !!(
+      permit.permitNumber &&
+      permit.city &&
+      permit.state
+    );
+  }
+
+  /**
+   * Get the extractor name
+   */
+  getName(): string {
+    return this.constructor.name;
+  }
+}
+
