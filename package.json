@@ -1,26 +1,31 @@
 {
-    "name": "permits-monorepo",
-    "version": "1.0.0",
-    "description": "",
-    "private": true,
-    "packageManager": "pnpm@10.19.0",
-    "scripts": {
-      "build:all": "turbo run build",
-      "dev:all": "turbo run dev",
-      "lint:all": "turbo run lint",
-      "typecheck:all": "turbo run typecheck",
-      "format": "prettier --write .",
-      "db:push": "pnpm -C apps/web prisma db push",
-      "db:migrate": "pnpm -C apps/web prisma migrate deploy",
-      "db:studio": "pnpm -C apps/web prisma studio"
-    },
-    "devDependencies": {
-      "prettier": "^3.3.3",
-      "turbo": "^2.1.1",
-      "typescript": "^5.6.3"
-    },
-    "workspaces": [
-      "apps/*",
-      "packages/*"
-    ]
+  "name": "permits-monorepo",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "packageManager": "pnpm@10.19.0",
+  "scripts": {
+    "build:all": "turbo run build",
+    "dev:all": "turbo run dev",
+    "lint:all": "turbo run lint",
+    "typecheck:all": "turbo run typecheck",
+    "format": "prettier --write .",
+    "db:push": "pnpm -C apps/web prisma db push",
+    "db:migrate": "pnpm -C apps/web prisma migrate deploy",
+    "db:studio": "pnpm -C apps/web prisma studio"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "turbo": "^2.1.1",
+    "typescript": "^5.6.3"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "@types/cheerio": "^1.0.0",
+    "cheerio": "^1.1.2",
+    "puppeteer": "^24.26.1"
   }
+}
