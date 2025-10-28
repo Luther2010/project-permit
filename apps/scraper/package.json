@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "scrape": "dotenv -e ../web/.env -- tsx src/index.ts",
-    "scrape:city": "dotenv -e ../web/.env -- tsx src/index.ts"
+    "scrape:city": "dotenv -e ../web/.env -- tsx src/index.ts",
+    "postinstall": "npx puppeteer browsers install chrome"
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",
