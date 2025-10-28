@@ -1,11 +1,41 @@
 export const typeDefs = `
+  enum PropertyType {
+    RESIDENTIAL
+    COMMERCIAL
+    INDUSTRIAL
+    OFFICE
+    AGRICULTURAL
+    RECREATIONAL
+    VACANT_LAND
+    MISCELLANEOUS
+    EXEMPT
+  }
+
   enum PermitType {
+    ADDITION
+    ADU
+    BATHROOM
+    BATTERY
     BUILDING
-    ELECTRICAL
-    PLUMBING
-    MECHANICAL
-    ROOFING
     DEMOLITION
+    ELECTRIC_METER
+    ELECTRICAL
+    EV_CHARGER
+    FIRE_SPRINKLER
+    GAS
+    GENERATOR
+    GRADING
+    HEAT_PUMP
+    HVAC
+    KITCHEN
+    MECHANICAL
+    NEW_CONSTRUCTION
+    PLUMBING
+    POOL_AND_HOT_TUB
+    REMODEL
+    ROOFING
+    SOLAR
+    WATER_HEATER
     OTHER
   }
 
@@ -29,6 +59,7 @@ export const typeDefs = `
     city: String
     state: String
     zipCode: String
+    propertyType: PropertyType
     permitType: PermitType
     status: PermitStatus
     value: Float

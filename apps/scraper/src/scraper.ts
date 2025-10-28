@@ -6,7 +6,8 @@
 import { getEnabledCities, getCityConfig } from "./config/cities";
 import { createExtractor } from "./extractor-factory";
 import { prisma } from "./lib/db";
-import { PermitType, PermitStatus } from "@prisma/client";
+import { PermitType, PermitStatus, PropertyType } from "@prisma/client";
+import { permitClassificationService, type PermitData } from "./lib/permit-classification";
 
 /**
  * Map string permit types to Prisma enum
@@ -58,6 +59,25 @@ async function savePermits(permits: any[]): Promise<void> {
 
     for (const permit of permits) {
         try {
+            // Classify the permit using our classification service
+            const permitData: PermitData = {
+                permitNumber: permit.permitNumber,
+                title: permit.title,
+                description: permit.description,
+                address: permit.address,
+                city: permit.city,
+                value: permit.value,
+                rawExplicitType: permit.permitType, // Pass the raw type from scraper
+                rawPermitType: permit.permitType,
+            };
+
+            const classification = await permitClassificationService.classify(permitData);
+            
+            console.log(`📋 Classified ${permit.permitNumber}: ${classification.propertyType}/${classification.permitType} (confidence: ${classification.confidence.toFixed(2)})`);
+            if (classification.reasoning.length > 0) {
+                console.log(`   Reasoning: ${classification.reasoning.join(', ')}`);
+            }
+
             await prisma.permit.upsert({
                 where: { permitNumber: permit.permitNumber },
                 update: {
@@ -68,7 +88,8 @@ async function savePermits(permits: any[]): Promise<void> {
                     city: permit.city,
                     state: permit.state,
                     zipCode: permit.zipCode,
-                    permitType: mapPermitType(permit.permitType),
+                    propertyType: classification.propertyType,
+                    permitType: classification.permitType,
                     status: mapPermitStatus(permit.status),
                     value: permit.value,
           issuedDate: permit.issuedDate,
@@ -85,7 +106,8 @@ async function savePermits(permits: any[]): Promise<void> {
                     city: permit.city,
                     state: permit.state,
                     zipCode: permit.zipCode,
-                    permitType: mapPermitType(permit.permitType),
+                    propertyType: classification.propertyType,
+                    permitType: classification.permitType,
                     status: mapPermitStatus(permit.status),
                     value: permit.value,
           issuedDate: permit.issuedDate,
