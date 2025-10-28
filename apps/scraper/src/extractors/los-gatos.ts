@@ -13,7 +13,7 @@ export class LosGatosExtractor extends BaseExtractor {
     private browser: Browser | null = null;
     private page: Page | null = null;
 
-    async scrape(): Promise<ScrapeResult> {
+    async scrape(scrapeDate?: Date): Promise<ScrapeResult> {
         try {
             console.log(`[LosGatosExtractor] Starting scrape for ${this.city}`);
 
@@ -38,16 +38,30 @@ export class LosGatosExtractor extends BaseExtractor {
                 `[LosGatosExtractor] Page loaded, looking for date field...`
             );
 
-            // Calculate the date range (last 30 days from today)
-            const today = new Date();
-            const thirtyDaysAgo = new Date(today);
-            thirtyDaysAgo.setDate(today.getDate() - 30);
+            // Calculate date range
+            let startDateStr: string;
+            let endDateStr: string;
 
-            const startDate = this.formatDateForAccela(thirtyDaysAgo);
+            if (scrapeDate) {
+                // If specific date provided, use that date for both start and end
+                startDateStr = this.formatDateForAccela(scrapeDate);
+                endDateStr = this.formatDateForAccela(scrapeDate);
+                console.log(
+                    `[LosGatosExtractor] Searching for permits on ${startDateStr}`
+                );
+            } else {
+                // Default: last 30 days from today
+                const today = new Date();
+                const thirtyDaysAgo = new Date(today);
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                startDateStr = this.formatDateForAccela(thirtyDaysAgo);
+                endDateStr = this.formatDateForAccela(today);
+                console.log(
+                    `[LosGatosExtractor] Searching for permits from ${startDateStr} to ${endDateStr}`
+                );
+            }
 
-            console.log(
-                `[LosGatosExtractor] Searching for permits from ${startDate}`
-            );
+            const startDate = startDateStr;
 
             // Wait for the page to be interactive
             await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -84,8 +98,7 @@ export class LosGatosExtractor extends BaseExtractor {
                     `[LosGatosExtractor] Filled start date: ${startDate}`
                 );
 
-                // Fill end date (today)
-                const endDate = this.formatDateForAccela(new Date());
+                // Fill end date
                 await this.page.evaluate((date) => {
                     const labels = Array.from(
                         (globalThis as any).document.querySelectorAll("label")
@@ -109,9 +122,11 @@ export class LosGatosExtractor extends BaseExtractor {
                             );
                         }
                     }
-                }, endDate);
+                }, endDateStr);
 
-                console.log(`[LosGatosExtractor] Filled end date: ${endDate}`);
+                console.log(
+                    `[LosGatosExtractor] Filled end date: ${endDateStr}`
+                );
             } else {
                 console.log(`[LosGatosExtractor] Could not find date fields`);
                 await this.page.screenshot({
