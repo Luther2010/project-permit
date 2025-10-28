@@ -26,7 +26,7 @@ export abstract class BaseExtractor {
      * Parse permit data from HTML or API response
      * Extractors override this to parse their specific data format
      */
-    protected abstract parsePermitData(rawData: any): PermitData[];
+    protected abstract parsePermitData(rawData: any): Promise<PermitData[]>;
 
     /**
      * Validate that extracted permit data is valid

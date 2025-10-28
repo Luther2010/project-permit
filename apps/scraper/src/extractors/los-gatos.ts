@@ -193,7 +193,7 @@ export class LosGatosExtractor extends BaseExtractor {
 
                 // Extract data from current page
                 const pageContent = await this.page.content();
-                const pagePermits = this.parsePermitData(pageContent);
+                const pagePermits = await this.parsePermitData(pageContent);
                 console.log(
                     `[LosGatosExtractor] Found ${pagePermits.length} permits on page ${currentPage}`
                 );
@@ -260,9 +260,12 @@ export class LosGatosExtractor extends BaseExtractor {
         }
     }
 
-    protected parsePermitData(rawData: any): PermitData[] {
+    protected async parsePermitData(rawData: any): Promise<PermitData[]> {
         const permits: PermitData[] = [];
         const $ = cheerio.load(rawData);
+
+        // First pass: extract basic info from table
+        const basicPermits: any[] = [];
 
         // Find all table rows in the results
         $("tr.ACA_TabRow_Odd, tr.ACA_TabRow_Even").each((i, row) => {
@@ -323,7 +326,7 @@ export class LosGatosExtractor extends BaseExtractor {
                 issuedDate = new Date(dateStr);
             }
 
-            permits.push({
+            basicPermits.push({
                 permitNumber,
                 title: permitType,
                 description,
@@ -337,7 +340,191 @@ export class LosGatosExtractor extends BaseExtractor {
             });
         });
 
+        // Second pass: extract additional details for each permit
+        console.log(
+            `[LosGatosExtractor] Extracting details for ${basicPermits.length} permits...`
+        );
+        for (const permit of basicPermits) {
+            console.log(
+                `[LosGatosExtractor] Extracting details for permit: ${permit.permitNumber}`
+            );
+            const details = await this.extractPermitDetails(
+                permit.permitNumber
+            );
+            console.log(`[LosGatosExtractor] Found details:`, details);
+            permits.push({
+                ...permit,
+                value: details.jobValue || permit.value,
+            });
+
+            // Add a small delay to avoid overwhelming the server
+            await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+
         return permits;
+    }
+
+    /**
+     * Extract additional permit details from detail page
+     */
+    private async extractPermitDetails(permitNumber: string): Promise<{
+        jobValue?: number;
+        licensedProfessional?: string;
+    }> {
+        if (!this.page) return {};
+
+        try {
+            // Find the permit link by searching for the permit number in a link
+            const detailLink = await this.page.evaluate((permitNum) => {
+                const links = Array.from(
+                    (globalThis as any).document.querySelectorAll("a")
+                ) as any[];
+                const link = links.find(
+                    (l: any) =>
+                        l.textContent?.includes(permitNum) ||
+                        l.getAttribute("href")?.includes(permitNum)
+                );
+                return link ? link.href : null;
+            }, permitNumber);
+
+            if (!detailLink) {
+                console.log(
+                    `[LosGatosExtractor] No detail link found for ${permitNumber}`
+                );
+                return {};
+            }
+
+            console.log(
+                `[LosGatosExtractor] Opening detail page: ${detailLink}`
+            );
+
+            // Open detail page in new tab
+            const newPage = await this.browser!.newPage();
+            await newPage.goto(detailLink, {
+                waitUntil: "networkidle2",
+                timeout: 30000,
+            });
+
+            // Wait for page to load
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Expand "More Details" section if collapsed
+            await newPage.evaluate(() => {
+                const moreDetailsLink = (
+                    globalThis as any
+                ).document.querySelector("#lnkMoreDetail");
+                const moreDetailsRow = (
+                    globalThis as any
+                ).document.querySelector("#TRMoreDetail");
+                if (moreDetailsRow && moreDetailsRow.style.display === "none") {
+                    moreDetailsLink?.click();
+                }
+            });
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            // Expand "Additional Information" section if collapsed
+            await newPage.evaluate(() => {
+                const additionalLink = (
+                    globalThis as any
+                ).document.querySelector("#lnkAddtional");
+                const additionalRow = (
+                    globalThis as any
+                ).document.querySelector("#trADIList");
+                if (additionalRow && additionalRow.style.display === "none") {
+                    additionalLink?.click();
+                }
+            });
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            // Expand "Application Information" section if collapsed
+            await newPage.evaluate(() => {
+                const applicationLink = (
+                    globalThis as any
+                ).document.querySelector("#lnkASI");
+                const applicationRow = (
+                    globalThis as any
+                ).document.querySelector("#trASIList");
+                if (applicationRow && applicationRow.style.display === "none") {
+                    applicationLink?.click();
+                }
+            });
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            // Extract job value and licensed professional
+            const details = await newPage.evaluate(() => {
+                const result: {
+                    jobValue?: number;
+                    licensedProfessional?: string;
+                } = {};
+
+                // Extract job value - look for "Job Value($)", "Estimated value of work", or "Valuation"
+                const allText =
+                    (globalThis as any).document.body.innerText || "";
+
+                // Try different patterns - need to handle "$24,000.00" format
+                // First, try to find any dollar amount after "Job Value"
+                let jobValueMatch = allText.match(
+                    /Job Value.*?\$\s*([\d,]+\.?\d*)/i
+                );
+
+                // Also look for dollar signs with commas like "$24,000.00" - try broader search
+                if (!jobValueMatch) {
+                    // Try broader pattern: look for any number after "Job Value"
+                    const match = allText.match(
+                        /Job Value\(?\$?\)?:?\s*\$?\s*([\d,]+\.?\d*)/i
+                    );
+                    if (match && match[1]) {
+                        const value = match[1].replace(/,/g, "");
+                        result.jobValue = parseFloat(value);
+                    } else {
+                        // Try finding number with comma pattern like "24,000.00"
+                        const numberMatch = allText.match(
+                            /Job Value.*?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/i
+                        );
+                        if (numberMatch && numberMatch[1]) {
+                            const value = numberMatch[1].replace(/,/g, "");
+                            result.jobValue = parseFloat(value);
+                        }
+                    }
+                }
+
+                if (!jobValueMatch && !result.jobValue) {
+                    jobValueMatch = allText.match(
+                        /Estimated value of work.*?:\s*([\d,]+\.?\d*)/i
+                    );
+                }
+
+                if (!jobValueMatch && !result.jobValue) {
+                    jobValueMatch = allText.match(
+                        /Valuation.*?:\s*([\d,]+\.?\d*)/i
+                    );
+                }
+
+                if (jobValueMatch && jobValueMatch[1] && !result.jobValue) {
+                    const value = jobValueMatch[1].replace(/,/g, "");
+                    result.jobValue = parseFloat(value);
+                }
+
+                // Extract licensed professional - look for "Licensed Professional:"
+                const licensedMatch = allText.match(
+                    /Licensed Professional:.*?\n([^\n]+)/i
+                );
+                if (licensedMatch && licensedMatch[1]) {
+                    result.licensedProfessional = licensedMatch[1].trim();
+                }
+
+                return result;
+            });
+
+            await newPage.close();
+            return details;
+        } catch (error) {
+            console.error(
+                `Error extracting details for ${permitNumber}:`,
+                error
+            );
+            return {};
+        }
     }
 
     /**
