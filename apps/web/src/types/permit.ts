@@ -13,4 +13,5 @@ export interface Permit {
     status: PermitStatus | null;
     value: number | null;
     issuedDate: string | null;
+    issuedDateString: string | null;
 }

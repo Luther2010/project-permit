@@ -110,7 +110,7 @@ export function PermitCard({ permit }: PermitCardProps) {
                 <div>
                     <span className="text-gray-500 font-medium">Issued:</span>
                     <span className="ml-2 text-gray-900">
-                        {formatDate(permit.issuedDate)}
+                        {permit.issuedDateString || formatDate(permit.issuedDate)}
                     </span>
                 </div>
                 {(permit.city || permit.state) && (

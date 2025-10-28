@@ -21,6 +21,7 @@ async function getPermits(): Promise<{ permits: Permit[] }> {
                 status
                 value
                 issuedDate
+                issuedDateString
             }
         }
     `;

@@ -33,6 +33,7 @@ export const typeDefs = `
     status: PermitStatus
     value: Float
     issuedDate: String
+    issuedDateString: String
     expirationDate: String
     sourceUrl: String
     scrapedAt: String!
