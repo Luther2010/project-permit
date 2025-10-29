@@ -5,12 +5,54 @@ import { graphqlFetch } from "@/lib/graphql-client";
 import type { Permit } from "@/types/permit";
 import { AuthButtons } from "./components/auth-buttons";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { PermitFilters, type FilterState } from "./components/permit-filters";
 
-async function getPermits(): Promise<{ permits: Permit[] }> {
+async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> {
+    const variables: Record<string, unknown> = {};
+
+    if (filters.query.trim()) {
+        variables.query = filters.query.trim();
+    }
+    if (filters.propertyTypes.length > 0) {
+        variables.propertyTypes = filters.propertyTypes;
+    }
+    if (filters.permitTypes.length > 0) {
+        variables.permitTypes = filters.permitTypes;
+    }
+    if (filters.city.trim()) {
+        variables.city = filters.city.trim();
+    }
+    if (filters.minValue) {
+        const minValue = parseFloat(filters.minValue);
+        if (!isNaN(minValue)) {
+            variables.minValue = minValue;
+        }
+    }
+    if (filters.maxValue) {
+        const maxValue = parseFloat(filters.maxValue);
+        if (!isNaN(maxValue)) {
+            variables.maxValue = maxValue;
+        }
+    }
+
     const query = `
-        query {
-            permits {
+        query GetPermits(
+            $query: String
+            $propertyTypes: [PropertyType!]
+            $permitTypes: [PermitType!]
+            $city: String
+            $minValue: Float
+            $maxValue: Float
+        ) {
+            permits(
+                query: $query
+                propertyTypes: $propertyTypes
+                permitTypes: $permitTypes
+                city: $city
+                minValue: $minValue
+                maxValue: $maxValue
+            ) {
                 id
                 permitNumber
                 title
@@ -30,7 +72,7 @@ async function getPermits(): Promise<{ permits: Permit[] }> {
     `;
 
     try {
-        const data = await graphqlFetch(query);
+        const data = await graphqlFetch(query, variables);
         return { permits: data.permits || [] };
     } catch (error) {
         console.error("Error fetching permits:", error);
@@ -41,17 +83,24 @@ async function getPermits(): Promise<{ permits: Permit[] }> {
 export default function Home() {
     const { data: session } = useSession();
     const [permits, setPermits] = useState<Permit[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false);
+    const [filters, setFilters] = useState<FilterState>({
+        query: "",
+        propertyTypes: [],
+        permitTypes: [],
+        city: "",
+        minValue: "",
+        maxValue: "",
+    });
 
-    useEffect(() => {
-        async function fetchPermits() {
-            setLoading(true);
-            const { permits } = await getPermits();
-            setPermits(permits);
-            setLoading(false);
-        }
-        fetchPermits();
-    }, []);
+    const handleSearch = async () => {
+        setLoading(true);
+        setHasSearched(true);
+        const { permits } = await getPermits(filters);
+        setPermits(permits);
+        setLoading(false);
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -72,20 +121,39 @@ export default function Home() {
                     />
                 </div>
 
+                <PermitFilters
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    onSearch={handleSearch}
+                />
+
                 {loading ? (
                     <div className="text-center py-12">
                         <p className="text-gray-500">Loading permits...</p>
                     </div>
+                ) : !hasSearched ? (
+                    <div className="text-center py-12">
+                        <p className="text-gray-500">
+                            Use the search and filters above to find permits
+                        </p>
+                    </div>
                 ) : permits.length === 0 ? (
                     <div className="text-center py-12">
-                        <p className="text-gray-500">No permits found</p>
+                        <p className="text-gray-500">
+                            No permits found matching your filters
+                        </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {permits.map((permit) => (
-                            <PermitCard key={permit.id} permit={permit} />
-                        ))}
-                    </div>
+                    <>
+                        <div className="mb-4 text-sm text-gray-600">
+                            Showing {permits.length} permit{permits.length !== 1 ? "s" : ""}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {permits.map((permit) => (
+                                <PermitCard key={permit.id} permit={permit} />
+                            ))}
+                        </div>
+                    </>
                 )}
             </main>
         </div>

@@ -81,7 +81,9 @@ export const typeDefs = `
     permits(
       query: String
       propertyType: PropertyType
+      propertyTypes: [PropertyType!]
       permitType: PermitType
+      permitTypes: [PermitType!]
       city: String
       minValue: Float
       maxValue: Float

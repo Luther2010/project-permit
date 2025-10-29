@@ -9,7 +9,9 @@ export const resolvers = {
             args: {
                 query?: string;
                 propertyType?: string;
+                propertyTypes?: string[];
                 permitType?: string;
+                permitTypes?: string[];
                 city?: string;
                 minValue?: number;
                 maxValue?: number;
@@ -39,10 +41,15 @@ export const resolvers = {
             }
 
             // Structured filters
-            if (args.propertyType) {
+            // Support both single value (legacy) and array values (multi-select)
+            if (args.propertyTypes && args.propertyTypes.length > 0) {
+                where.propertyType = { in: args.propertyTypes };
+            } else if (args.propertyType) {
                 where.propertyType = args.propertyType;
             }
-            if (args.permitType) {
+            if (args.permitTypes && args.permitTypes.length > 0) {
+                where.permitType = { in: args.permitTypes };
+            } else if (args.permitType) {
                 where.permitType = args.permitType;
             }
             if (args.city) {

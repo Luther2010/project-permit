@@ -3,6 +3,7 @@
 ## ✅ Completed Tasks
 
 - [x] **TODO #1**: Implement permit web scraping functionality - daily scheduler to scrape permit websites and store data
+- [x] **TODO #5**: Create permit filtering and search UI - allow users to filter/view permit information
 - [x] **TODO #6**: Determine project type from permit data - analyze permit descriptions, titles, and types to categorize projects (residential, commercial, infrastructure, etc.)
 - [x] **TODO #14**: Add subscription model to Prisma schema - define Subscription model with user relationship, plan type, status, and limits
 - [x] **TODO #15**: Implement freemium GraphQL logic - limit permit results to 3 permits for freemium users, unlimited for premium
@@ -13,7 +14,6 @@
 - [ ] **TODO #2**: Add Stripe payment integration - setup checkout flow for freemium to premium upgrade
 - [ ] **TODO #3**: Implement freemium vs premium logic - limit search results for freemium users (partial entries only)
 - [ ] **TODO #4**: Build premium natural language search feature - integrate AI/LLM for advanced query processing
-- [ ] **TODO #5**: Create permit filtering and search UI - allow users to filter/view permit information
 - [ ] **TODO #7**: Implement 7-day trial for new users - add trial logic to subscription model and UI
 
 ### Data Enhancement
@@ -38,9 +38,9 @@
 ## 🎯 Next Priority
 
 Consider working on:
-1. **TODO #5**: Create permit filtering and search UI (high user value)
-2. **TODO #9**: Create Contractor entity (data expansion)
-3. **TODO #12**: Allow sorting on filtered result table (UX improvement)
+1. **TODO #12**: Allow sorting on filtered result table (UX improvement - complements filtering)
+2. **TODO #13**: Enable pagination in filter results (UX improvement - for large datasets)
+3. **TODO #9**: Create Contractor entity (data expansion)
 
 ---
 
