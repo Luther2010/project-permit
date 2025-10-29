@@ -15,6 +15,8 @@ export const resolvers = {
                 city?: string;
                 minValue?: number;
                 maxValue?: number;
+                minIssuedDate?: string;
+                maxIssuedDate?: string;
             },
             context: {
                 session?: {
@@ -63,6 +65,21 @@ export const resolvers = {
                 if (args.maxValue)
                     (where.value as Record<string, unknown>).lte =
                         args.maxValue;
+            }
+            if (args.minIssuedDate || args.maxIssuedDate) {
+                where.issuedDate = {} as Record<string, unknown>;
+                if (args.minIssuedDate) {
+                    const minDate = new Date(args.minIssuedDate);
+                    // Set to start of day
+                    minDate.setHours(0, 0, 0, 0);
+                    (where.issuedDate as Record<string, unknown>).gte = minDate;
+                }
+                if (args.maxIssuedDate) {
+                    const maxDate = new Date(args.maxIssuedDate);
+                    // Set to end of day
+                    maxDate.setHours(23, 59, 59, 999);
+                    (where.issuedDate as Record<string, unknown>).lte = maxDate;
+                }
             }
 
             // Get user's subscription status

@@ -87,6 +87,8 @@ export const typeDefs = `
       city: String
       minValue: Float
       maxValue: Float
+      minIssuedDate: String
+      maxIssuedDate: String
     ): [Permit!]!
     permit(id: String!): Permit
     permitByNumber(permitNumber: String!): Permit

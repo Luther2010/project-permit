@@ -11,9 +11,6 @@ import { PermitFilters, type FilterState } from "./components/permit-filters";
 async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> {
     const variables: Record<string, unknown> = {};
 
-    if (filters.query.trim()) {
-        variables.query = filters.query.trim();
-    }
     if (filters.propertyTypes.length > 0) {
         variables.propertyTypes = filters.propertyTypes;
     }
@@ -35,23 +32,31 @@ async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> 
             variables.maxValue = maxValue;
         }
     }
+    if (filters.minIssuedDate) {
+        variables.minIssuedDate = filters.minIssuedDate;
+    }
+    if (filters.maxIssuedDate) {
+        variables.maxIssuedDate = filters.maxIssuedDate;
+    }
 
     const query = `
         query GetPermits(
-            $query: String
             $propertyTypes: [PropertyType!]
             $permitTypes: [PermitType!]
             $city: String
             $minValue: Float
             $maxValue: Float
+            $minIssuedDate: String
+            $maxIssuedDate: String
         ) {
             permits(
-                query: $query
                 propertyTypes: $propertyTypes
                 permitTypes: $permitTypes
                 city: $city
                 minValue: $minValue
                 maxValue: $maxValue
+                minIssuedDate: $minIssuedDate
+                maxIssuedDate: $maxIssuedDate
             ) {
                 id
                 permitNumber
@@ -86,12 +91,13 @@ export default function Home() {
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [filters, setFilters] = useState<FilterState>({
-        query: "",
         propertyTypes: [],
         permitTypes: [],
         city: "",
         minValue: "",
         maxValue: "",
+        minIssuedDate: "",
+        maxIssuedDate: "",
     });
 
     const handleSearch = async () => {
@@ -134,7 +140,7 @@ export default function Home() {
                 ) : !hasSearched ? (
                     <div className="text-center py-12">
                         <p className="text-gray-500">
-                            Use the search and filters above to find permits
+                            Use the filters above to find permits
                         </p>
                     </div>
                 ) : permits.length === 0 ? (
