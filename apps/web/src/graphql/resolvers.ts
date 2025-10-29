@@ -17,6 +17,8 @@ export const resolvers = {
                 maxValue?: number;
                 minIssuedDate?: string;
                 maxIssuedDate?: string;
+                page?: number;
+                pageSize?: number;
             },
             context: {
                 session?: {
@@ -124,14 +126,50 @@ export const resolvers = {
                 }
             }
 
-            // Apply freemium limit: 3 permits for freemium users, unlimited for premium
-            const limit = isPremium ? undefined : 3;
+            // Pagination settings
+            const page = args.page && args.page > 0 ? args.page : 1;
+            const pageSize = args.pageSize && args.pageSize > 0 ? args.pageSize : 10;
 
-            return await prisma.permit.findMany({
+            // Apply freemium limit: 3 permits for freemium users, unlimited for premium
+            const freemiumLimit = isPremium ? undefined : 3;
+
+            // Get total count before pagination
+            const totalCount = await prisma.permit.count({ where });
+
+            // Apply freemium limit to total count for freemium users
+            const effectiveTotalCount = isPremium 
+                ? totalCount 
+                : Math.min(totalCount, freemiumLimit || Infinity);
+
+            // Calculate skip, but cap it at the effective total count
+            const requestedSkip = (page - 1) * pageSize;
+            const skip = Math.min(requestedSkip, effectiveTotalCount);
+
+            // Calculate take, ensuring we don't exceed the remaining items or freemium limit
+            const remainingItems = effectiveTotalCount - skip;
+            const effectiveLimit = freemiumLimit
+                ? Math.min(pageSize, remainingItems, freemiumLimit)
+                : Math.min(pageSize, remainingItems);
+
+            // Fetch paginated results
+            const permits = await prisma.permit.findMany({
                 where,
                 orderBy: { issuedDate: "desc" },
-                ...(limit ? { take: limit } : {}),
+                skip,
+                take: effectiveLimit,
             });
+
+            const hasNextPage = skip + effectiveLimit < effectiveTotalCount;
+            const hasPreviousPage = page > 1;
+
+            return {
+                permits,
+                totalCount: effectiveTotalCount,
+                page,
+                pageSize: pageSize, // Return original pageSize, not effectiveLimit
+                hasNextPage,
+                hasPreviousPage,
+            };
         },
 
         permit: async (_: unknown, args: { id: string }) => {

@@ -7,9 +7,25 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { PermitFilters, type FilterState } from "./components/permit-filters";
 import { PermitTable } from "./components/permit-table";
+import { Pagination } from "./components/pagination";
+
+const PAGE_SIZE = 2;
+
+interface PermitConnection {
+    permits: Permit[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+}
 
 // Optimized query for table view - minimal data only
-async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> {
+async function getPermits(
+    filters: FilterState,
+    page: number = 1,
+    pageSize: number = PAGE_SIZE
+): Promise<PermitConnection> {
     const variables: Record<string, unknown> = {};
 
     if (filters.propertyTypes.length > 0) {
@@ -40,6 +56,9 @@ async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> 
         variables.maxIssuedDate = filters.maxIssuedDate;
     }
 
+    variables.page = page;
+    variables.pageSize = pageSize;
+
     // Optimized query - only fetch fields needed for table display
     const query = `
         query GetPermits(
@@ -50,6 +69,8 @@ async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> 
             $maxValue: Float
             $minIssuedDate: String
             $maxIssuedDate: String
+            $page: Int
+            $pageSize: Int
         ) {
             permits(
                 propertyTypes: $propertyTypes
@@ -59,27 +80,50 @@ async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> 
                 maxValue: $maxValue
                 minIssuedDate: $minIssuedDate
                 maxIssuedDate: $maxIssuedDate
+                page: $page
+                pageSize: $pageSize
             ) {
-                id
-                permitNumber
-                title
-                city
-                propertyType
-                permitType
-                status
-                value
-                issuedDate
-                issuedDateString
+                permits {
+                    id
+                    permitNumber
+                    title
+                    city
+                    propertyType
+                    permitType
+                    status
+                    value
+                    issuedDate
+                    issuedDateString
+                }
+                totalCount
+                page
+                pageSize
+                hasNextPage
+                hasPreviousPage
             }
         }
     `;
 
     try {
         const data = await graphqlFetch(query, variables);
-        return { permits: data.permits || [] };
+        return data.permits || {
+            permits: [],
+            totalCount: 0,
+            page: 1,
+            pageSize: pageSize,
+            hasNextPage: false,
+            hasPreviousPage: false,
+        };
     } catch (error) {
         console.error("Error fetching permits:", error);
-        return { permits: [] };
+        return {
+            permits: [],
+            totalCount: 0,
+            page: 1,
+            pageSize: pageSize,
+            hasNextPage: false,
+            hasPreviousPage: false,
+        };
     }
 }
 
@@ -89,6 +133,13 @@ export default function Home() {
     const [permits, setPermits] = useState<Permit[]>([]);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
+    const [pagination, setPagination] = useState<{
+        totalCount: number;
+        page: number;
+        pageSize: number;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+    } | null>(null);
     const [filters, setFilters] = useState<FilterState>({
         propertyTypes: [],
         permitTypes: [],
@@ -99,12 +150,27 @@ export default function Home() {
         maxIssuedDate: "",
     });
 
-    const handleSearch = async () => {
+    const fetchPermits = async (page: number = 1) => {
         setLoading(true);
         setHasSearched(true);
-        const { permits } = await getPermits(filters);
-        setPermits(permits);
+        const result = await getPermits(filters, page, PAGE_SIZE);
+        setPermits(result.permits);
+        setPagination({
+            totalCount: result.totalCount,
+            page: result.page,
+            pageSize: result.pageSize,
+            hasNextPage: result.hasNextPage,
+            hasPreviousPage: result.hasPreviousPage,
+        });
         setLoading(false);
+    };
+
+    const handleSearch = async () => {
+        await fetchPermits(1);
+    };
+
+    const handlePageChange = async (page: number) => {
+        await fetchPermits(page);
     };
 
     return (
@@ -151,10 +217,26 @@ export default function Home() {
                 ) : (
                     <>
                         <div className="mb-4 text-sm text-gray-600">
-                            Showing {permits.length} permit{permits.length !== 1 ? "s" : ""}
+                            {pagination && (
+                                <>
+                                    Showing {permits.length} permit
+                                    {permits.length !== 1 ? "s" : ""} of{" "}
+                                    {pagination.totalCount}
+                                </>
+                            )}
                         </div>
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                             <PermitTable permits={permits} />
+                            {pagination && (
+                                <Pagination
+                                    currentPage={pagination.page}
+                                    pageSize={pagination.pageSize}
+                                    totalCount={pagination.totalCount}
+                                    hasNextPage={pagination.hasNextPage}
+                                    hasPreviousPage={pagination.hasPreviousPage}
+                                    onPageChange={handlePageChange}
+                                />
+                            )}
                         </div>
                     </>
                 )}

@@ -77,6 +77,15 @@ export const typeDefs = `
     updatedAt: String!
   }
 
+  type PermitConnection {
+    permits: [Permit!]!
+    totalCount: Int!
+    page: Int!
+    pageSize: Int!
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
+  }
+
   type Query {
     permits(
       query: String
@@ -89,7 +98,9 @@ export const typeDefs = `
       maxValue: Float
       minIssuedDate: String
       maxIssuedDate: String
-    ): [Permit!]!
+      page: Int
+      pageSize: Int
+    ): PermitConnection!
     permit(id: String!): Permit
     permitByNumber(permitNumber: String!): Permit
   }
