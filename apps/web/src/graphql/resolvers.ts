@@ -19,6 +19,8 @@ export const resolvers = {
                 maxIssuedDate?: string;
                 page?: number;
                 pageSize?: number;
+                sortBy?: string;
+                sortOrder?: string;
             },
             context: {
                 session?: {
@@ -151,10 +153,28 @@ export const resolvers = {
                 ? Math.min(pageSize, remainingItems, freemiumLimit)
                 : Math.min(pageSize, remainingItems);
 
+            // Build orderBy clause based on sort parameters
+            let orderBy: Record<string, string> = { issuedDate: "desc" }; // Default sort
+            if (args.sortBy) {
+                const sortFieldMap: Record<string, string> = {
+                    PERMIT_TYPE: "permitType",
+                    PROPERTY_TYPE: "propertyType",
+                    CITY: "city",
+                    VALUE: "value",
+                    ISSUED_DATE: "issuedDate",
+                    STATUS: "status",
+                };
+                const prismaField = sortFieldMap[args.sortBy];
+                if (prismaField) {
+                    const sortOrder = args.sortOrder === "ASC" ? "asc" : "desc";
+                    orderBy = { [prismaField]: sortOrder };
+                }
+            }
+
             // Fetch paginated results
             const permits = await prisma.permit.findMany({
                 where,
-                orderBy: { issuedDate: "desc" },
+                orderBy,
                 skip,
                 take: effectiveLimit,
             });

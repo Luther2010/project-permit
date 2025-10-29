@@ -87,6 +87,20 @@ export const typeDefs = `
     isPremium: Boolean!
   }
 
+  enum SortOrder {
+    ASC
+    DESC
+  }
+
+  enum PermitSortField {
+    PERMIT_TYPE
+    PROPERTY_TYPE
+    CITY
+    VALUE
+    ISSUED_DATE
+    STATUS
+  }
+
   type Query {
     permits(
       query: String
@@ -101,6 +115,8 @@ export const typeDefs = `
       maxIssuedDate: String
       page: Int
       pageSize: Int
+      sortBy: PermitSortField
+      sortOrder: SortOrder
     ): PermitConnection!
     permit(id: String!): Permit
     permitByNumber(permitNumber: String!): Permit

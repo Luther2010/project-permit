@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
 import type { Permit } from "@/types/permit";
 import { PermitDetailView } from "./permit-detail-view";
 
@@ -150,11 +151,86 @@ function PermitRow({
     );
 }
 
+type SortField =
+    | "PERMIT_TYPE"
+    | "PROPERTY_TYPE"
+    | "CITY"
+    | "VALUE"
+    | "ISSUED_DATE"
+    | "STATUS";
+type SortOrder = "ASC" | "DESC";
+
 interface PermitTableProps {
     permits: Permit[];
+    sortField: SortField | null;
+    sortOrder: SortOrder;
+    onSort: (field: SortField) => void;
 }
 
-export function PermitTable({ permits }: PermitTableProps) {
+function SortableHeader({
+    field,
+    currentSortField,
+    currentSortOrder,
+    onSort,
+    children,
+}: {
+    field: SortField;
+    currentSortField: SortField | null;
+    currentSortOrder: SortOrder;
+    onSort: (field: SortField) => void;
+    children: React.ReactNode;
+}) {
+    const isActive = currentSortField === field;
+    const isAsc = isActive && currentSortOrder === "ASC";
+
+    return (
+        <th
+            onClick={() => onSort(field)}
+            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+        >
+            <div className="flex items-center space-x-1">
+                <span>{children}</span>
+                <span className="flex flex-col">
+                    <svg
+                        className={`w-3 h-3 ${
+                            isActive && !isAsc
+                                ? "text-gray-900"
+                                : "text-gray-400"
+                        }`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                    >
+                        <path
+                            fillRule="evenodd"
+                            d="M14.77 12.79a.75.75 0 01-1.06.02L10 8.832 6.29 12.81a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01.02 1.06z"
+                            clipRule="evenodd"
+                        />
+                    </svg>
+                    <svg
+                        className={`w-3 h-3 -mt-1 ${
+                            isActive && isAsc ? "text-gray-900" : "text-gray-400"
+                        }`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                    >
+                        <path
+                            fillRule="evenodd"
+                            d="M5.23 7.21a.75.75 0 011.06-.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01-.02-1.06z"
+                            clipRule="evenodd"
+                        />
+                    </svg>
+                </span>
+            </div>
+        </th>
+    );
+}
+
+export function PermitTable({
+    permits,
+    sortField,
+    sortOrder,
+    onSort,
+}: PermitTableProps) {
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
     const handleToggleRow = (id: string) => {
@@ -189,24 +265,54 @@ export function PermitTable({ permits }: PermitTableProps) {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Title
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <SortableHeader
+                            field="PERMIT_TYPE"
+                            currentSortField={sortField}
+                            currentSortOrder={sortOrder}
+                            onSort={onSort}
+                        >
                             Type
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        </SortableHeader>
+                        <SortableHeader
+                            field="PROPERTY_TYPE"
+                            currentSortField={sortField}
+                            currentSortOrder={sortOrder}
+                            onSort={onSort}
+                        >
                             Property
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        </SortableHeader>
+                        <SortableHeader
+                            field="CITY"
+                            currentSortField={sortField}
+                            currentSortOrder={sortOrder}
+                            onSort={onSort}
+                        >
                             City
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        </SortableHeader>
+                        <SortableHeader
+                            field="VALUE"
+                            currentSortField={sortField}
+                            currentSortOrder={sortOrder}
+                            onSort={onSort}
+                        >
                             Value
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        </SortableHeader>
+                        <SortableHeader
+                            field="ISSUED_DATE"
+                            currentSortField={sortField}
+                            currentSortOrder={sortOrder}
+                            onSort={onSort}
+                        >
                             Issue Date
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        </SortableHeader>
+                        <SortableHeader
+                            field="STATUS"
+                            currentSortField={sortField}
+                            currentSortOrder={sortOrder}
+                            onSort={onSort}
+                        >
                             Status
-                        </th>
+                        </SortableHeader>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
                             {/* Expand/Collapse column */}
                         </th>
