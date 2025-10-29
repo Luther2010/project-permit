@@ -1,13 +1,14 @@
 "use client";
 
-import { PermitCard } from "./components/permit-card";
 import { graphqlFetch } from "@/lib/graphql-client";
 import type { Permit } from "@/types/permit";
 import { AuthButtons } from "./components/auth-buttons";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { PermitFilters, type FilterState } from "./components/permit-filters";
+import { PermitTable } from "./components/permit-table";
 
+// Optimized query for table view - minimal data only
 async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> {
     const variables: Record<string, unknown> = {};
 
@@ -39,6 +40,7 @@ async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> 
         variables.maxIssuedDate = filters.maxIssuedDate;
     }
 
+    // Optimized query - only fetch fields needed for table display
     const query = `
         query GetPermits(
             $propertyTypes: [PropertyType!]
@@ -61,11 +63,7 @@ async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> 
                 id
                 permitNumber
                 title
-                description
-                address
                 city
-                state
-                zipCode
                 propertyType
                 permitType
                 status
@@ -84,6 +82,7 @@ async function getPermits(filters: FilterState): Promise<{ permits: Permit[] }> 
         return { permits: [] };
     }
 }
+
 
 export default function Home() {
     const { data: session } = useSession();
@@ -154,10 +153,8 @@ export default function Home() {
                         <div className="mb-4 text-sm text-gray-600">
                             Showing {permits.length} permit{permits.length !== 1 ? "s" : ""}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {permits.map((permit) => (
-                                <PermitCard key={permit.id} permit={permit} />
-                            ))}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                            <PermitTable permits={permits} />
                         </div>
                     </>
                 )}
