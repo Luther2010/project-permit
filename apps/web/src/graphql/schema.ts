@@ -50,6 +50,11 @@ export const typeDefs = `
     CANCELLED
   }
 
+  enum SubscriptionPlan {
+    FREEMIUM
+    PREMIUM
+  }
+
   type Permit {
     id: String!
     permitNumber: String!
@@ -73,10 +78,16 @@ export const typeDefs = `
   }
 
   type Query {
-    permits: [Permit!]!
+    permits(
+      query: String
+      propertyType: PropertyType
+      permitType: PermitType
+      city: String
+      minValue: Float
+      maxValue: Float
+    ): [Permit!]!
     permit(id: String!): Permit
     permitByNumber(permitNumber: String!): Permit
-    searchPermits(query: String): [Permit!]!
   }
 
 `;

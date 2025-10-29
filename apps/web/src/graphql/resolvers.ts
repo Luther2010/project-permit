@@ -1,10 +1,79 @@
 import { prisma } from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
 
 export const resolvers = {
     Query: {
-        permits: async () => {
+        permits: async (_: unknown, args: {
+            query?: string;
+            propertyType?: string;
+            permitType?: string;
+            city?: string;
+            minValue?: number;
+            maxValue?: number;
+        }, context: any) => {
+            const where: any = {};
+
+            // Text search (if provided)
+            if (args.query) {
+                where.OR = [
+                    { permitNumber: { contains: args.query } },
+                    { title: { contains: args.query } },
+                    { description: { contains: args.query } },
+                    { city: { contains: args.query } },
+                    { address: { contains: args.query } },
+                ];
+            }
+
+            // Structured filters
+            if (args.propertyType) {
+                where.propertyType = args.propertyType;
+            }
+            if (args.permitType) {
+                where.permitType = args.permitType;
+            }
+            if (args.city) {
+                where.city = { contains: args.city };
+            }
+            if (args.minValue || args.maxValue) {
+                where.value = {};
+                if (args.minValue) where.value.gte = args.minValue;
+                if (args.maxValue) where.value.lte = args.maxValue;
+            }
+
+            // Get user's subscription status
+            const session = await getServerSession(authOptions);
+            let isPremium = false;
+
+            if (session?.user?.id) {
+                const user = await prisma.user.findUnique({
+                    where: { id: session.user.id },
+                    include: { subscription: true },
+                });
+
+                if (user?.subscription) {
+                    const now = new Date();
+                    const subscription = user.subscription as any; // Type assertion for new fields
+                    const validUntil = subscription.validUntil;
+                    
+                    // User has premium access if:
+                    // 1. Plan is PREMIUM AND validUntil is in the future (or null for lifetime)
+                    // 2. OR validUntil is in the future (regardless of plan - handles trials)
+                    isPremium = (
+                        (subscription.plan === 'PREMIUM' && 
+                         (validUntil === null || validUntil > now)) ||
+                        (validUntil && validUntil > now)
+                    );
+                }
+            }
+
+            // Apply freemium limit: 3 permits for freemium users, unlimited for premium
+            const limit = isPremium ? undefined : 3;
+
             return await prisma.permit.findMany({
+                where,
                 orderBy: { issuedDate: "desc" },
+                ...(limit && { take: limit }),
             });
         },
 
@@ -17,27 +86,6 @@ export const resolvers = {
         permitByNumber: async (_: unknown, args: { permitNumber: string }) => {
             return await prisma.permit.findUnique({
                 where: { permitNumber: args.permitNumber },
-            });
-        },
-
-        searchPermits: async (_: unknown, args: { query?: string }) => {
-            if (!args.query) {
-                return await prisma.permit.findMany({
-                    orderBy: { issuedDate: "desc" },
-                });
-            }
-
-            return await prisma.permit.findMany({
-                where: {
-                    OR: [
-                        { permitNumber: { contains: args.query } },
-                        { title: { contains: args.query } },
-                        { description: { contains: args.query } },
-                        { city: { contains: args.query } },
-                        { address: { contains: args.query } },
-                    ],
-                },
-                orderBy: { issuedDate: "desc" },
             });
         },
     },

@@ -62,6 +62,11 @@ enum PermitStatus {
   CANCELLED
 }
 
+enum SubscriptionPlan {
+  FREEMIUM
+  PREMIUM
+}
+
 // User model - stores authentication and subscription info
 model User {
   id            String    @id @default(cuid())
@@ -110,11 +115,13 @@ model Subscription {
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  status          String   @default("freemium") // freemium | premium | cancelled
+  plan            SubscriptionPlan @default(FREEMIUM)
   
-  // Stripe fields
-  stripeCustomerId String? @unique
-  stripeSubscriptionId String?
+  // Subscription period - user has premium access until this date
+  // null = freemium (permanent)
+  // future date = premium access until that date
+  // past date = expired (back to freemium)
+  validUntil      DateTime?
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
