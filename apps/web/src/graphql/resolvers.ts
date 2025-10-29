@@ -14,9 +14,18 @@ export const resolvers = {
                 minValue?: number;
                 maxValue?: number;
             },
-            context: any
+            context: {
+                session?: {
+                    user: {
+                        id: string;
+                        name?: string | null;
+                        email?: string | null;
+                        image?: string | null;
+                    };
+                } | null;
+            }
         ) => {
-            const where: any = {};
+            const where: Record<string, unknown> = {};
 
             // Text search (if provided)
             if (args.query) {
@@ -40,9 +49,13 @@ export const resolvers = {
                 where.city = { contains: args.city };
             }
             if (args.minValue || args.maxValue) {
-                where.value = {};
-                if (args.minValue) where.value.gte = args.minValue;
-                if (args.maxValue) where.value.lte = args.maxValue;
+                where.value = {} as Record<string, unknown>;
+                if (args.minValue)
+                    (where.value as Record<string, unknown>).gte =
+                        args.minValue;
+                if (args.maxValue)
+                    (where.value as Record<string, unknown>).lte =
+                        args.maxValue;
             }
 
             // Get user's subscription status
@@ -67,17 +80,20 @@ export const resolvers = {
 
                     if (user?.subscription) {
                         const now = new Date();
-                        const subscription = user.subscription as any;
+                        const subscription = user.subscription as unknown as {
+                            plan: string;
+                            validUntil: Date | null;
+                        };
                         const validUntil = subscription.validUntil;
 
                         // User has premium access if:
                         // 1. Plan is PREMIUM AND validUntil is in the future (or null for lifetime)
                         // 2. OR validUntil is in the future (regardless of plan - handles trials)
-                        isPremium =
+                        isPremium = Boolean(
                             (subscription.plan === "PREMIUM" &&
                                 (validUntil === null || validUntil > now)) ||
-                            (validUntil && validUntil > now);
-
+                                (validUntil && validUntil > now)
+                        );
                     }
                 } catch (error) {
                     console.log("Error checking subscription:", error);

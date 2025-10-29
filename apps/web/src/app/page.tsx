@@ -39,7 +39,7 @@ async function getPermits(): Promise<{ permits: Permit[] }> {
 }
 
 export default function Home() {
-    const { data: session, status } = useSession();
+    const { data: session } = useSession();
     const [permits, setPermits] = useState<Permit[]>([]);
     const [loading, setLoading] = useState(true);
 

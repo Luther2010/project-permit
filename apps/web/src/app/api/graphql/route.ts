@@ -20,7 +20,7 @@ const yogaApp = createYoga({
     context: async ({ request }: { request: Request }) => {
         // Extract session token from cookies using next-auth/jwt
         const token = await getToken({
-            req: request as any,
+            req: request as unknown as NextRequest,
             secret: process.env.NEXTAUTH_SECRET,
         });
 
