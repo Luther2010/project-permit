@@ -7,6 +7,12 @@
 - [x] **TODO #6**: Determine project type from permit data - analyze permit descriptions, titles, and types to categorize projects (residential, commercial, infrastructure, etc.)
 - [x] **TODO #14**: Add subscription model to Prisma schema - define Subscription model with user relationship, plan type, status, and limits
 - [x] **TODO #15**: Implement freemium GraphQL logic - limit permit results to 3 permits for freemium users, unlimited for premium
+- [x] Table view with expandable rows for permit details (lazy-load details)
+- [x] Refactor: extract `PermitDetailView` component with self-contained GraphQL fetching and caching
+- [x] Pagination for search results (page size=2 for testing)
+- [x] Sorting on result table (Type, Property, City, Value, Issue Date, Status)
+- [x] Freemium notice banner in UI (callout for limited results)
+- [x] Freemium-sticky sorting/pagination: cache 3-permit subset and sort/page locally
 
 ## 🔄 Pending Tasks
 
@@ -25,23 +31,22 @@
 - [ ] **TODO #11**: Link permits to contractors - establish relationships between existing permits and contractor entities based on contractor info in permit data
 
 ### UI/UX Enhancements
-- [ ] **TODO #12**: Allow sorting on filtered result table - implement sortable columns for permit data (date, value, type, property type, etc.)
-- [ ] **TODO #13**: Enable pagination in filter results - implement pagination controls and page-based navigation for large permit datasets
+- [ ] Learn more / Upgrade flow CTA for freemium banner
 
 ## 📝 Notes
 
 - **Subscription Model**: Simplified to use only `plan` and `validUntil` fields (no cleanup scripts needed)
 - **Authentication**: Using `session.user.id` for secure, provider-agnostic user identification
-- **Freemium Logic**: 3 permits for non-premium users, unlimited for premium users
+- **Freemium Logic**: 3 permits for non-premium users, unlimited for premium users; for freemium we lock the same 3-permit subset (canonical: Issue Date DESC) and sort/page locally so sorting doesn’t change the subset
 - **Classification**: PropertyType and PermitType classification working with 80-90% confidence
 
 ## 🎯 Next Priority
 
 Consider working on:
-1. **TODO #12**: Allow sorting on filtered result table (UX improvement - complements filtering)
-2. **TODO #13**: Enable pagination in filter results (UX improvement - for large datasets)
-3. **TODO #9**: Create Contractor entity (data expansion)
+1. **TODO #2**: Stripe payment + upgrade flow (connect banner CTA)
+2. **TODO #9**: Create Contractor entity (data expansion)
+3. **TODO #7**: 7-day trial UX and enforcement
 
 ---
 
-*Last updated: 2025-01-29*
+*Last updated: 2025-10-29*
