@@ -4,14 +4,18 @@ import { authOptions } from "@/auth";
 
 export const resolvers = {
     Query: {
-        permits: async (_: unknown, args: {
-            query?: string;
-            propertyType?: string;
-            permitType?: string;
-            city?: string;
-            minValue?: number;
-            maxValue?: number;
-        }, context: any) => {
+        permits: async (
+            _: unknown,
+            args: {
+                query?: string;
+                propertyType?: string;
+                permitType?: string;
+                city?: string;
+                minValue?: number;
+                maxValue?: number;
+            },
+            context: any
+        ) => {
             const where: any = {};
 
             // Text search (if provided)
@@ -42,28 +46,41 @@ export const resolvers = {
             }
 
             // Get user's subscription status
-            const session = await getServerSession(authOptions);
+            // Try to get session from context first, then fallback to getServerSession
+            let session = context?.session;
+            if (!session) {
+                try {
+                    session = await getServerSession(authOptions);
+                } catch (error) {
+                    console.log("Could not get session in resolver:", error);
+                }
+            }
+
             let isPremium = false;
 
             if (session?.user?.id) {
-                const user = await prisma.user.findUnique({
-                    where: { id: session.user.id },
-                    include: { subscription: true },
-                });
+                try {
+                    const user = await prisma.user.findUnique({
+                        where: { id: session.user.id },
+                        include: { subscription: true },
+                    });
 
-                if (user?.subscription) {
-                    const now = new Date();
-                    const subscription = user.subscription as any; // Type assertion for new fields
-                    const validUntil = subscription.validUntil;
-                    
-                    // User has premium access if:
-                    // 1. Plan is PREMIUM AND validUntil is in the future (or null for lifetime)
-                    // 2. OR validUntil is in the future (regardless of plan - handles trials)
-                    isPremium = (
-                        (subscription.plan === 'PREMIUM' && 
-                         (validUntil === null || validUntil > now)) ||
-                        (validUntil && validUntil > now)
-                    );
+                    if (user?.subscription) {
+                        const now = new Date();
+                        const subscription = user.subscription as any;
+                        const validUntil = subscription.validUntil;
+
+                        // User has premium access if:
+                        // 1. Plan is PREMIUM AND validUntil is in the future (or null for lifetime)
+                        // 2. OR validUntil is in the future (regardless of plan - handles trials)
+                        isPremium =
+                            (subscription.plan === "PREMIUM" &&
+                                (validUntil === null || validUntil > now)) ||
+                            (validUntil && validUntil > now);
+
+                    }
+                } catch (error) {
+                    console.log("Error checking subscription:", error);
                 }
             }
 
@@ -73,7 +90,7 @@ export const resolvers = {
             return await prisma.permit.findMany({
                 where,
                 orderBy: { issuedDate: "desc" },
-                ...(limit && { take: limit }),
+                ...(limit ? { take: limit } : {}),
             });
         },
 

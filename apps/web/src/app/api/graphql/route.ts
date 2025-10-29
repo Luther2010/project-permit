@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import { typeDefs } from "@/graphql/schema";
 import { resolvers } from "@/graphql/resolvers";
+import { getToken } from "next-auth/jwt";
 
 const schema = makeExecutableSchema({
     typeDefs,
@@ -15,6 +16,29 @@ const yogaApp = createYoga({
     fetchAPI: {
         Request: Request,
         Response: Response,
+    },
+    context: async ({ request }: { request: Request }) => {
+        // Extract session token from cookies using next-auth/jwt
+        const token = await getToken({
+            req: request as any,
+            secret: process.env.NEXTAUTH_SECRET,
+        });
+
+        // Convert token to session-like object
+        const session = token
+            ? {
+                  user: {
+                      id: token.sub,
+                      name: token.name,
+                      email: token.email,
+                      image: token.picture,
+                  },
+              }
+            : null;
+
+        return {
+            session,
+        };
     },
 });
 

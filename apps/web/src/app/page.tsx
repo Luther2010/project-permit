@@ -1,9 +1,11 @@
+"use client";
+
 import { PermitCard } from "./components/permit-card";
 import { graphqlFetch } from "@/lib/graphql-client";
 import type { Permit } from "@/types/permit";
 import { AuthButtons } from "./components/auth-buttons";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
+import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 
 async function getPermits(): Promise<{ permits: Permit[] }> {
     const query = `
@@ -36,9 +38,20 @@ async function getPermits(): Promise<{ permits: Permit[] }> {
     }
 }
 
-export default async function Home() {
-    const { permits } = await getPermits();
-    const session = await getServerSession(authOptions);
+export default function Home() {
+    const { data: session, status } = useSession();
+    const [permits, setPermits] = useState<Permit[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchPermits() {
+            setLoading(true);
+            const { permits } = await getPermits();
+            setPermits(permits);
+            setLoading(false);
+        }
+        fetchPermits();
+    }, []);
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -59,7 +72,11 @@ export default async function Home() {
                     />
                 </div>
 
-                {permits.length === 0 ? (
+                {loading ? (
+                    <div className="text-center py-12">
+                        <p className="text-gray-500">Loading permits...</p>
+                    </div>
+                ) : permits.length === 0 ? (
                     <div className="text-center py-12">
                         <p className="text-gray-500">No permits found</p>
                     </div>
