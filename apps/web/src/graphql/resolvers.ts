@@ -169,6 +169,7 @@ export const resolvers = {
                 pageSize: pageSize, // Return original pageSize, not effectiveLimit
                 hasNextPage,
                 hasPreviousPage,
+                isPremium,
             };
         },
 

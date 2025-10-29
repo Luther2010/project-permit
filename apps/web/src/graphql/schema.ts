@@ -84,6 +84,7 @@ export const typeDefs = `
     pageSize: Int!
     hasNextPage: Boolean!
     hasPreviousPage: Boolean!
+    isPremium: Boolean!
   }
 
   type Query {
