@@ -13,3 +13,7 @@ npm-shrinkwrap.json
 # turbo
 .turbo
 apps/*/.turbo
+
+# data files
+data/*.csv
+!data/contractors.sample.csv
