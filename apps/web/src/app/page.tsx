@@ -9,6 +9,7 @@ import * as React from "react";
 import { PermitFilters, type FilterState } from "./components/permit-filters";
 import { PermitTable } from "./components/permit-table";
 import { Pagination } from "./components/pagination";
+import type { PropertyType, PermitType } from "@prisma/client";
 
 const PAGE_SIZE = 2;
 
@@ -178,8 +179,8 @@ export default function Home() {
         isPremium: boolean;
     } | null>(null);
     const [filters, setFilters] = useState<FilterState>({
-        propertyTypes: [],
-        permitTypes: [],
+        propertyTypes: [] as PropertyType[],
+        permitTypes: [] as PermitType[],
         city: "",
         hasContractor: null,
         minValue: "",

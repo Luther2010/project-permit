@@ -4,7 +4,7 @@ import { PermitType } from "@prisma/client";
 import { formatEnumLabel } from "./utils";
 
 // Generate permit types array from Prisma enum
-const PERMIT_TYPES = (Object.values(PermitType) as string[])
+const PERMIT_TYPES = (Object.values(PermitType) as PermitType[])
     .filter((value) => typeof value === "string")
     .map((value) => ({
         value,
@@ -12,15 +12,15 @@ const PERMIT_TYPES = (Object.values(PermitType) as string[])
     }));
 
 interface PermitTypeFilterProps {
-    selectedTypes: string[];
-    onChange: (selectedTypes: string[]) => void;
+    selectedTypes: PermitType[];
+    onChange: (selectedTypes: PermitType[]) => void;
 }
 
 export function PermitTypeFilter({
     selectedTypes,
     onChange,
 }: PermitTypeFilterProps) {
-    const handleToggle = (value: string, checked: boolean) => {
+    const handleToggle = (value: PermitType, checked: boolean) => {
         const newSelection = checked
             ? [...selectedTypes, value]
             : selectedTypes.filter((v) => v !== value);

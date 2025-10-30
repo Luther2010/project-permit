@@ -4,7 +4,7 @@ import { PropertyType } from "@prisma/client";
 import { formatEnumLabel } from "./utils";
 
 // Generate property types array from Prisma enum
-const PROPERTY_TYPES = (Object.values(PropertyType) as string[])
+const PROPERTY_TYPES = (Object.values(PropertyType) as PropertyType[])
     .filter((value) => typeof value === "string")
     .map((value) => ({
         value,
@@ -12,15 +12,15 @@ const PROPERTY_TYPES = (Object.values(PropertyType) as string[])
     }));
 
 interface PropertyTypeFilterProps {
-    selectedTypes: string[];
-    onChange: (selectedTypes: string[]) => void;
+    selectedTypes: PropertyType[];
+    onChange: (selectedTypes: PropertyType[]) => void;
 }
 
 export function PropertyTypeFilter({
     selectedTypes,
     onChange,
 }: PropertyTypeFilterProps) {
-    const handleToggle = (value: string, checked: boolean) => {
+    const handleToggle = (value: PropertyType, checked: boolean) => {
         const newSelection = checked
             ? [...selectedTypes, value]
             : selectedTypes.filter((v) => v !== value);

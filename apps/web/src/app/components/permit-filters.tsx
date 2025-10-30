@@ -6,10 +6,11 @@ import { CityFilter } from "./filters/city-filter";
 import { ValueRangeFilter } from "./filters/value-range-filter";
 import { IssueDateRangeFilter } from "./filters/issue-date-range-filter";
 import { HasContractorFilter } from "./filters/has-contractor-filter";
+import type { PropertyType, PermitType } from "@prisma/client";
 
 export interface FilterState {
-    propertyTypes: string[];
-    permitTypes: string[];
+    propertyTypes: PropertyType[];
+    permitTypes: PermitType[];
     city: string;
     hasContractor: boolean | null;
     minValue: string;
