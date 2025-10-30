@@ -67,6 +67,75 @@ enum SubscriptionPlan {
   PREMIUM
 }
 
+// Business type per CSLB
+enum ContractorBusinessType {
+  SOLE_OWNER
+  CORPORATION
+  PARTNERSHIP
+  LIMITED_LIABILITY
+  OTHER
+}
+
+// CSLB License Classifications (subset incl. those in sample and official list)
+// Source: https://www.cslb.ca.gov/About_Us/Library/Licensing_Classifications/
+enum CSLBClassification {
+  A
+  B
+  B2
+  C2
+  C4
+  C5
+  C6
+  C7
+  C8
+  C9
+  C10
+  C11
+  C12
+  C13
+  C15
+  C16
+  C17
+  C20
+  C21
+  C22
+  C23
+  C27
+  C28
+  C29
+  C31
+  C32
+  C33
+  C34
+  C35
+  C36
+  C38
+  C39
+  C42
+  C43
+  C45
+  C46
+  C47
+  C49
+  C50
+  C51
+  C53
+  C54
+  C55
+  C57
+  C60
+  C61
+  D12
+  D16
+  D28
+  D29
+  D35
+  D49
+  D52
+  D60
+  D65
+}
+
 // User model - stores authentication and subscription info
 model User {
   id            String    @id @default(cuid())
@@ -164,5 +233,46 @@ model Permit {
   @@index([city])
   @@index([permitType])
   @@index([issuedDate])
+}
+
+// Contractor model - stores licensing, bonding, and compliance data from CSLB CSV
+model Contractor {
+  id               String   @id @default(cuid())
+
+  // Core identification
+  licenseNo        String   @unique
+  name             String?  // prefer FullBusinessName or BusinessName
+
+  // Contact and address
+  mailingAddress   String?
+  city             String?
+  state            String?
+  zipCode          String?
+  phone            String?
+
+  // Business info
+  businessType     ContractorBusinessType?
+  classifications  ContractorClassification[]
+
+  // Key dates
+  issueDate        DateTime?
+  
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([licenseNo])
+  @@index([city])
+}
+
+// Join table for many classifications per contractor (SQLite-friendly)
+model ContractorClassification {
+  id             String              @id @default(cuid())
+  contractorId   String
+  contractor     Contractor          @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  classification CSLBClassification
+
+  @@unique([contractorId, classification])
+  @@index([classification])
 }
 
