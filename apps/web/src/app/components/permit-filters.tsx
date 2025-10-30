@@ -5,11 +5,13 @@ import { PermitTypeFilter } from "./filters/permit-type-filter";
 import { CityFilter } from "./filters/city-filter";
 import { ValueRangeFilter } from "./filters/value-range-filter";
 import { IssueDateRangeFilter } from "./filters/issue-date-range-filter";
+import { HasContractorFilter } from "./filters/has-contractor-filter";
 
 export interface FilterState {
     propertyTypes: string[];
     permitTypes: string[];
     city: string;
+    hasContractor: boolean | null;
     minValue: string;
     maxValue: string;
     minIssuedDate: string;
@@ -27,7 +29,7 @@ export function PermitFilters({
     onFiltersChange,
     onSearch,
 }: PermitFiltersProps) {
-    const handleChange = (field: keyof FilterState, value: string | string[]) => {
+    const handleChange = <K extends keyof FilterState>(field: K, value: FilterState[K]) => {
         onFiltersChange({
             ...filters,
             [field]: value,
@@ -39,6 +41,7 @@ export function PermitFilters({
             propertyTypes: [],
             permitTypes: [],
             city: "",
+            hasContractor: null,
             minValue: "",
             maxValue: "",
             minIssuedDate: "",
@@ -51,6 +54,7 @@ export function PermitFilters({
         filters.propertyTypes.length > 0 ||
         filters.permitTypes.length > 0 ||
         filters.city ||
+        (filters.hasContractor !== null) ||
         filters.minValue ||
         filters.maxValue ||
         filters.minIssuedDate ||
@@ -79,6 +83,10 @@ export function PermitFilters({
                     <CityFilter
                         value={filters.city}
                         onChange={(value) => handleChange("city", value)}
+                    />
+                    <HasContractorFilter
+                        value={filters.hasContractor}
+                        onChange={(value) => handleChange("hasContractor", value)}
                     />
 
                     <ValueRangeFilter
@@ -136,6 +144,11 @@ export function PermitFilters({
                         {filters.city && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
                                 City: {filters.city}
+                            </span>
+                        )}
+                        {filters.hasContractor !== null && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                Contractor: {filters.hasContractor ? "Has" : "None"}
                             </span>
                         )}
                         {(filters.minValue || filters.maxValue) && (

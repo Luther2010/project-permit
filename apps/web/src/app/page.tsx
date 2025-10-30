@@ -55,6 +55,9 @@ async function getPermits(
     if (filters.city.trim()) {
         variables.city = filters.city.trim();
     }
+    if (filters.hasContractor !== null) {
+        variables.hasContractor = filters.hasContractor;
+    }
     if (filters.minValue) {
         const minValue = parseFloat(filters.minValue);
         if (!isNaN(minValue)) {
@@ -89,6 +92,7 @@ async function getPermits(
             $propertyTypes: [PropertyType!]
             $permitTypes: [PermitType!]
             $city: String
+            $hasContractor: Boolean
             $minValue: Float
             $maxValue: Float
             $minIssuedDate: String
@@ -102,6 +106,7 @@ async function getPermits(
                 propertyTypes: $propertyTypes
                 permitTypes: $permitTypes
                 city: $city
+                hasContractor: $hasContractor
                 minValue: $minValue
                 maxValue: $maxValue
                 minIssuedDate: $minIssuedDate
@@ -176,6 +181,7 @@ export default function Home() {
         propertyTypes: [],
         permitTypes: [],
         city: "",
+        hasContractor: null,
         minValue: "",
         maxValue: "",
         minIssuedDate: "",

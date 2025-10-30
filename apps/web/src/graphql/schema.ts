@@ -110,6 +110,7 @@ export const typeDefs = `
       permitType: PermitType
       permitTypes: [PermitType!]
       city: String
+      hasContractor: Boolean
       minValue: Float
       maxValue: Float
       minIssuedDate: String

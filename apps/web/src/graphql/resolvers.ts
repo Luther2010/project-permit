@@ -13,6 +13,7 @@ export const resolvers = {
                 permitType?: string;
                 permitTypes?: string[];
                 city?: string;
+                hasContractor?: boolean;
                 minValue?: number;
                 maxValue?: number;
                 minIssuedDate?: string;
@@ -60,6 +61,11 @@ export const resolvers = {
             }
             if (args.city) {
                 where.city = { contains: args.city };
+            }
+            if (typeof args.hasContractor === "boolean") {
+                where.contractors = args.hasContractor
+                    ? { some: {} }
+                    : { none: {} };
             }
             if (args.minValue || args.maxValue) {
                 where.value = {} as Record<string, unknown>;
