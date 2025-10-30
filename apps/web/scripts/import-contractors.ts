@@ -194,7 +194,8 @@ async function main() {
                 const norm = token.replace(/\s|-/g, "").toUpperCase(); // e.g., "C-10" => "C10", "B-2" => "B2"
                 // Skip known certifications not in classifications enum
                 if (norm === "HAZ" || norm === "ASB") continue;
-                if (ALLOWED_CLASS_CODES.has(norm)) classifications.push(norm as CSLBClassification);
+                if (ALLOWED_CLASS_CODES.has(norm))
+                    classifications.push(norm as CSLBClassification);
             }
         }
 
@@ -217,9 +218,12 @@ async function main() {
             businessType: ((): ContractorBusinessType | null => {
                 const bt = (r["BusinessType"] || "").trim().toLowerCase();
                 if (!bt) return null;
-                if (bt.includes("sole")) return ContractorBusinessType.SOLE_OWNER;
-                if (bt.includes("corporation")) return ContractorBusinessType.CORPORATION;
-                if (bt.includes("partnership")) return ContractorBusinessType.PARTNERSHIP;
+                if (bt.includes("sole"))
+                    return ContractorBusinessType.SOLE_OWNER;
+                if (bt.includes("corporation"))
+                    return ContractorBusinessType.CORPORATION;
+                if (bt.includes("partnership"))
+                    return ContractorBusinessType.PARTNERSHIP;
                 if (bt.includes("limited liability") || bt === "llc")
                     return ContractorBusinessType.LIMITED_LIABILITY;
                 return ContractorBusinessType.OTHER;
