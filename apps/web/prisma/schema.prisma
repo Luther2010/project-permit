@@ -229,6 +229,9 @@ model Permit {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Relations
+  contractors     PermitContractor[]
+
   @@index([permitNumber])
   @@index([city])
   @@index([permitType])
@@ -263,6 +266,9 @@ model Contractor {
 
   @@index([licenseNo])
   @@index([city])
+
+  // Relations
+  permits          PermitContractor[]
 }
 
 // Join table for many classifications per contractor (SQLite-friendly)
@@ -274,5 +280,19 @@ model ContractorClassification {
 
   @@unique([contractorId, classification])
   @@index([classification])
+}
+
+// Join table: many-to-many between Permit and Contractor
+model PermitContractor {
+  id            String      @id @default(cuid())
+  permitId      String
+  contractorId  String
+  role          String?     // Optional: general, prime, sub, etc.
+
+  permit        Permit      @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  contractor    Contractor  @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+
+  @@unique([permitId, contractorId])
+  @@index([contractorId])
 }
 

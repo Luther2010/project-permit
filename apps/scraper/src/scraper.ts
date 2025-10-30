@@ -72,13 +72,16 @@ async function savePermits(permits: any[]): Promise<void> {
             };
 
             const classification = await permitClassificationService.classify(permitData);
+            console.log(
+                `🔎 Classification for ${permit.permitNumber}: propertyType=${classification.propertyType} permitType=${classification.permitType} contractorId=${classification.contractorId}`
+            );
             
             console.log(`📋 Classified ${permit.permitNumber}: ${classification.propertyType}/${classification.permitType} (confidence: ${classification.confidence.toFixed(2)})`);
             if (classification.reasoning.length > 0) {
                 console.log(`   Reasoning: ${classification.reasoning.join(', ')}`);
             }
 
-            await prisma.permit.upsert({
+            const savedPermit = await prisma.permit.upsert({
                 where: { permitNumber: permit.permitNumber },
                 update: {
                     // Update existing permits
@@ -117,6 +120,73 @@ async function savePermits(permits: any[]): Promise<void> {
                 },
             });
             saved++;
+
+            // Link contractors if license info is present
+            try {
+                const linkByLicense = async (licenseNoRaw?: string, role?: string) => {
+                    const licenseNo = licenseNoRaw?.trim();
+                    if (!licenseNo) return;
+                    const contractor = await prisma.contractor.findUnique({
+                        where: { licenseNo },
+                        select: { id: true },
+                    });
+                    if (!contractor) return;
+                    await prisma.permitContractor.upsert({
+                        where: {
+                            permitId_contractorId: {
+                                permitId: savedPermit.id,
+                                contractorId: contractor.id,
+                            },
+                        },
+                        update: { role: role || undefined },
+                        create: {
+                            permitId: savedPermit.id,
+                            contractorId: contractor.id,
+                            role: role || undefined,
+                        },
+                    });
+                };
+
+                // Support single license field
+                let linkedAny = false;
+                // Or an array of contractors
+                if (Array.isArray(permit.contractors)) {
+                    for (const c of permit.contractors) {
+                        await linkByLicense(c?.licenseNo, c?.role);
+                        linkedAny = true;
+                    }
+                }
+                // If classifier provided a contractorId, link it
+                if (!linkedAny && classification.contractorId) {
+                    await prisma.permitContractor.upsert({
+                        where: {
+                            permitId_contractorId: {
+                                permitId: savedPermit.id,
+                                contractorId: classification.contractorId,
+                            },
+                        },
+                        update: {},
+                        create: {
+                            permitId: savedPermit.id,
+                            contractorId: classification.contractorId,
+                        },
+                    });
+                    console.log(
+                        `🔗 Linked permit ${permit.permitNumber} to contractor ${classification.contractorId} (from classifier)`
+                    );
+                    linkedAny = true;
+                }
+                if (!linkedAny) {
+                    console.log(
+                        `ℹ️  No contractor link created for ${permit.permitNumber}`
+                    );
+                }
+            } catch (e) {
+                console.warn(
+                    `⚠️  Could not link contractor(s) for ${permit.permitNumber}:`,
+                    e
+                );
+            }
         } catch (error) {
             console.error(`Error saving permit ${permit.permitNumber}:`, error);
             skipped++;

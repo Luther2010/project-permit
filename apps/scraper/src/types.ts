@@ -24,6 +24,7 @@ export interface PermitData {
   issuedDate?: Date;
   expirationDate?: Date;
   sourceUrl?: string;
+  licensedProfessionalText?: string;
 }
 
 export interface ScrapeResult {

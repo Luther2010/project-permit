@@ -363,6 +363,7 @@ export class LosGatosExtractor extends BaseExtractor {
             permits.push({
                 ...permit,
                 value: details.jobValue || permit.value,
+                licensedProfessionalText: details.licensedProfessional,
             });
 
             // Add a small delay to avoid overwhelming the server
@@ -458,7 +459,7 @@ export class LosGatosExtractor extends BaseExtractor {
             });
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
-            // Extract job value and licensed professional
+            // Extract job value and licensed professional (text + raw HTML block)
             const details = await newPage.evaluate(() => {
                 const result: {
                     jobValue?: number;
@@ -513,13 +514,32 @@ export class LosGatosExtractor extends BaseExtractor {
                     result.jobValue = parseFloat(value);
                 }
 
-                // Extract licensed professional - look for "Licensed Professional:"
-                const licensedMatch = allText.match(
-                    /Licensed Professional:.*?\n([^\n]+)/i
-                );
-                if (licensedMatch && licensedMatch[1]) {
-                    result.licensedProfessional = licensedMatch[1].trim();
-                }
+                // Extract licensed professional - prefer DOM selection
+                try {
+                    const header = (globalThis as any).document.querySelector(
+                        'span[id*="permitDetail_label_license"]'
+                    );
+                    const table = (globalThis as any).document.querySelector(
+                        '#tbl_licensedps'
+                    );
+                    if (table) {
+                        // Best-effort text extract from the table
+                        const text = (table as any).innerText
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                        if (text) {
+                            result.licensedProfessional = text;
+                        }
+                    } else {
+                        // Fallback to regex on page text
+                        const licensedMatch = allText.match(
+                            /Licensed Professional:.*?\n([^\n]+)/i
+                        );
+                        if (licensedMatch && licensedMatch[1]) {
+                            result.licensedProfessional = licensedMatch[1].trim();
+                        }
+                    }
+                } catch {}
 
                 return result;
             });

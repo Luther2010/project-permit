@@ -6,6 +6,7 @@
  */
 
 import { PropertyType, PermitType } from "@prisma/client";
+import { prisma } from "./db";
 
 export interface PermitData {
   permitNumber: string;
@@ -17,6 +18,8 @@ export interface PermitData {
   // Raw data from scraper
   rawExplicitType?: string;
   rawPermitType?: string;
+  // Raw contractor text extracted from page (e.g., licensed professional block)
+  licensedProfessionalText?: string;
 }
 
 export interface ClassificationResult {
@@ -24,6 +27,8 @@ export interface ClassificationResult {
   permitType: PermitType | null;
   confidence: number; // 0.0 - 1.0
   reasoning: string[]; // For debugging/transparency
+  // Optional contractor association chosen by classifier (temporary heuristic)
+  contractorId?: string | null;
 }
 
 /**
@@ -45,6 +50,28 @@ export class PermitClassificationService {
     const propertyTypeResult = await this.propertyTypeClassifier.classify(permit);
     const permitTypeResult = await this.permitTypeClassifier.classify(permit);
 
+    // TEMP: Random contractor association for sampling/testing (~25%)
+    // Future: parse licensedProfessionalText and map to a real contractor by license/name
+    let contractorId: string | null = null;
+    try {
+      if (Math.random() < 0.8) {
+        const total = await prisma.contractor.count();
+        if (total > 0) {
+          const skip = Math.floor(Math.random() * total);
+          const random = await prisma.contractor.findFirst({
+            skip,
+            take: 1,
+            select: { id: true },
+          });
+          contractorId = random?.id ?? null;
+          console.log(`[Classifier] ${permit.permitNumber}: picked contractorId=${contractorId} (total contractors=${total})`);
+        }
+      }
+    } catch (e) {
+      console.warn(`[Classifier] ${permit.permitNumber}: contractor pick failed`, e);
+      contractorId = null;
+    }
+
     return {
       propertyType: propertyTypeResult.type,
       permitType: permitTypeResult.type,
@@ -52,7 +79,8 @@ export class PermitClassificationService {
       reasoning: [
         ...propertyTypeResult.reasoning,
         ...permitTypeResult.reasoning
-      ]
+      ],
+      contractorId,
     };
   }
 }
