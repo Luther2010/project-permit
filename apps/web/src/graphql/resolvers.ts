@@ -177,6 +177,15 @@ export const resolvers = {
                 orderBy,
                 skip,
                 take: effectiveLimit,
+                include: {
+                    contractors: {
+                        include: {
+                            contractor: {
+                                include: { classifications: true },
+                            },
+                        },
+                    },
+                },
             });
 
             const hasNextPage = skip + effectiveLimit < effectiveTotalCount;
@@ -196,12 +205,30 @@ export const resolvers = {
         permit: async (_: unknown, args: { id: string }) => {
             return await prisma.permit.findUnique({
                 where: { id: args.id },
+                include: {
+                    contractors: {
+                        include: {
+                            contractor: {
+                                include: { classifications: true },
+                            },
+                        },
+                    },
+                },
             });
         },
 
         permitByNumber: async (_: unknown, args: { permitNumber: string }) => {
             return await prisma.permit.findUnique({
                 where: { permitNumber: args.permitNumber },
+                include: {
+                    contractors: {
+                        include: {
+                            contractor: {
+                                include: { classifications: true },
+                            },
+                        },
+                    },
+                },
             });
         },
     },

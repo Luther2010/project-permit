@@ -1,5 +1,27 @@
 import type { PermitType, PermitStatus, PropertyType } from "@prisma/client";
 
+export interface ContractorClassification {
+    classification: string;
+}
+
+export interface Contractor {
+    id: string;
+    licenseNo: string;
+    name: string | null;
+    mailingAddress: string | null;
+    city: string | null;
+    state: string | null;
+    zipCode: string | null;
+    phone: string | null;
+    businessType: string | null;
+    classifications: ContractorClassification[];
+}
+
+export interface PermitContractorLink {
+    role: string | null;
+    contractor: Contractor;
+}
+
 export interface Permit {
     id: string;
     permitNumber: string;
@@ -15,4 +37,5 @@ export interface Permit {
     value: number | null;
     issuedDate: string | null;
     issuedDateString: string | null;
+    contractors?: PermitContractorLink[];
 }
