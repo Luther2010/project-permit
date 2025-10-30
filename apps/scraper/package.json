@@ -9,9 +9,11 @@
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",
+    "@types/xlsx": "^0.0.36",
     "cheerio": "^1.1.2",
     "prisma": "^6.18.0",
-    "puppeteer": "^24.26.1"
+    "puppeteer": "^24.26.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20",

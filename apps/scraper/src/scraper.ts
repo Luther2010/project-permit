@@ -81,6 +81,32 @@ async function savePermits(permits: any[]): Promise<void> {
                 console.log(`   Reasoning: ${classification.reasoning.join(', ')}`);
             }
 
+            // Convert null to undefined for Prisma (optional fields should be undefined, not null)
+            const propertyType = classification.propertyType ?? undefined;
+            const permitType = classification.permitType ?? undefined;
+            const status = mapPermitStatus(permit.status) ?? undefined;
+
+            // Validate dates are valid Date objects and within reasonable range
+            const validateDate = (date: Date | undefined): Date | undefined => {
+                if (!date) return undefined;
+                if (!(date instanceof Date) || isNaN(date.getTime())) {
+                    return undefined;
+                }
+                const year = date.getFullYear();
+                if (year < 1900 || year >= 2100) {
+                    return undefined;
+                }
+                return date;
+            };
+
+            const validIssuedDate = validateDate(permit.issuedDate);
+            const validExpirationDate = validateDate(permit.expirationDate);
+
+            // Ensure issuedDateString is a string, not a number
+            const validIssuedDateString = permit.issuedDateString 
+                ? String(permit.issuedDateString).trim() 
+                : undefined;
+
             const savedPermit = await prisma.permit.upsert({
                 where: { permitNumber: permit.permitNumber },
                 update: {
@@ -91,13 +117,13 @@ async function savePermits(permits: any[]): Promise<void> {
                     city: permit.city,
                     state: permit.state,
                     zipCode: permit.zipCode,
-                    propertyType: classification.propertyType,
-                    permitType: classification.permitType,
-                    status: mapPermitStatus(permit.status),
+                    propertyType,
+                    permitType,
+                    status,
                     value: permit.value,
-          issuedDate: permit.issuedDate,
-          issuedDateString: permit.issuedDateString,
-          expirationDate: permit.expirationDate,
+                    issuedDate: validIssuedDate,
+                    issuedDateString: validIssuedDateString,
+                    expirationDate: validExpirationDate,
                     sourceUrl: permit.sourceUrl,
                     scrapedAt: new Date(),
                 },
@@ -109,13 +135,13 @@ async function savePermits(permits: any[]): Promise<void> {
                     city: permit.city,
                     state: permit.state,
                     zipCode: permit.zipCode,
-                    propertyType: classification.propertyType,
-                    permitType: classification.permitType,
-                    status: mapPermitStatus(permit.status),
+                    propertyType,
+                    permitType,
+                    status,
                     value: permit.value,
-          issuedDate: permit.issuedDate,
-          issuedDateString: permit.issuedDateString,
-          expirationDate: permit.expirationDate,
+                    issuedDate: validIssuedDate,
+                    issuedDateString: validIssuedDateString,
+                    expirationDate: validExpirationDate,
                     sourceUrl: permit.sourceUrl,
                 },
             });

@@ -13,6 +13,13 @@ export const citiesConfig: CityConfig[] = [
         url: "https://aca-prod.accela.com/TLG/Cap/CapHome.aspx?module=Building&TabName=HOME",
         enabled: true,
     },
+    {
+        city: "Saratoga",
+        state: "CA",
+        extractor: "SaratogaExtractor",
+        url: "https://sara.csqrcloud.com/community-etrakit/Search/permit.aspx",
+        enabled: true,
+    },
     // Add more cities and their extractors here
     // Example:
     // {

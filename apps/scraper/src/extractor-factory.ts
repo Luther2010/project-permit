@@ -5,6 +5,7 @@
 import { BaseExtractor } from "./base-extractor";
 import { CityConfig } from "./types";
 import { LosGatosExtractor } from "./extractors/los-gatos";
+import { SaratogaExtractor } from "./extractors/saratoga";
 
 /**
  * Create an extractor instance based on the extractor name
@@ -13,6 +14,8 @@ export function createExtractor(config: CityConfig): BaseExtractor {
     switch (config.extractor) {
         case "LosGatosExtractor":
             return new LosGatosExtractor(config.city, config.state, config.url);
+        case "SaratogaExtractor":
+            return new SaratogaExtractor(config.city, config.state, config.url);
 
         default:
             throw new Error(`Unknown extractor: ${config.extractor}`);
@@ -25,6 +28,7 @@ export function createExtractor(config: CityConfig): BaseExtractor {
 export function getAvailableExtractors(): string[] {
     return [
         "LosGatosExtractor",
+        "SaratogaExtractor",
         // Add more extractors here as they're implemented
     ];
 }
