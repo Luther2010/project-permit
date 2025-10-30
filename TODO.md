@@ -13,6 +13,10 @@
 - [x] Sorting on result table (Type, Property, City, Value, Issue Date, Status)
 - [x] Freemium notice banner in UI (callout for limited results)
 - [x] Freemium-sticky sorting/pagination: cache 3-permit subset and sort/page locally
+- [x] **TODO #9**: Create Contractor entity - add Contractor model (with classifications) and join to Permit
+- [x] Expose contractors in GraphQL and render in permit expanded detail view
+- [x] **TODO #10**: Populate contractor entities - imported contractors via CSV script
+- [x] **TODO #11**: Link permits to contractors - current classifier performs randomized association for sampling/testing
 
 ## 🔄 Pending Tasks
 
@@ -24,11 +28,7 @@
 
 ### Data Enhancement
 - [ ] **TODO #8**: Improve permit classification logic - enhance accuracy of PropertyType and PermitType classification using ML/AI, better keyword matching, and external data sources
-
-### Contractor Management
-- [ ] **TODO #9**: Create Contractor entity - add Contractor model to Prisma schema with fields like name, license, specialties, contact info
-- [ ] **TODO #10**: Populate contractor entities - scrape and extract contractor information from permit data and external sources
-- [ ] **TODO #11**: Link permits to contractors - establish relationships between existing permits and contractor entities based on contractor info in permit data
+- [ ] Improve contractor linking: parse `licensedProfessionalText` to deterministically match `licenseNo`/name and create `PermitContractor` rows
 
 ### UI/UX Enhancements
 - [ ] Learn more / Upgrade flow CTA for freemium banner
@@ -39,14 +39,15 @@
 - **Authentication**: Using `session.user.id` for secure, provider-agnostic user identification
 - **Freemium Logic**: 3 permits for non-premium users, unlimited for premium users; for freemium we lock the same 3-permit subset (canonical: Issue Date DESC) and sort/page locally so sorting doesn’t change the subset
 - **Classification**: PropertyType and PermitType classification working with 80-90% confidence
+- **Contractors**: Prisma models for `Contractor`, `ContractorClassification`, and `PermitContractor` are in place; GraphQL exposes `Permit.contractors`; UI shows contractor details in expanded view. Contractor import is done; current linking uses randomized classifier association.
 
 ## 🎯 Next Priority
 
 Consider working on:
 1. **TODO #2**: Stripe payment + upgrade flow (connect banner CTA)
-2. **TODO #9**: Create Contractor entity (data expansion)
+2. Improve contractor linking deterministically from scraped text
 3. **TODO #7**: 7-day trial UX and enforcement
 
 ---
 
-*Last updated: 2025-10-29*
+*Last updated: 2025-10-30*
