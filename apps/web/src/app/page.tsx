@@ -53,6 +53,9 @@ async function getPermits(
     if (filters.permitTypes.length > 0) {
         variables.permitTypes = filters.permitTypes;
     }
+    if (filters.statuses.length > 0) {
+        variables.statuses = filters.statuses;
+    }
     if (filters.cities.length > 0) {
         variables.cities = filters.cities;
     }
@@ -92,6 +95,7 @@ async function getPermits(
         query GetPermits(
             $propertyTypes: [PropertyType!]
             $permitTypes: [PermitType!]
+            $statuses: [PermitStatus!]
             $cities: [City!]
             $hasContractor: Boolean
             $minValue: Float
@@ -106,6 +110,7 @@ async function getPermits(
             permits(
                 propertyTypes: $propertyTypes
                 permitTypes: $permitTypes
+                statuses: $statuses
                 cities: $cities
                 hasContractor: $hasContractor
                 minValue: $minValue
@@ -182,6 +187,7 @@ export default function Home() {
     const [filters, setFilters] = useState<FilterState>({
         propertyTypes: [] as PropertyType[],
         permitTypes: [] as PermitType[],
+        statuses: [],
         cities: [] as City[],
         hasContractor: null,
         minValue: "",

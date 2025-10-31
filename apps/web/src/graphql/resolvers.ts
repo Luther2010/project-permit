@@ -12,6 +12,7 @@ export const resolvers = {
                 propertyTypes?: string[];
                 permitType?: string;
                 permitTypes?: string[];
+                statuses?: string[];
                 cities?: string[];
                 hasContractor?: boolean;
                 minValue?: number;
@@ -57,6 +58,9 @@ export const resolvers = {
                 where.permitType = { in: args.permitTypes };
             } else if (args.permitType) {
                 where.permitType = args.permitType;
+            }
+            if (args.statuses && args.statuses.length > 0) {
+                where.status = { in: args.statuses };
             }
             if (args.cities && args.cities.length > 0) {
                 where.city = { in: args.cities };

@@ -113,6 +113,7 @@ export const typeDefs = `
       propertyTypes: [PropertyType!]
       permitType: PermitType
       permitTypes: [PermitType!]
+      statuses: [PermitStatus!]
       cities: [City!]
       hasContractor: Boolean
       minValue: Float

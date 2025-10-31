@@ -2,16 +2,18 @@
 
 import { PropertyTypeFilter } from "./filters/property-type-filter";
 import { PermitTypeFilter } from "./filters/permit-type-filter";
+import { StatusFilter } from "./filters/status-filter";
 import { CityFilter } from "./filters/city-filter";
 import { ValueRangeFilter } from "./filters/value-range-filter";
 import { IssueDateRangeFilter } from "./filters/issue-date-range-filter";
 import { HasContractorFilter } from "./filters/has-contractor-filter";
-import type { PropertyType, PermitType, City } from "@prisma/client";
+import type { PropertyType, PermitType, PermitStatus, City } from "@prisma/client";
 import { getCityDisplayName } from "@/lib/cities";
 
 export interface FilterState {
     propertyTypes: PropertyType[];
     permitTypes: PermitType[];
+    statuses: PermitStatus[];
     cities: City[];
     hasContractor: boolean | null;
     minValue: string;
@@ -42,6 +44,7 @@ export function PermitFilters({
         const resetFilters: FilterState = {
             propertyTypes: [],
             permitTypes: [],
+            statuses: [],
             cities: [],
             hasContractor: null,
             minValue: "",
@@ -55,6 +58,7 @@ export function PermitFilters({
     const hasActiveFilters =
         filters.propertyTypes.length > 0 ||
         filters.permitTypes.length > 0 ||
+        filters.statuses.length > 0 ||
         filters.cities.length > 0 ||
         (filters.hasContractor !== null) ||
         filters.minValue ||
@@ -80,6 +84,11 @@ export function PermitFilters({
                     <PermitTypeFilter
                         selectedTypes={filters.permitTypes}
                         onChange={(types) => handleChange("permitTypes", types)}
+                    />
+
+                    <StatusFilter
+                        selectedStatuses={filters.statuses}
+                        onChange={(statuses) => handleChange("statuses", statuses)}
                     />
 
                     <CityFilter
@@ -141,6 +150,11 @@ export function PermitFilters({
                         {filters.permitTypes.length > 0 && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
                                 Permit: {filters.permitTypes.length} selected
+                            </span>
+                        )}
+                        {filters.statuses.length > 0 && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                Status: {filters.statuses.length} selected
                             </span>
                         )}
                         {filters.cities.length > 0 && (
