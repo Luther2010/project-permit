@@ -52,6 +52,7 @@ export const typeDefs = `
     SANTA_CLARA
     CUPERTINO
     PALO_ALTO
+    LOS_ALTOS_HILLS
   }
 
   enum SubscriptionPlan {

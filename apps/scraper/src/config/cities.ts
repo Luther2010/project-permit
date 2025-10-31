@@ -41,6 +41,13 @@ export const citiesConfig: CityConfig[] = [
         url: "https://aca-prod.accela.com/PALOALTO/Cap/CapHome.aspx?module=Building&TabName=Building",
         enabled: true,
     },
+    {
+        city: "Los Altos Hills",
+        state: "CA",
+        extractor: "LosAltosHillsExtractor",
+        url: "https://trakit.losaltoshills.ca.gov/etrakit/Search/permit.aspx",
+        enabled: true,
+    },
     // Add more cities and their extractors here
     // Example:
     // {

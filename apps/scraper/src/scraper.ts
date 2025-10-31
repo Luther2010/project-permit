@@ -46,6 +46,7 @@ function mapCity(cityName?: string): City | undefined {
         "SANTA CLARA": City.SANTA_CLARA,
         "CUPERTINO": City.CUPERTINO,
         "PALO ALTO": City.PALO_ALTO,
+        "LOS ALTOS HILLS": City.LOS_ALTOS_HILLS,
     };
     
     return cityMap[normalized];
