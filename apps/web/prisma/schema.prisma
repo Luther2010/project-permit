@@ -52,14 +52,9 @@ enum PermitType {
 }
 
 enum PermitStatus {
-  DRAFT
-  SUBMITTED
   IN_REVIEW
-  APPROVED
   ISSUED
-  EXPIRED
-  REVOKED
-  CANCELLED
+  INACTIVE
 }
 
 enum SubscriptionPlan {

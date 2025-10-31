@@ -136,7 +136,8 @@ export const resolvers = {
 
             // Pagination settings
             const page = args.page && args.page > 0 ? args.page : 1;
-            const pageSize = args.pageSize && args.pageSize > 0 ? args.pageSize : 10;
+            const pageSize =
+                args.pageSize && args.pageSize > 0 ? args.pageSize : 10;
 
             // Apply freemium limit: 3 permits for freemium users, unlimited for premium
             const freemiumLimit = isPremium ? undefined : 3;
@@ -145,8 +146,8 @@ export const resolvers = {
             const totalCount = await prisma.permit.count({ where });
 
             // Apply freemium limit to total count for freemium users
-            const effectiveTotalCount = isPremium 
-                ? totalCount 
+            const effectiveTotalCount = isPremium
+                ? totalCount
                 : Math.min(totalCount, freemiumLimit || Infinity);
 
             // Calculate skip, but cap it at the effective total count

@@ -11,7 +11,7 @@ import { PermitTable } from "./components/permit-table";
 import { Pagination } from "./components/pagination";
 import type { PropertyType, PermitType } from "@prisma/client";
 
-const PAGE_SIZE = 2;
+const PAGE_SIZE = 10;
 
 interface PermitConnection {
     permits: Permit[];
@@ -141,15 +141,17 @@ async function getPermits(
 
     try {
         const data = await graphqlFetch(query, variables);
-        return data.permits || {
-            permits: [],
-            totalCount: 0,
-            page: 1,
-            pageSize: pageSize,
-            hasNextPage: false,
-            hasPreviousPage: false,
-            isPremium: false,
-        };
+        return (
+            data.permits || {
+                permits: [],
+                totalCount: 0,
+                page: 1,
+                pageSize: pageSize,
+                hasNextPage: false,
+                hasPreviousPage: false,
+                isPremium: false,
+            }
+        );
     } catch (error) {
         console.error("Error fetching permits:", error);
         return {
@@ -163,7 +165,6 @@ async function getPermits(
         };
     }
 }
-
 
 export default function Home() {
     const { data: session } = useSession();
@@ -194,9 +195,15 @@ export default function Home() {
         order: "DESC",
     });
 
-    const [freemiumAllPermits, setFreemiumAllPermits] = useState<Permit[] | null>(null);
+    const [freemiumAllPermits, setFreemiumAllPermits] = useState<
+        Permit[] | null
+    >(null);
 
-    function sortPermitsLocal(list: Permit[], field: SortField, order: SortOrder): Permit[] {
+    function sortPermitsLocal(
+        list: Permit[],
+        field: SortField,
+        order: SortOrder
+    ): Permit[] {
         const dir = order === "ASC" ? 1 : -1;
         const compareString = (a?: string | null, b?: string | null) => {
             const as = a ?? "";
@@ -423,9 +430,10 @@ export default function Home() {
                                         </h3>
                                         <div className="mt-2 text-sm text-blue-700">
                                             <p>
-                                                You&apos;re viewing a limited set of results (max 3 permits).
-                                                Upgrade to Premium for unlimited access to all permit
-                                                data.
+                                                You&apos;re viewing a limited
+                                                set of results (max 3 permits).
+                                                Upgrade to Premium for unlimited
+                                                access to all permit data.
                                             </p>
                                         </div>
                                     </div>
