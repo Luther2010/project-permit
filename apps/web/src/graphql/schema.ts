@@ -46,6 +46,14 @@ export const typeDefs = `
     INACTIVE
   }
 
+  enum City {
+    LOS_GATOS
+    SARATOGA
+    SANTA_CLARA
+    CUPERTINO
+    PALO_ALTO
+  }
+
   enum SubscriptionPlan {
     FREEMIUM
     PREMIUM
@@ -57,7 +65,7 @@ export const typeDefs = `
     title: String
     description: String
     address: String
-    city: String
+    city: City
     state: String
     zipCode: String
     propertyType: PropertyType
@@ -105,7 +113,7 @@ export const typeDefs = `
       propertyTypes: [PropertyType!]
       permitType: PermitType
       permitTypes: [PermitType!]
-      city: String
+      cities: [City!]
       hasContractor: Boolean
       minValue: Float
       maxValue: Float

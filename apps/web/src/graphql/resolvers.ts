@@ -12,7 +12,7 @@ export const resolvers = {
                 propertyTypes?: string[];
                 permitType?: string;
                 permitTypes?: string[];
-                city?: string;
+                cities?: string[];
                 hasContractor?: boolean;
                 minValue?: number;
                 maxValue?: number;
@@ -42,7 +42,6 @@ export const resolvers = {
                     { permitNumber: { contains: args.query } },
                     { title: { contains: args.query } },
                     { description: { contains: args.query } },
-                    { city: { contains: args.query } },
                     { address: { contains: args.query } },
                 ];
             }
@@ -59,8 +58,8 @@ export const resolvers = {
             } else if (args.permitType) {
                 where.permitType = args.permitType;
             }
-            if (args.city) {
-                where.city = { contains: args.city };
+            if (args.cities && args.cities.length > 0) {
+                where.city = { in: args.cities };
             }
             if (typeof args.hasContractor === "boolean") {
                 where.contractors = args.hasContractor

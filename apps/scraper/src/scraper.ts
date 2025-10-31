@@ -6,7 +6,7 @@
 import { getEnabledCities, getCityConfig } from "./config/cities";
 import { createExtractor } from "./extractor-factory";
 import { prisma } from "./lib/db";
-import { PermitType, PermitStatus, PropertyType } from "@prisma/client";
+import { PermitType, PermitStatus, PropertyType, City } from "@prisma/client";
 import { normalizeAccelaStatus } from "./utils/accela-status";
 import {
     permitClassificationService,
@@ -31,6 +31,24 @@ function mapPermitType(type?: string): PermitType | undefined {
     };
 
     return typeMap[upperType] || PermitType.OTHER;
+}
+
+/**
+ * Map city name string to City enum
+ */
+function mapCity(cityName?: string): City | undefined {
+    if (!cityName) return undefined;
+    
+    const normalized = cityName.trim().toUpperCase();
+    const cityMap: Record<string, City> = {
+        "LOS GATOS": City.LOS_GATOS,
+        "SARATOGA": City.SARATOGA,
+        "SANTA CLARA": City.SANTA_CLARA,
+        "CUPERTINO": City.CUPERTINO,
+        "PALO ALTO": City.PALO_ALTO,
+    };
+    
+    return cityMap[normalized];
 }
 
 /**
@@ -93,6 +111,7 @@ async function savePermits(permits: any[]): Promise<void> {
             const status = permit.status
                 ? mapPermitStatus(permit.status)
                 : PermitStatus.UNKNOWN;
+            const city = mapCity(permit.city);
 
             // Validate dates are valid Date objects and within reasonable range
             const validateDate = (date: Date | undefined): Date | undefined => {
@@ -122,7 +141,7 @@ async function savePermits(permits: any[]): Promise<void> {
                     title: permit.title,
                     description: permit.description,
                     address: permit.address,
-                    city: permit.city,
+                    city: city,
                     state: permit.state,
                     zipCode: permit.zipCode,
                     propertyType,
@@ -140,7 +159,7 @@ async function savePermits(permits: any[]): Promise<void> {
                     title: permit.title,
                     description: permit.description,
                     address: permit.address,
-                    city: permit.city,
+                    city: city,
                     state: permit.state,
                     zipCode: permit.zipCode,
                     propertyType,

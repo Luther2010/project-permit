@@ -11,7 +11,7 @@ async function main() {
             title: "Residential Addition",
             description: "Single family residential addition - 500 sq ft",
             address: "123 Main St",
-            city: "San Francisco",
+            city: null, // Seed data - city not in enum
             state: "CA",
             zipCode: "94102",
             permitType: PermitType.BUILDING,
@@ -25,7 +25,7 @@ async function main() {
             title: "Electrical Service Upgrade",
             description: "Upgrade electrical service to 200A",
             address: "456 Oak Ave",
-            city: "San Francisco",
+            city: null, // Seed data - city not in enum
             state: "CA",
             zipCode: "94103",
             permitType: PermitType.ELECTRICAL,
@@ -39,7 +39,7 @@ async function main() {
             title: "Bathroom Remodel",
             description: "Complete bathroom remodel with new fixtures",
             address: "789 Pine St",
-            city: "Oakland",
+            city: null, // Seed data - city not in enum
             state: "CA",
             zipCode: "94601",
             permitType: PermitType.PLUMBING,

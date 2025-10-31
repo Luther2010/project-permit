@@ -9,7 +9,7 @@ import * as React from "react";
 import { PermitFilters, type FilterState } from "./components/permit-filters";
 import { PermitTable } from "./components/permit-table";
 import { Pagination } from "./components/pagination";
-import type { PropertyType, PermitType } from "@prisma/client";
+import type { PropertyType, PermitType, City } from "@prisma/client";
 
 const PAGE_SIZE = 10;
 
@@ -53,8 +53,8 @@ async function getPermits(
     if (filters.permitTypes.length > 0) {
         variables.permitTypes = filters.permitTypes;
     }
-    if (filters.city.trim()) {
-        variables.city = filters.city.trim();
+    if (filters.cities.length > 0) {
+        variables.cities = filters.cities;
     }
     if (filters.hasContractor !== null) {
         variables.hasContractor = filters.hasContractor;
@@ -92,7 +92,7 @@ async function getPermits(
         query GetPermits(
             $propertyTypes: [PropertyType!]
             $permitTypes: [PermitType!]
-            $city: String
+            $cities: [City!]
             $hasContractor: Boolean
             $minValue: Float
             $maxValue: Float
@@ -106,7 +106,7 @@ async function getPermits(
             permits(
                 propertyTypes: $propertyTypes
                 permitTypes: $permitTypes
-                city: $city
+                cities: $cities
                 hasContractor: $hasContractor
                 minValue: $minValue
                 maxValue: $maxValue
@@ -182,7 +182,7 @@ export default function Home() {
     const [filters, setFilters] = useState<FilterState>({
         propertyTypes: [] as PropertyType[],
         permitTypes: [] as PermitType[],
-        city: "",
+        cities: [] as City[],
         hasContractor: null,
         minValue: "",
         maxValue: "",

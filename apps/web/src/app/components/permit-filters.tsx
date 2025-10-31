@@ -6,12 +6,13 @@ import { CityFilter } from "./filters/city-filter";
 import { ValueRangeFilter } from "./filters/value-range-filter";
 import { IssueDateRangeFilter } from "./filters/issue-date-range-filter";
 import { HasContractorFilter } from "./filters/has-contractor-filter";
-import type { PropertyType, PermitType } from "@prisma/client";
+import type { PropertyType, PermitType, City } from "@prisma/client";
+import { getCityDisplayName } from "@/lib/cities";
 
 export interface FilterState {
     propertyTypes: PropertyType[];
     permitTypes: PermitType[];
-    city: string;
+    cities: City[];
     hasContractor: boolean | null;
     minValue: string;
     maxValue: string;
@@ -41,7 +42,7 @@ export function PermitFilters({
         const resetFilters: FilterState = {
             propertyTypes: [],
             permitTypes: [],
-            city: "",
+            cities: [],
             hasContractor: null,
             minValue: "",
             maxValue: "",
@@ -54,7 +55,7 @@ export function PermitFilters({
     const hasActiveFilters =
         filters.propertyTypes.length > 0 ||
         filters.permitTypes.length > 0 ||
-        filters.city ||
+        filters.cities.length > 0 ||
         (filters.hasContractor !== null) ||
         filters.minValue ||
         filters.maxValue ||
@@ -82,8 +83,8 @@ export function PermitFilters({
                     />
 
                     <CityFilter
-                        value={filters.city}
-                        onChange={(value) => handleChange("city", value)}
+                        selectedCities={filters.cities}
+                        onChange={(cities) => handleChange("cities", cities)}
                     />
                     <HasContractorFilter
                         value={filters.hasContractor}
@@ -142,9 +143,9 @@ export function PermitFilters({
                                 Permit: {filters.permitTypes.length} selected
                             </span>
                         )}
-                        {filters.city && (
+                        {filters.cities.length > 0 && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                                City: {filters.city}
+                                City: {filters.cities.length} selected ({filters.cities.map(getCityDisplayName).join(", ")})
                             </span>
                         )}
                         {filters.hasContractor !== null && (

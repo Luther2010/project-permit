@@ -58,6 +58,14 @@ enum PermitStatus {
   INACTIVE
 }
 
+enum City {
+  LOS_GATOS
+  SARATOGA
+  SANTA_CLARA
+  CUPERTINO
+  PALO_ALTO
+}
+
 enum SubscriptionPlan {
   FREEMIUM
   PREMIUM
@@ -203,7 +211,7 @@ model Permit {
   
   // Location
   address         String?
-  city            String?
+  city            City?
   state           String?
   zipCode         String?
   
