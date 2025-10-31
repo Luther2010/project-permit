@@ -40,14 +40,10 @@ export const typeDefs = `
   }
 
   enum PermitStatus {
-    DRAFT
-    SUBMITTED
+    UNKNOWN
     IN_REVIEW
-    APPROVED
     ISSUED
-    EXPIRED
-    REVOKED
-    CANCELLED
+    INACTIVE
   }
 
   enum SubscriptionPlan {
