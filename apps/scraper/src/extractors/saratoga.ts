@@ -15,7 +15,7 @@ export class SaratogaExtractor extends BaseExtractor {
     private browser: Browser | null = null;
     private page: Page | null = null;
 
-    async scrape(scrapeDate?: Date): Promise<ScrapeResult> {
+    async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
         try {
             console.log(`[SaratogaExtractor] Starting scrape for ${this.city}`);
 
@@ -311,7 +311,16 @@ export class SaratogaExtractor extends BaseExtractor {
             }
 
             // Parse Excel file
-            const permits = await this.parseExcelFile(excelFile);
+            const allPermits = await this.parseExcelFile(excelFile);
+
+            // Apply limit if specified (for testing)
+            const permits = limit && limit > 0 
+                ? allPermits.slice(0, limit)
+                : allPermits;
+            
+            if (limit && limit > 0) {
+                console.log(`[SaratogaExtractor] Limited to ${permits.length} permits (from ${allPermits.length})`);
+            }
 
             // Clean up downloaded file
             try {
