@@ -7,6 +7,7 @@ import { BaseExtractor } from "../base-extractor";
 import { PermitData, ScrapeResult } from "../types";
 import puppeteer, { Browser, Page } from "puppeteer";
 import * as cheerio from "cheerio";
+import { normalizeAccelaStatus } from "../utils/accela-status";
 
 export abstract class AccelaBaseExtractor extends BaseExtractor {
     protected browser: Browser | null = null;
@@ -29,7 +30,9 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
 
     async scrape(scrapeDate?: Date): Promise<ScrapeResult> {
         try {
-            console.log(`${this.getLoggerPrefix()} Starting scrape for ${this.city}`);
+            console.log(
+                `${this.getLoggerPrefix()} Starting scrape for ${this.city}`
+            );
 
             // Launch browser
             this.browser = await puppeteer.launch({
@@ -142,7 +145,9 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
                     `${this.getLoggerPrefix()} Filled end date: ${endDateStr}`
                 );
             } else {
-                console.log(`${this.getLoggerPrefix()} Could not find date fields`);
+                console.log(
+                    `${this.getLoggerPrefix()} Could not find date fields`
+                );
                 await this.page.screenshot({
                     path: `${this.getScreenshotPrefix()}-page.png`,
                     fullPage: true,
@@ -193,7 +198,9 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
 
             // Handle pagination
             while (hasMorePages && currentPage <= 100) {
-                console.log(`${this.getLoggerPrefix()} Scraping page ${currentPage}`);
+                console.log(
+                    `${this.getLoggerPrefix()} Scraping page ${currentPage}`
+                );
 
                 // Wait for table to load
                 try {
@@ -201,7 +208,9 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
                         timeout: 10000,
                     });
                 } catch {
-                    console.log(`${this.getLoggerPrefix()} No results table found`);
+                    console.log(
+                        `${this.getLoggerPrefix()} No results table found`
+                    );
                     break;
                 }
 
@@ -330,6 +339,10 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
                 }
             }
 
+            // Extract status from list column
+            const rawStatus = $row.find('span[id*="lblStatus"]').text().trim();
+            const status = normalizeAccelaStatus(rawStatus);
+
             // Extract date (last updated)
             const dateStr = $row
                 .find('span[id*="lblUpdatedTime"]')
@@ -340,10 +353,16 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
             if (dateStr) {
                 issuedDateString = dateStr; // Store original format
                 // Parse MM/DD/YYYY format and create UTC date
-                const [month, day, year] = dateStr.split('/');
+                const [month, day, year] = dateStr.split("/");
                 if (month && day && year) {
                     // Create date in UTC to avoid timezone issues
-                    issuedDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+                    issuedDate = new Date(
+                        Date.UTC(
+                            parseInt(year),
+                            parseInt(month) - 1,
+                            parseInt(day)
+                        )
+                    );
                 }
             }
 
@@ -359,6 +378,7 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
                 sourceUrl: this.url,
                 issuedDate,
                 issuedDateString,
+                status: status,
             });
         });
 
@@ -534,12 +554,12 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
                         'span[id*="permitDetail_label_license"]'
                     );
                     const table = (globalThis as any).document.querySelector(
-                        '#tbl_licensedps'
+                        "#tbl_licensedps"
                     );
                     if (table) {
                         // Best-effort text extract from the table
                         const text = (table as any).innerText
-                            .replace(/\s+/g, ' ')
+                            .replace(/\s+/g, " ")
                             .trim();
                         if (text) {
                             result.licensedProfessional = text;
@@ -550,7 +570,8 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
                             /Licensed Professional:.*?\n([^\n]+)/i
                         );
                         if (licensedMatch && licensedMatch[1]) {
-                            result.licensedProfessional = licensedMatch[1].trim();
+                            result.licensedProfessional =
+                                licensedMatch[1].trim();
                         }
                     }
                 } catch {}
@@ -580,4 +601,3 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
         return `${mm}/${dd}/${yyyy}`;
     }
 }
-

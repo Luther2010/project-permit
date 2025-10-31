@@ -7,7 +7,11 @@ import { getEnabledCities, getCityConfig } from "./config/cities";
 import { createExtractor } from "./extractor-factory";
 import { prisma } from "./lib/db";
 import { PermitType, PermitStatus, PropertyType } from "@prisma/client";
-import { permitClassificationService, type PermitData } from "./lib/permit-classification";
+import { normalizeAccelaStatus } from "./utils/accela-status";
+import {
+    permitClassificationService,
+    type PermitData,
+} from "./lib/permit-classification";
 
 /**
  * Map string permit types to Prisma enum
@@ -31,23 +35,20 @@ function mapPermitType(type?: string): PermitType | undefined {
 
 /**
  * Map string status to Prisma enum
+ * If status is already a valid PermitStatus enum value, use it directly.
+ * Otherwise, normalize it from raw status text.
  */
-function mapPermitStatus(status?: string): PermitStatus | undefined {
-    if (!status) return undefined;
+function mapPermitStatus(status?: string): PermitStatus {
+    if (!status) return PermitStatus.UNKNOWN;
 
-    const upperStatus = status.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-    const statusMap: Record<string, PermitStatus> = {
-        DRAFT: PermitStatus.DRAFT,
-        SUBMITTED: PermitStatus.SUBMITTED,
-        IN_REVIEW: PermitStatus.IN_REVIEW,
-        APPROVED: PermitStatus.APPROVED,
-        ISSUED: PermitStatus.ISSUED,
-        EXPIRED: PermitStatus.EXPIRED,
-        REVOKED: PermitStatus.REVOKED,
-        CANCELLED: PermitStatus.CANCELLED,
-    };
+    // Check if status is already a valid PermitStatus enum value
+    const validStatuses = Object.values(PermitStatus);
+    if (validStatuses.includes(status as PermitStatus)) {
+        return status as PermitStatus;
+    }
 
-    return statusMap[upperStatus] || PermitStatus.DRAFT;
+    // Otherwise, normalize from raw status text
+    return normalizeAccelaStatus(status);
 }
 
 /**
@@ -71,20 +72,27 @@ async function savePermits(permits: any[]): Promise<void> {
                 rawPermitType: permit.permitType,
             };
 
-            const classification = await permitClassificationService.classify(permitData);
+            const classification =
+                await permitClassificationService.classify(permitData);
             console.log(
                 `🔎 Classification for ${permit.permitNumber}: propertyType=${classification.propertyType} permitType=${classification.permitType} contractorId=${classification.contractorId}`
             );
-            
-            console.log(`📋 Classified ${permit.permitNumber}: ${classification.propertyType}/${classification.permitType} (confidence: ${classification.confidence.toFixed(2)})`);
+
+            console.log(
+                `📋 Classified ${permit.permitNumber}: ${classification.propertyType}/${classification.permitType} (confidence: ${classification.confidence.toFixed(2)})`
+            );
             if (classification.reasoning.length > 0) {
-                console.log(`   Reasoning: ${classification.reasoning.join(', ')}`);
+                console.log(
+                    `   Reasoning: ${classification.reasoning.join(", ")}`
+                );
             }
 
             // Convert null to undefined for Prisma (optional fields should be undefined, not null)
             const propertyType = classification.propertyType ?? undefined;
             const permitType = classification.permitType ?? undefined;
-            const status = mapPermitStatus(permit.status) ?? undefined;
+            const status = permit.status
+                ? mapPermitStatus(permit.status)
+                : PermitStatus.UNKNOWN;
 
             // Validate dates are valid Date objects and within reasonable range
             const validateDate = (date: Date | undefined): Date | undefined => {
@@ -103,8 +111,8 @@ async function savePermits(permits: any[]): Promise<void> {
             const validExpirationDate = validateDate(permit.expirationDate);
 
             // Ensure issuedDateString is a string, not a number
-            const validIssuedDateString = permit.issuedDateString 
-                ? String(permit.issuedDateString).trim() 
+            const validIssuedDateString = permit.issuedDateString
+                ? String(permit.issuedDateString).trim()
                 : undefined;
 
             const savedPermit = await prisma.permit.upsert({
@@ -149,7 +157,10 @@ async function savePermits(permits: any[]): Promise<void> {
 
             // Link contractors if license info is present
             try {
-                const linkByLicense = async (licenseNoRaw?: string, role?: string) => {
+                const linkByLicense = async (
+                    licenseNoRaw?: string,
+                    role?: string
+                ) => {
                     const licenseNo = licenseNoRaw?.trim();
                     if (!licenseNo) return;
                     const contractor = await prisma.contractor.findUnique({

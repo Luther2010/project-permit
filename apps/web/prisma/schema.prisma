@@ -52,6 +52,7 @@ enum PermitType {
 }
 
 enum PermitStatus {
+  UNKNOWN
   IN_REVIEW
   ISSUED
   INACTIVE
