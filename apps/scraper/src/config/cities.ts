@@ -34,6 +34,13 @@ export const citiesConfig: CityConfig[] = [
         url: "https://aca-prod.accela.com/CUPERTINO/Cap/CapHome.aspx?module=Building&TabName=Home",
         enabled: true,
     },
+    {
+        city: "Palo Alto",
+        state: "CA",
+        extractor: "PaloAltoExtractor",
+        url: "https://aca-prod.accela.com/PALOALTO/Cap/CapHome.aspx?module=Building&TabName=Building",
+        enabled: true,
+    },
     // Add more cities and their extractors here
     // Example:
     // {

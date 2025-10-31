@@ -8,6 +8,7 @@ import { LosGatosExtractor } from "./extractors/los-gatos";
 import { SaratogaExtractor } from "./extractors/saratoga";
 import { SantaClaraExtractor } from "./extractors/santa-clara";
 import { CupertinoExtractor } from "./extractors/cupertino";
+import { PaloAltoExtractor } from "./extractors/palo-alto";
 
 /**
  * Create an extractor instance based on the extractor name
@@ -22,6 +23,8 @@ export function createExtractor(config: CityConfig): BaseExtractor {
             return new SantaClaraExtractor(config.city, config.state, config.url);
         case "CupertinoExtractor":
             return new CupertinoExtractor(config.city, config.state, config.url);
+        case "PaloAltoExtractor":
+            return new PaloAltoExtractor(config.city, config.state, config.url);
 
         default:
             throw new Error(`Unknown extractor: ${config.extractor}`);
@@ -37,6 +40,7 @@ export function getAvailableExtractors(): string[] {
         "SaratogaExtractor",
         "SantaClaraExtractor",
         "CupertinoExtractor",
+        "PaloAltoExtractor",
         // Add more extractors here as they're implemented
     ];
 }
