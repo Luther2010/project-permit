@@ -20,6 +20,13 @@ export const citiesConfig: CityConfig[] = [
         url: "https://sara.csqrcloud.com/community-etrakit/Search/permit.aspx",
         enabled: true,
     },
+    {
+        city: "Santa Clara",
+        state: "CA",
+        extractor: "SantaClaraExtractor",
+        url: "https://aca-prod.accela.com/SANTACLARA/Cap/CapHome.aspx?module=Building&TabName=Building",
+        enabled: true,
+    },
     // Add more cities and their extractors here
     // Example:
     // {
