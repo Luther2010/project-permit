@@ -28,7 +28,8 @@ export function normalizeAccelaStatus(raw?: string): PermitStatus {
         s === "pending" ||
         s === "processing" ||
         s === "plan check" ||
-        s === "ready to issue"
+        s === "ready to issue" ||
+        s === "plan review"
     ) {
         return PermitStatus.IN_REVIEW;
     }

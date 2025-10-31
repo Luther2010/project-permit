@@ -27,6 +27,13 @@ export const citiesConfig: CityConfig[] = [
         url: "https://aca-prod.accela.com/SANTACLARA/Cap/CapHome.aspx?module=Building&TabName=Building",
         enabled: true,
     },
+    {
+        city: "Cupertino",
+        state: "CA",
+        extractor: "CupertinoExtractor",
+        url: "https://aca-prod.accela.com/CUPERTINO/Cap/CapHome.aspx?module=Building&TabName=Home",
+        enabled: true,
+    },
     // Add more cities and their extractors here
     // Example:
     // {

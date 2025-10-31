@@ -28,7 +28,7 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
      */
     protected abstract getScreenshotPrefix(): string;
 
-    async scrape(scrapeDate?: Date): Promise<ScrapeResult> {
+    async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
         try {
             console.log(
                 `${this.getLoggerPrefix()} Starting scrape for ${this.city}`
@@ -216,12 +216,18 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
 
                 // Extract data from current page
                 const pageContent = await this.page.content();
-                const pagePermits = await this.parsePermitData(pageContent);
+                const pagePermits = await this.parsePermitData(pageContent, limit);
                 console.log(
                     `${this.getLoggerPrefix()} Found ${pagePermits.length} permits on page ${currentPage}`
                 );
 
                 permits = permits.concat(pagePermits);
+                
+                // Stop if we've reached the limit
+                if (limit && permits.length >= limit) {
+                    permits = permits.slice(0, limit);
+                    break;
+                }
 
                 // Take screenshot of first page
                 if (currentPage === 1) {
@@ -283,7 +289,7 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
         }
     }
 
-    protected async parsePermitData(rawData: any): Promise<PermitData[]> {
+    protected async parsePermitData(rawData: any, limit?: number): Promise<PermitData[]> {
         const permits: PermitData[] = [];
         const $ = cheerio.load(rawData);
 
@@ -313,8 +319,22 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
             // Extract permit type
             const permitType = $row.find('span[id*="lblType"]').text().trim();
 
-            // Extract address
-            const address = $row.find('span[id*="lblAddress"]').text().trim();
+            // Extract address - get full text from the address cell (may include city/state/zip)
+            // Try to get the full cell content, not just the span text
+            const addressSpan = $row.find('span[id*="lblAddress"]');
+            let address = addressSpan.text().trim();
+            
+            // If address doesn't have a comma or zip code, try getting the full cell text
+            if (address && !address.includes(',') && !address.match(/\b\d{5}(?:-\d{4})?\b/)) {
+                const addressCell = addressSpan.closest('td');
+                if (addressCell.length) {
+                    const cellText = addressCell.text().trim();
+                    // Use cell text if it has more complete information (comma + zip pattern)
+                    if (cellText.includes(',') && cellText.match(/\b\d{5}(?:-\d{4})?\b/)) {
+                        address = cellText;
+                    }
+                }
+            }
 
             // Parse address components
             let streetAddress = "";
@@ -323,18 +343,48 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
             let zipCode = "";
 
             if (address) {
-                // Address is in format: "123 STREET NAME, CITY NAME CA 95032"
+                // Address formats:
+                // 1. "957 S TANTAU Ave, Cupertino CA 95014-4601" (mixed case city)
+                // 2. "16619 MARCHMONT DR, LOS GATOS CA 95032" (all uppercase city)
+                // 3. "3079 EL CAMINO REAL, 101, SANTA CLARA CA 95051" (with unit number)
+                // Parse the full address structure
                 const parts = address.split(",").map((p) => p.trim());
                 if (parts.length >= 2) {
+                    // Has comma - format could be:
+                    // "STREET, CITY STATE ZIP" 
+                    // "STREET, UNIT, CITY STATE ZIP"
                     streetAddress = parts[0];
-                    const cityStateZip = parts[parts.length - 1]; // "CITY NAME CA 95032"
+                    
+                    // Last part should be "CITY STATE ZIP" - could be uppercase or mixed case
+                    const cityStateZip = parts[parts.length - 1]; // "LOS GATOS CA 95032" or "Cupertino CA 95014-4601"
+                    
+                    // Match: city name (uppercase words or mixed case), state (2 letters), zip (5 digits optionally with -4 more digits)
+                    // Handles both "LOS GATOS CA 95032" and "Cupertino CA 95014-4601"
                     const cityStateZipMatch = cityStateZip.match(
-                        /^([A-Z ]+) ([A-Z]{2}) (\d{5})$/
+                        /^([A-Z][A-Z\s]+|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/
                     );
                     if (cityStateZipMatch) {
                         city = cityStateZipMatch[1].trim();
                         state = cityStateZipMatch[2].trim();
-                        zipCode = cityStateZipMatch[3].trim();
+                        // Extract zip code - take first 5 digits (before hyphen if present)
+                        zipCode = cityStateZipMatch[3].split('-')[0]; // Extract "95032" from "95032" or "95014" from "95014-4601"
+                    }
+                    
+                    // Handle unit numbers (e.g., "3079 EL CAMINO REAL, 101, SANTA CLARA CA 95051")
+                    if (parts.length >= 3 && parts[1].match(/^\d+$/)) {
+                        // Middle part is a unit number - include it in street address
+                        streetAddress = `${parts[0]}, ${parts[1]}`;
+                    }
+                } else {
+                    // No comma - just street address or "STREET CITY STATE ZIP" format
+                    streetAddress = address;
+                    // Try to extract zip if it appears after state abbreviation
+                    const zipAfterState = address.match(/\b([A-Z]{2})\s+(\d{5}(?:-\d{4})?)\b/);
+                    if (zipAfterState) {
+                        state = zipAfterState[1];
+                        zipCode = zipAfterState[2].split('-')[0];
+                        // Remove state and zip from street address
+                        streetAddress = address.substring(0, address.indexOf(zipAfterState[0])).trim();
                     }
                 }
             }
@@ -383,10 +433,12 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
         });
 
         // Second pass: extract additional details for each permit
+        // Apply limit if specified (for testing)
+        const permitsToProcess = limit ? basicPermits.slice(0, limit) : basicPermits;
         console.log(
-            `${this.getLoggerPrefix()} Extracting details for ${basicPermits.length} permits...`
+            `${this.getLoggerPrefix()} Extracting details for ${permitsToProcess.length} permits${limit ? ` (limited from ${basicPermits.length})` : ""}...`
         );
-        for (const permit of basicPermits) {
+        for (const permit of permitsToProcess) {
             console.log(
                 `${this.getLoggerPrefix()} Extracting details for permit: ${permit.permitNumber}`
             );
@@ -493,7 +545,7 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
             });
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
-            // Extract job value and licensed professional (text + raw HTML block)
+            // Extract job value and licensed professional
             const details = await newPage.evaluate(() => {
                 const result: {
                     jobValue?: number;

@@ -238,7 +238,8 @@ async function savePermits(permits: any[]): Promise<void> {
  */
 export async function scrapeCity(
     cityName: string,
-    scrapeDate?: Date
+    scrapeDate?: Date,
+    limit?: number
 ): Promise<void> {
     const config = getCityConfig(cityName);
 
@@ -254,7 +255,7 @@ export async function scrapeCity(
     console.log(`🏙️  Starting scrape for ${cityName}...`);
 
     const extractor = createExtractor(config);
-    const result = await extractor.scrape(scrapeDate);
+    const result = await extractor.scrape(scrapeDate, limit);
 
     if (result.success && result.permits.length > 0) {
         await savePermits(result.permits);
@@ -271,7 +272,7 @@ export async function scrapeCity(
 /**
  * Scrape permits for all enabled cities
  */
-export async function scrapeAllCities(scrapeDate?: Date): Promise<void> {
+export async function scrapeAllCities(scrapeDate?: Date, limit?: number): Promise<void> {
     console.log("🚀 Starting permit scraping for all cities...");
 
     const enabledCities = getEnabledCities();
@@ -283,7 +284,7 @@ export async function scrapeAllCities(scrapeDate?: Date): Promise<void> {
 
     for (const cityConfig of enabledCities) {
         try {
-            await scrapeCity(cityConfig.city, scrapeDate);
+            await scrapeCity(cityConfig.city, scrapeDate, limit);
         } catch (error) {
             console.error(`❌ Failed to scrape ${cityConfig.city}:`, error);
         }
