@@ -16,8 +16,8 @@ export const resolvers = {
                 hasContractor?: boolean;
                 minValue?: number;
                 maxValue?: number;
-                minIssuedDate?: string;
-                maxIssuedDate?: string;
+                minAppliedDate?: string;
+                maxAppliedDate?: string;
                 page?: number;
                 pageSize?: number;
                 sortBy?: string;
@@ -75,19 +75,19 @@ export const resolvers = {
                     (where.value as Record<string, unknown>).lte =
                         args.maxValue;
             }
-            if (args.minIssuedDate || args.maxIssuedDate) {
-                where.issuedDate = {} as Record<string, unknown>;
-                if (args.minIssuedDate) {
-                    const minDate = new Date(args.minIssuedDate);
+            if (args.minAppliedDate || args.maxAppliedDate) {
+                where.appliedDate = {} as Record<string, unknown>;
+                if (args.minAppliedDate) {
+                    const minDate = new Date(args.minAppliedDate);
                     // Set to start of day
                     minDate.setHours(0, 0, 0, 0);
-                    (where.issuedDate as Record<string, unknown>).gte = minDate;
+                    (where.appliedDate as Record<string, unknown>).gte = minDate;
                 }
-                if (args.maxIssuedDate) {
-                    const maxDate = new Date(args.maxIssuedDate);
+                if (args.maxAppliedDate) {
+                    const maxDate = new Date(args.maxAppliedDate);
                     // Set to end of day
                     maxDate.setHours(23, 59, 59, 999);
-                    (where.issuedDate as Record<string, unknown>).lte = maxDate;
+                    (where.appliedDate as Record<string, unknown>).lte = maxDate;
                 }
             }
 
@@ -160,14 +160,14 @@ export const resolvers = {
                 : Math.min(pageSize, remainingItems);
 
             // Build orderBy clause based on sort parameters
-            let orderBy: Record<string, string> = { issuedDate: "desc" }; // Default sort
+            let orderBy: Record<string, string> = { appliedDate: "desc" }; // Default sort
             if (args.sortBy) {
                 const sortFieldMap: Record<string, string> = {
                     PERMIT_TYPE: "permitType",
                     PROPERTY_TYPE: "propertyType",
                     CITY: "city",
                     VALUE: "value",
-                    ISSUED_DATE: "issuedDate",
+                    APPLIED_DATE: "appliedDate",
                     STATUS: "status",
                 };
                 const prismaField = sortFieldMap[args.sortBy];

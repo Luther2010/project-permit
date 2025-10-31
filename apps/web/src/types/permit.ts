@@ -35,7 +35,7 @@ export interface Permit {
     permitType: PermitType | null;
     status: PermitStatus | null;
     value: number | null;
-    issuedDate: string | null;
-    issuedDateString: string | null;
+    appliedDate: string | null;
+    appliedDateString: string | null;
     contractors?: PermitContractorLink[];
 }

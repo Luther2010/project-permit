@@ -126,12 +126,12 @@ async function savePermits(permits: any[]): Promise<void> {
                 return date;
             };
 
-            const validIssuedDate = validateDate(permit.issuedDate);
+            const validAppliedDate = validateDate(permit.appliedDate);
             const validExpirationDate = validateDate(permit.expirationDate);
 
-            // Ensure issuedDateString is a string, not a number
-            const validIssuedDateString = permit.issuedDateString
-                ? String(permit.issuedDateString).trim()
+            // Ensure appliedDateString is a string, not a number
+            const validAppliedDateString = permit.appliedDateString
+                ? String(permit.appliedDateString).trim()
                 : undefined;
 
             const savedPermit = await prisma.permit.upsert({
@@ -148,8 +148,8 @@ async function savePermits(permits: any[]): Promise<void> {
                     permitType,
                     status,
                     value: permit.value,
-                    issuedDate: validIssuedDate,
-                    issuedDateString: validIssuedDateString,
+                    appliedDate: validAppliedDate,
+                    appliedDateString: validAppliedDateString,
                     expirationDate: validExpirationDate,
                     sourceUrl: permit.sourceUrl,
                     scrapedAt: new Date(),
@@ -166,8 +166,8 @@ async function savePermits(permits: any[]): Promise<void> {
                     permitType,
                     status,
                     value: permit.value,
-                    issuedDate: validIssuedDate,
-                    issuedDateString: validIssuedDateString,
+                    appliedDate: validAppliedDate,
+                    appliedDateString: validAppliedDateString,
                     expirationDate: validExpirationDate,
                     sourceUrl: permit.sourceUrl,
                 },

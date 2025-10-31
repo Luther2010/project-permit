@@ -18,7 +18,7 @@ query {
         permitType
         status
         value
-        issuedDate
+        appliedDate
     }
 }
 ```

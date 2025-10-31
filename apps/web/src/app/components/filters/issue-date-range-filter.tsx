@@ -16,7 +16,7 @@ export function IssueDateRangeFilter({
     return (
         <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-                Issue Date Range
+                Applied Date Range
             </label>
             <div className="flex gap-2">
                 <input

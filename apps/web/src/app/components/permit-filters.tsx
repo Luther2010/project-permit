@@ -16,8 +16,8 @@ export interface FilterState {
     hasContractor: boolean | null;
     minValue: string;
     maxValue: string;
-    minIssuedDate: string;
-    maxIssuedDate: string;
+    minAppliedDate: string;
+    maxAppliedDate: string;
 }
 
 interface PermitFiltersProps {
@@ -46,8 +46,8 @@ export function PermitFilters({
             hasContractor: null,
             minValue: "",
             maxValue: "",
-            minIssuedDate: "",
-            maxIssuedDate: "",
+            minAppliedDate: "",
+            maxAppliedDate: "",
         };
         onFiltersChange(resetFilters);
     };
@@ -59,8 +59,8 @@ export function PermitFilters({
         (filters.hasContractor !== null) ||
         filters.minValue ||
         filters.maxValue ||
-        filters.minIssuedDate ||
-        filters.maxIssuedDate;
+        filters.minAppliedDate ||
+        filters.maxAppliedDate;
 
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
@@ -99,10 +99,10 @@ export function PermitFilters({
                     />
 
                     <IssueDateRangeFilter
-                        minDate={filters.minIssuedDate}
-                        maxDate={filters.maxIssuedDate}
-                        onMinChange={(value) => handleChange("minIssuedDate", value)}
-                        onMaxChange={(value) => handleChange("maxIssuedDate", value)}
+                        minDate={filters.minAppliedDate}
+                        maxDate={filters.maxAppliedDate}
+                        onMinChange={(value) => handleChange("minAppliedDate", value)}
+                        onMaxChange={(value) => handleChange("maxAppliedDate", value)}
                     />
                 </div>
 
@@ -158,9 +158,9 @@ export function PermitFilters({
                                 Value: ${filters.minValue || "0"} - ${filters.maxValue || "∞"}
                             </span>
                         )}
-                        {(filters.minIssuedDate || filters.maxIssuedDate) && (
+                        {(filters.minAppliedDate || filters.maxAppliedDate) && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                                Issue Date: {filters.minIssuedDate || "any"} - {filters.maxIssuedDate || "any"}
+                                Applied Date: {filters.minAppliedDate || "any"} - {filters.maxAppliedDate || "any"}
                             </span>
                         )}
                     </div>

@@ -622,28 +622,34 @@ export class SaratogaExtractor extends BaseExtractor {
                 const issuedDateStr = this.getCellValue(row, columnMap.issuedDate);
                 const expiredDateStr = this.getCellValue(row, columnMap.expiredDate);
                 
-                let issuedDate: Date | undefined;
-                let issuedDateString: string | undefined;
+                let appliedDate: Date | undefined;
+                let appliedDateString: string | undefined;
                 let expirationDate: Date | undefined;
                 let status: string | undefined;
                 
-                // Determine status and issued date based on ISSUED DATE and APPLIED DATE
+                // Determine status based on ISSUED DATE and APPLIED DATE columns
+                // APPLIED DATE column = when permit was applied (map to appliedDate)
+                // ISSUED DATE column = when permit was issued (used for status only)
                 const hasIssuedDate = issuedDateStr && String(issuedDateStr).trim() !== '';
                 const hasAppliedDate = appliedDateStr && String(appliedDateStr).trim() !== '';
                 
-                if (hasIssuedDate) {
-                    // If ISSUED DATE is not empty, set issued date and status to ISSUED
-                    const issuedDateStrValue = String(issuedDateStr).trim();
-                    issuedDateString = issuedDateStrValue;
-                    issuedDate = this.parseDate(issuedDateStr);
+                // Always use APPLIED DATE for appliedDate field
+                if (hasAppliedDate) {
+                    const appliedDateStrValue = String(appliedDateStr).trim();
+                    appliedDateString = appliedDateStrValue;
+                    appliedDate = this.parseDate(appliedDateStr);
                     // If we successfully parsed a date, use the formatted string
-                    if (issuedDate) {
-                        issuedDateString = this.formatDateForETRAKiT(issuedDate);
+                    if (appliedDate) {
+                        appliedDateString = this.formatDateForETRAKiT(appliedDate);
                     }
+                }
+                
+                // Determine status based on whether there's an ISSUED DATE
+                if (hasIssuedDate) {
+                    // If ISSUED DATE is not empty, status is ISSUED
                     status = "ISSUED";
                 } else if (hasAppliedDate) {
-                    // If ISSUED DATE is empty but APPLIED DATE is not empty, set status to IN_REVIEW
-                    // Don't set issuedDate - only use ISSUED DATE column for that
+                    // If ISSUED DATE is empty but APPLIED DATE is not empty, status is IN_REVIEW
                     status = "IN_REVIEW";
                 }
                 // If both are empty, status remains undefined (will be handled by classification/mapping)
@@ -696,8 +702,8 @@ export class SaratogaExtractor extends BaseExtractor {
                     zipCode: zipCode || undefined,
                     status: status || undefined, // Already a string from our logic above
                     value,
-                    issuedDate,
-                    issuedDateString,
+                    appliedDate,
+                    appliedDateString,
                     expirationDate,
                     sourceUrl: this.url,
                     // Store contractor name in a custom field for later processing

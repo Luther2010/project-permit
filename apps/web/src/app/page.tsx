@@ -28,7 +28,7 @@ type SortField =
     | "PROPERTY_TYPE"
     | "CITY"
     | "VALUE"
-    | "ISSUED_DATE"
+    | "APPLIED_DATE"
     | "STATUS";
 type SortOrder = "ASC" | "DESC";
 
@@ -71,11 +71,11 @@ async function getPermits(
             variables.maxValue = maxValue;
         }
     }
-    if (filters.minIssuedDate) {
-        variables.minIssuedDate = filters.minIssuedDate;
+    if (filters.minAppliedDate) {
+        variables.minAppliedDate = filters.minAppliedDate;
     }
-    if (filters.maxIssuedDate) {
-        variables.maxIssuedDate = filters.maxIssuedDate;
+    if (filters.maxAppliedDate) {
+        variables.maxAppliedDate = filters.maxAppliedDate;
     }
 
     variables.page = page;
@@ -96,8 +96,8 @@ async function getPermits(
             $hasContractor: Boolean
             $minValue: Float
             $maxValue: Float
-            $minIssuedDate: String
-            $maxIssuedDate: String
+            $minAppliedDate: String
+            $maxAppliedDate: String
             $page: Int
             $pageSize: Int
             $sortBy: PermitSortField
@@ -110,8 +110,8 @@ async function getPermits(
                 hasContractor: $hasContractor
                 minValue: $minValue
                 maxValue: $maxValue
-                minIssuedDate: $minIssuedDate
-                maxIssuedDate: $maxIssuedDate
+                minAppliedDate: $minAppliedDate
+                maxAppliedDate: $maxAppliedDate
                 page: $page
                 pageSize: $pageSize
                 sortBy: $sortBy
@@ -126,8 +126,8 @@ async function getPermits(
                     permitType
                     status
                     value
-                    issuedDate
-                    issuedDateString
+                    appliedDate
+                    appliedDateString
                 }
                 totalCount
                 page
@@ -186,12 +186,12 @@ export default function Home() {
         hasContractor: null,
         minValue: "",
         maxValue: "",
-        minIssuedDate: "",
-        maxIssuedDate: "",
+        minAppliedDate: "",
+        maxAppliedDate: "",
     });
 
     const [sort, setSort] = useState<SortState>({
-        field: "ISSUED_DATE",
+        field: "APPLIED_DATE",
         order: "DESC",
     });
 
@@ -231,8 +231,8 @@ export default function Home() {
                     return compareString(x.city, y.city);
                 case "VALUE":
                     return compareNumber(x.value ?? null, y.value ?? null);
-                case "ISSUED_DATE":
-                    return compareDate(x.issuedDate, y.issuedDate);
+                case "APPLIED_DATE":
+                    return compareDate(x.appliedDate, y.appliedDate);
                 case "STATUS":
                     return compareString(x.status, y.status);
                 default:
@@ -277,20 +277,20 @@ export default function Home() {
                     filters,
                     1,
                     3,
-                    "ISSUED_DATE",
+                    "APPLIED_DATE",
                     "DESC"
                 );
                 setFreemiumAllPermits(canonicalResult.permits);
                 const sorted = sortPermitsLocal(
                     canonicalResult.permits,
-                    sort.field ?? "ISSUED_DATE",
+                    sort.field ?? "APPLIED_DATE",
                     sort.order
                 );
                 applyFreemiumPagingAndSet(sorted, page);
             } else if (freemiumAllPermits) {
                 const sorted = sortPermitsLocal(
                     freemiumAllPermits,
-                    sort.field ?? "ISSUED_DATE",
+                    sort.field ?? "APPLIED_DATE",
                     sort.order
                 );
                 applyFreemiumPagingAndSet(sorted, page);
@@ -337,7 +337,7 @@ export default function Home() {
         if (pagination && !pagination.isPremium && freemiumAllPermits) {
             const sorted = sortPermitsLocal(
                 freemiumAllPermits,
-                sort.field ?? "ISSUED_DATE",
+                sort.field ?? "APPLIED_DATE",
                 sort.order
             );
             applyFreemiumPagingAndSet(sorted, page);
@@ -353,7 +353,7 @@ export default function Home() {
         if (pagination && !pagination.isPremium && freemiumAllPermits) {
             const sorted = sortPermitsLocal(
                 freemiumAllPermits,
-                sort.field ?? "ISSUED_DATE",
+                sort.field ?? "APPLIED_DATE",
                 sort.order
             );
             applyFreemiumPagingAndSet(sorted, pagination.page);

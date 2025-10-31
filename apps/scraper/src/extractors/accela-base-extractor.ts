@@ -398,15 +398,15 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
                 .find('span[id*="lblUpdatedTime"]')
                 .text()
                 .trim();
-            let issuedDate: Date | undefined;
-            let issuedDateString: string | undefined;
+            let appliedDate: Date | undefined;
+            let appliedDateString: string | undefined;
             if (dateStr) {
-                issuedDateString = dateStr; // Store original format
+                appliedDateString = dateStr; // Store original format
                 // Parse MM/DD/YYYY format and create UTC date
                 const [month, day, year] = dateStr.split("/");
                 if (month && day && year) {
                     // Create date in UTC to avoid timezone issues
-                    issuedDate = new Date(
+                    appliedDate = new Date(
                         Date.UTC(
                             parseInt(year),
                             parseInt(month) - 1,
@@ -426,8 +426,8 @@ export abstract class AccelaBaseExtractor extends BaseExtractor {
                 zipCode,
                 permitType,
                 sourceUrl: this.url,
-                issuedDate,
-                issuedDateString,
+                appliedDate,
+                appliedDateString,
                 status: status,
             });
         });

@@ -63,8 +63,8 @@ export function PermitDetailView({
                         permitType
                         status
                         value
-                        issuedDate
-                        issuedDateString
+                        appliedDate
+                        appliedDateString
                         contractors {
                             role
                             contractor {

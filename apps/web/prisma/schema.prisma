@@ -222,9 +222,9 @@ model Permit {
   value           Float?
   
   // Dates
-  issuedDate      DateTime?
-  issuedDateString String?  // Store original date format (e.g., "10/27/2025")
-  expirationDate  DateTime?
+  appliedDate      DateTime?
+  appliedDateString String?  // Store original date format (e.g., "10/27/2025")
+  expirationDate   DateTime?
   
   // Scraping metadata
   sourceUrl       String?
@@ -239,7 +239,7 @@ model Permit {
   @@index([permitNumber])
   @@index([city])
   @@index([permitType])
-  @@index([issuedDate])
+  @@index([appliedDate])
 }
 
 // Contractor model - stores licensing, bonding, and compliance data from CSLB CSV

@@ -72,8 +72,8 @@ export const typeDefs = `
     permitType: PermitType
     status: PermitStatus
     value: Float
-    issuedDate: String
-    issuedDateString: String
+    appliedDate: String
+    appliedDateString: String
     expirationDate: String
     sourceUrl: String
     scrapedAt: String!
@@ -102,7 +102,7 @@ export const typeDefs = `
     PROPERTY_TYPE
     CITY
     VALUE
-    ISSUED_DATE
+    APPLIED_DATE
     STATUS
   }
 
@@ -117,8 +117,8 @@ export const typeDefs = `
       hasContractor: Boolean
       minValue: Float
       maxValue: Float
-      minIssuedDate: String
-      maxIssuedDate: String
+      minAppliedDate: String
+      maxAppliedDate: String
       page: Int
       pageSize: Int
       sortBy: PermitSortField

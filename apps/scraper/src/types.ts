@@ -21,8 +21,8 @@ export interface PermitData {
   permitType?: string;
   status?: string;
   value?: number;
-  issuedDate?: Date;
-  issuedDateString?: string;
+  appliedDate?: Date;
+  appliedDateString?: string;
   expirationDate?: Date;
   sourceUrl?: string;
   licensedProfessionalText?: string;

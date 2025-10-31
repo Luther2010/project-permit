@@ -106,8 +106,8 @@ function PermitRow({
                     {formatCurrency(permit.value)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
-                    {permit.issuedDateString ||
-                        formatDate(permit.issuedDate) ||
+                    {permit.appliedDateString ||
+                        formatDate(permit.appliedDate) ||
                         "-"}
                 </td>
                 <td className="px-4 py-3">
@@ -156,7 +156,7 @@ type SortField =
     | "PROPERTY_TYPE"
     | "CITY"
     | "VALUE"
-    | "ISSUED_DATE"
+    | "APPLIED_DATE"
     | "STATUS";
 type SortOrder = "ASC" | "DESC";
 
@@ -298,12 +298,12 @@ export function PermitTable({
                             Value
                         </SortableHeader>
                         <SortableHeader
-                            field="ISSUED_DATE"
+                            field="APPLIED_DATE"
                             currentSortField={sortField}
                             currentSortOrder={sortOrder}
                             onSort={onSort}
                         >
-                            Issue Date
+                            Applied Date
                         </SortableHeader>
                         <SortableHeader
                             field="STATUS"
