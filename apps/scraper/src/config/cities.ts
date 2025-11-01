@@ -48,6 +48,13 @@ export const citiesConfig: CityConfig[] = [
         url: "https://trakit.losaltoshills.ca.gov/etrakit/Search/permit.aspx",
         enabled: true,
     },
+    {
+        city: "Sunnyvale",
+        state: "CA",
+        extractor: "SunnyvaleExtractor",
+        url: "https://sunnyvaleca-energovpub.tylerhost.net/apps/SelfService#/search",
+        enabled: true,
+    },
     // Add more cities and their extractors here
     // Example:
     // {

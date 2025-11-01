@@ -14,6 +14,7 @@ export const CITY_DISPLAY_NAMES: Record<City, string> = {
     CUPERTINO: "Cupertino",
     PALO_ALTO: "Palo Alto",
     LOS_ALTOS_HILLS: "Los Altos Hills",
+    SUNNYVALE: "Sunnyvale",
 };
 
 /**

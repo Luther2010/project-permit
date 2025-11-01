@@ -53,6 +53,7 @@ export const typeDefs = `
     CUPERTINO
     PALO_ALTO
     LOS_ALTOS_HILLS
+    SUNNYVALE
   }
 
   enum SubscriptionPlan {
