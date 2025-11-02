@@ -49,6 +49,7 @@ function mapCity(cityName?: string): City | undefined {
         "LOS ALTOS HILLS": City.LOS_ALTOS_HILLS,
         "SUNNYVALE": City.SUNNYVALE,
         "SAN JOSE": City.SAN_JOSE,
+        "CAMPBELL": City.CAMPBELL,
     };
     
     return cityMap[normalized];

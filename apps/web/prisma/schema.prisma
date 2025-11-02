@@ -67,6 +67,7 @@ enum City {
   LOS_ALTOS_HILLS
   SUNNYVALE
   SAN_JOSE
+  CAMPBELL
 }
 
 enum SubscriptionPlan {

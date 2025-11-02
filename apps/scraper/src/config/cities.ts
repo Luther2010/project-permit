@@ -62,6 +62,13 @@ export const citiesConfig: CityConfig[] = [
         url: "https://data.sanjoseca.gov/api/3/action/datastore_search",
         enabled: true,
     },
+    {
+        city: "Campbell",
+        state: "CA",
+        extractor: "CampbellExtractor",
+        url: "https://www.mgoconnect.org/cp/search",
+        enabled: true,
+    },
     // Add more cities and their extractors here
     // Example:
     // {
