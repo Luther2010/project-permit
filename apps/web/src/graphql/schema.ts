@@ -54,6 +54,7 @@ export const typeDefs = `
     PALO_ALTO
     LOS_ALTOS_HILLS
     SUNNYVALE
+    SAN_JOSE
   }
 
   enum SubscriptionPlan {

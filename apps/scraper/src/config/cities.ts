@@ -55,6 +55,13 @@ export const citiesConfig: CityConfig[] = [
         url: "https://sunnyvaleca-energovpub.tylerhost.net/apps/SelfService#/search",
         enabled: true,
     },
+    {
+        city: "San Jose",
+        state: "CA",
+        extractor: "SanJoseExtractor",
+        url: "https://data.sanjoseca.gov/api/3/action/datastore_search",
+        enabled: true,
+    },
     // Add more cities and their extractors here
     // Example:
     // {
