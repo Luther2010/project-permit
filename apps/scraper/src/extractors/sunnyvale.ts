@@ -4,12 +4,12 @@
  * Parses HTML results directly from search page (no CSV export available)
  */
 
-import { BaseExtractor } from "../base-extractor";
+import { BaseDailyExtractor } from "../base-extractor";
 import { PermitData, ScrapeResult } from "../types";
 import puppeteer, { Browser, Page } from "puppeteer";
 import * as path from "path";
 
-export class SunnyvaleExtractor extends BaseExtractor {
+export class SunnyvaleExtractor extends BaseDailyExtractor {
     protected browser: Browser | null = null;
     protected page: Page | null = null;
 

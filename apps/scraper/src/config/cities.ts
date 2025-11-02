@@ -3,7 +3,7 @@
  * Add new cities here with their corresponding extractor
  */
 
-import { CityConfig } from "../types";
+import { CityConfig, ScraperType } from "../types";
 
 export const citiesConfig: CityConfig[] = [
     {
@@ -12,6 +12,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "LosGatosExtractor",
         url: "https://aca-prod.accela.com/TLG/Cap/CapHome.aspx?module=Building&TabName=HOME",
         enabled: true,
+        scraperType: ScraperType.DAILY,
     },
     {
         city: "Saratoga",
@@ -19,6 +20,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "SaratogaExtractor",
         url: "https://sara.csqrcloud.com/community-etrakit/Search/permit.aspx",
         enabled: true,
+        scraperType: ScraperType.DAILY,
     },
     {
         city: "Santa Clara",
@@ -26,6 +28,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "SantaClaraExtractor",
         url: "https://aca-prod.accela.com/SANTACLARA/Cap/CapHome.aspx?module=Building&TabName=Building",
         enabled: true,
+        scraperType: ScraperType.DAILY,
     },
     {
         city: "Cupertino",
@@ -33,6 +36,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "CupertinoExtractor",
         url: "https://aca-prod.accela.com/CUPERTINO/Cap/CapHome.aspx?module=Building&TabName=Home",
         enabled: true,
+        scraperType: ScraperType.DAILY,
     },
     {
         city: "Palo Alto",
@@ -40,6 +44,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "PaloAltoExtractor",
         url: "https://aca-prod.accela.com/PALOALTO/Cap/CapHome.aspx?module=Building&TabName=Building",
         enabled: true,
+        scraperType: ScraperType.DAILY,
     },
     {
         city: "Los Altos Hills",
@@ -47,6 +52,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "LosAltosHillsExtractor",
         url: "https://trakit.losaltoshills.ca.gov/etrakit/Search/permit.aspx",
         enabled: true,
+        scraperType: ScraperType.DAILY,
     },
     {
         city: "Sunnyvale",
@@ -54,6 +60,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "SunnyvaleExtractor",
         url: "https://sunnyvaleca-energovpub.tylerhost.net/apps/SelfService#/search",
         enabled: true,
+        scraperType: ScraperType.DAILY,
     },
     {
         city: "San Jose",
@@ -61,6 +68,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "SanJoseExtractor",
         url: "https://data.sanjoseca.gov/api/3/action/datastore_search",
         enabled: true,
+        scraperType: ScraperType.DAILY,
     },
     {
         city: "Campbell",
@@ -68,6 +76,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "CampbellExtractor",
         url: "https://www.mgoconnect.org/cp/search",
         enabled: true,
+        scraperType: ScraperType.DAILY,
     },
     {
         city: "Mountain View",
@@ -75,6 +84,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "MountainViewExtractor",
         url: "https://www.mountainview.gov/our-city/departments/community-development/building-fire-inspection/building-general-information/permit-history/-folder-637",
         enabled: true,
+        scraperType: ScraperType.MONTHLY,
     },
     // Add more cities and their extractors here
     // Example:

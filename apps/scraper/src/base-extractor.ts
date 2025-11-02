@@ -44,3 +44,38 @@ export abstract class BaseExtractor {
         return this.constructor.name;
     }
 }
+
+/**
+ * Base class for daily scrapers that can scrape permits by specific date
+ */
+export abstract class BaseDailyExtractor extends BaseExtractor {
+    /**
+     * Main method to scrape permits by date
+     * @param scrapeDate Optional specific date to scrape for (defaults to today)
+     * @param limit Optional maximum number of permits to scrape (for testing)
+     */
+    abstract scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult>;
+}
+
+/**
+ * Base class for monthly scrapers that can only scrape by month/year
+ */
+export abstract class BaseMonthlyExtractor extends BaseExtractor {
+    /**
+     * Main method to scrape permits by month/year
+     * @param scrapeDate Date object - only month and year are used
+     * @param limit Optional maximum number of permits to scrape (for testing)
+     */
+    abstract scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult>;
+
+    /**
+     * Extract month and year from a date (defaults to current month if not provided)
+     */
+    protected getMonthYear(scrapeDate?: Date): { month: number; year: number } {
+        const date = scrapeDate || new Date();
+        return {
+            month: date.getMonth() + 1, // 1-12
+            year: date.getFullYear(),
+        };
+    }
+}

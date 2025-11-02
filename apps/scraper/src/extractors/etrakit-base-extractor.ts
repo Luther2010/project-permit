@@ -3,14 +3,14 @@
  * Provides common functionality for cities using eTRAKiT platform
  */
 
-import { BaseExtractor } from "../base-extractor";
+import { BaseDailyExtractor } from "../base-extractor";
 import { PermitData, ScrapeResult } from "../types";
 import puppeteer, { Browser, Page } from "puppeteer";
 import * as XLSX from "xlsx";
 import * as fs from "fs";
 import * as path from "path";
 
-export abstract class EtrakitBaseExtractor extends BaseExtractor {
+export abstract class EtrakitBaseExtractor extends BaseDailyExtractor {
     protected browser: Browser | null = null;
     protected page: Page | null = null;
 

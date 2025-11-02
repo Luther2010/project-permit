@@ -12,6 +12,7 @@ import {
     permitClassificationService,
     type PermitData,
 } from "./lib/permit-classification";
+import { ScraperType } from "./types";
 
 /**
  * Map string permit types to Prisma enum
@@ -276,7 +277,19 @@ export async function scrapeCity(
         return;
     }
 
-    console.log(`🏙️  Starting scrape for ${cityName}...`);
+    // Provide appropriate messaging based on scraper type
+    let dateMessage = "";
+    if (scrapeDate) {
+        if (config.scraperType === ScraperType.MONTHLY) {
+            const month = scrapeDate.toLocaleString('default', { month: 'long' });
+            const year = scrapeDate.getFullYear();
+            dateMessage = ` for ${month} ${year}`;
+        } else {
+            dateMessage = ` on ${scrapeDate.toISOString().split("T")[0]}`;
+        }
+    }
+    
+    console.log(`🏙️  Starting scrape for ${cityName}${dateMessage}...`);
 
     const extractor = createExtractor(config);
     const result = await extractor.scrape(scrapeDate, limit);

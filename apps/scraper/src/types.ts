@@ -2,12 +2,19 @@
  * Types for the scraping system
  */
 
+export enum ScraperType {
+  DAILY = "DAILY", // Can scrape permits by specific date
+  MONTHLY = "MONTHLY", // Data only available on a monthly basis
+  // ID_BASED = "ID_BASED", // For future: search by permit ID
+}
+
 export interface CityConfig {
   city: string;
   state: string;
   extractor: string; // Name of the extractor class
   url: string; // Base URL for the permit website
   enabled: boolean; // Whether scraping is enabled for this city
+  scraperType: ScraperType; // Type of scraper (DAILY, MONTHLY, etc.)
 }
 
 export interface PermitData {

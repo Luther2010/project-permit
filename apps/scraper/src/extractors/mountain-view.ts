@@ -3,11 +3,11 @@
  * Scrapes permit data from monthly PDF reports published by Mountain View
  */
 
-import { BaseExtractor } from "../base-extractor";
+import { BaseMonthlyExtractor } from "../base-extractor";
 import { PermitData, ScrapeResult } from "../types";
 import puppeteer, { Browser, Page } from "puppeteer";
 
-export class MountainViewExtractor extends BaseExtractor {
+export class MountainViewExtractor extends BaseMonthlyExtractor {
     protected browser: Browser | null = null;
     protected page: Page | null = null;
     private readonly baseUrl = "https://www.mountainview.gov/our-city/departments/community-development/building-fire-inspection/building-general-information/permit-history/-folder-637";
@@ -124,7 +124,6 @@ export class MountainViewExtractor extends BaseExtractor {
         
         // Debug: Check page content
         const pageInfo = await page.evaluate(() => {
-            // @ts-expect-error - page.evaluate runs in browser context
             return {
                 // @ts-expect-error - page.evaluate runs in browser context
                 title: document.title,
@@ -221,7 +220,6 @@ export class MountainViewExtractor extends BaseExtractor {
     private async downloadAndParsePdf(page: Page, pdfUrl: string): Promise<string> {
         // Use page.evaluate to download PDF via fetch (works in browser context)
         const pdfBuffer = await page.evaluate(async (url: string) => {
-            // @ts-expect-error - page.evaluate runs in browser context
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`Failed to fetch PDF: ${response.status}`);
@@ -234,7 +232,6 @@ export class MountainViewExtractor extends BaseExtractor {
             for (let i = 0; i < bytes.length; i++) {
                 binary += String.fromCharCode(bytes[i]);
             }
-            // @ts-expect-error - page.evaluate runs in browser context
             return btoa(binary);
         }, pdfUrl);
         
@@ -355,8 +352,9 @@ export class MountainViewExtractor extends BaseExtractor {
                 'Upgrade-Insecure-Requests': '1',
             });
 
-            // Use the scrapeDate or current date
-            const targetDate = scrapeDate || new Date();
+            // Get month and year from scrapeDate (defaults to current month)
+            const { month, year } = this.getMonthYear(scrapeDate);
+            const targetDate = new Date(year, month - 1, 1); // First day of target month
 
             // Find the PDF URL for the target month
             const pdfUrl = await this.findPdfUrl(this.page, targetDate);

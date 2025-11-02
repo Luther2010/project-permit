@@ -3,13 +3,13 @@
  * Contains common functionality shared by all Accela-based permit extractors
  */
 
-import { BaseExtractor } from "../base-extractor";
+import { BaseDailyExtractor } from "../base-extractor";
 import { PermitData, ScrapeResult } from "../types";
 import puppeteer, { Browser, Page } from "puppeteer";
 import * as cheerio from "cheerio";
 import { normalizeAccelaStatus } from "../utils/accela-status";
 
-export abstract class AccelaBaseExtractor extends BaseExtractor {
+export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
     protected browser: Browser | null = null;
     protected page: Page | null = null;
 

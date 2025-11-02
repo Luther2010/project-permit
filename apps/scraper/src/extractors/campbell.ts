@@ -4,11 +4,11 @@
  * Requires login, then navigation to portal, then clicking "Search Permits"
  */
 
-import { BaseExtractor } from "../base-extractor";
+import { BaseDailyExtractor } from "../base-extractor";
 import { PermitData, ScrapeResult } from "../types";
 import puppeteer, { Browser, Page } from "puppeteer";
 
-export class CampbellExtractor extends BaseExtractor {
+export class CampbellExtractor extends BaseDailyExtractor {
     protected browser: Browser | null = null;
     protected page: Page | null = null;
     private readonly loginEmail = "luther2020@gmail.com";

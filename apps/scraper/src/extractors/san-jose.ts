@@ -4,7 +4,7 @@
  * No browser automation needed - direct JSON API access
  */
 
-import { BaseExtractor } from "../base-extractor";
+import { BaseDailyExtractor } from "../base-extractor";
 import { PermitData, ScrapeResult } from "../types";
 
 interface SanJoseAPIResponse {
@@ -37,7 +37,7 @@ interface SanJoseRecord {
     FOLDERRSN?: string | null;
 }
 
-export class SanJoseExtractor extends BaseExtractor {
+export class SanJoseExtractor extends BaseDailyExtractor {
     // CKAN datastore resource ID for San Jose permits
     private readonly RESOURCE_ID = "761b7ae8-3be1-4ad6-923d-c7af6404a904";
     private readonly API_BASE_URL = "https://data.sanjoseca.gov/api/3/action/datastore_search_sql";

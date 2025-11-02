@@ -62,8 +62,24 @@ async function main() {
 
     try {
         if (cityName) {
+            // Get city config to determine scraper type for better messaging
+            const { getCityConfig } = await import("./config/cities.js");
+            const config = getCityConfig(cityName);
+            let dateMessage = "";
+            if (scrapeDate && config) {
+                const { ScraperType } = await import("./types.js");
+                if (config.scraperType === ScraperType.MONTHLY) {
+                    const month = scrapeDate.toLocaleString('default', { month: 'long' });
+                    const year = scrapeDate.getFullYear();
+                    dateMessage = ` for ${month} ${year}`;
+                } else {
+                    dateMessage = ` on ${scrapeDate.toISOString().split("T")[0]}`;
+                }
+            } else if (scrapeDate) {
+                dateMessage = ` on ${scrapeDate.toISOString().split("T")[0]}`;
+            }
             console.log(
-                `Scraping permits for: ${cityName}${scrapeDate ? ` on ${scrapeDate.toISOString().split("T")[0]}` : ""}${limit ? ` (limit: ${limit})` : ""}`
+                `Scraping permits for: ${cityName}${dateMessage}${limit ? ` (limit: ${limit})` : ""}`
             );
             await scrapeCity(cityName, scrapeDate, limit);
         } else {
