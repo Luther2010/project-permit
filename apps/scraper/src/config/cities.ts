@@ -69,6 +69,13 @@ export const citiesConfig: CityConfig[] = [
         url: "https://www.mgoconnect.org/cp/search",
         enabled: true,
     },
+    {
+        city: "Mountain View",
+        state: "CA",
+        extractor: "MountainViewExtractor",
+        url: "https://www.mountainview.gov/our-city/departments/community-development/building-fire-inspection/building-general-information/permit-history/-folder-637",
+        enabled: true,
+    },
     // Add more cities and their extractors here
     // Example:
     // {

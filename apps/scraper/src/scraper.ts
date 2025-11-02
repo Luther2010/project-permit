@@ -50,6 +50,7 @@ function mapCity(cityName?: string): City | undefined {
         "SUNNYVALE": City.SUNNYVALE,
         "SAN JOSE": City.SAN_JOSE,
         "CAMPBELL": City.CAMPBELL,
+        "MOUNTAIN VIEW": City.MOUNTAIN_VIEW,
     };
     
     return cityMap[normalized];

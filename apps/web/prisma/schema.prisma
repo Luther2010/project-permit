@@ -68,6 +68,7 @@ enum City {
   SUNNYVALE
   SAN_JOSE
   CAMPBELL
+  MOUNTAIN_VIEW
 }
 
 enum SubscriptionPlan {

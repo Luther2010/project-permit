@@ -13,6 +13,7 @@ import { LosAltosHillsExtractor } from "./extractors/los-altos-hills";
 import { SunnyvaleExtractor } from "./extractors/sunnyvale";
 import { SanJoseExtractor } from "./extractors/san-jose";
 import { CampbellExtractor } from "./extractors/campbell";
+import { MountainViewExtractor } from "./extractors/mountain-view";
 
 /**
  * Create an extractor instance based on the extractor name
@@ -37,6 +38,8 @@ export function createExtractor(config: CityConfig): BaseExtractor {
             return new SanJoseExtractor(config.city, config.state, config.url);
         case "CampbellExtractor":
             return new CampbellExtractor(config.city, config.state, config.url);
+        case "MountainViewExtractor":
+            return new MountainViewExtractor(config.city, config.state, config.url);
 
         default:
             throw new Error(`Unknown extractor: ${config.extractor}`);
@@ -57,6 +60,7 @@ export function getAvailableExtractors(): string[] {
         "SunnyvaleExtractor",
         "SanJoseExtractor",
         "CampbellExtractor",
+        "MountainViewExtractor",
         // Add more extractors here as they're implemented
     ];
 }

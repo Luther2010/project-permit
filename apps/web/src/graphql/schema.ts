@@ -56,6 +56,7 @@ export const typeDefs = `
     SUNNYVALE
     SAN_JOSE
     CAMPBELL
+    MOUNTAIN_VIEW
   }
 
   enum SubscriptionPlan {
