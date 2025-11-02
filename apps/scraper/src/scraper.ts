@@ -52,7 +52,14 @@ function mapCity(cityName?: string): City | undefined {
         "SAN JOSE": City.SAN_JOSE,
         "CAMPBELL": City.CAMPBELL,
         "MOUNTAIN VIEW": City.MOUNTAIN_VIEW,
+        "GILROY": City.GILROY,
     };
+    
+    // Also try with underscores (in case it's already normalized)
+    const normalizedWithUnderscores = cityName.toUpperCase().replace(/\s+/g, '_');
+    if (cityMap[normalizedWithUnderscores]) {
+        return cityMap[normalizedWithUnderscores];
+    }
     
     return cityMap[normalized];
 }

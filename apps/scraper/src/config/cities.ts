@@ -86,6 +86,14 @@ export const citiesConfig: CityConfig[] = [
         enabled: true,
         scraperType: ScraperType.MONTHLY,
     },
+    {
+        city: "Gilroy",
+        state: "CA",
+        extractor: "GilroyExtractor",
+        url: "https://gilroyca-energovweb.tylerhost.net/apps/SelfService#/search",
+        enabled: true,
+        scraperType: ScraperType.DAILY,
+    },
     // Add more cities and their extractors here
     // Example:
     // {
