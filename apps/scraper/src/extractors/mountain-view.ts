@@ -122,23 +122,6 @@ export class MountainViewExtractor extends BaseMonthlyExtractor {
         
         await new Promise((resolve) => setTimeout(resolve, 2000));
         
-        // Debug: Check page content
-        const pageInfo = await page.evaluate(() => {
-            return {
-                // @ts-expect-error - page.evaluate runs in browser context
-                title: document.title,
-                // @ts-expect-error - page.evaluate runs in browser context
-                url: window.location.href,
-                // @ts-expect-error - page.evaluate runs in browser context
-                bodyText: document.body.innerText.substring(0, 500),
-                // @ts-expect-error - page.evaluate runs in browser context
-                linkCount: document.querySelectorAll('a').length,
-                // @ts-expect-error - page.evaluate runs in browser context
-                contentLinkCount: document.querySelectorAll('a.content_link').length,
-            };
-        });
-        console.log(`[MountainViewExtractor] Page info:`, pageInfo);
-        
         // Find PDF links on the page
         const result = await page.evaluate((month: number, year: number) => {
             // @ts-expect-error - page.evaluate runs in browser context
@@ -202,15 +185,6 @@ export class MountainViewExtractor extends BaseMonthlyExtractor {
             return { found: false, url: null, allLinks, pdfLinks };
         }, targetMonth, targetYear);
         
-        if (!result.found && result.pdfLinks.length > 0) {
-            console.log(`[MountainViewExtractor] Found ${result.pdfLinks.length} PDF links but none match ${targetMonth}/${targetYear}:`);
-            result.pdfLinks.slice(0, 10).forEach(link => {
-                console.log(`  - "${link.text}" -> ${link.href}`);
-            });
-        } else if (result.pdfLinks.length === 0) {
-            console.log(`[MountainViewExtractor] Found ${result.allLinks.length} total links, ${result.pdfLinks.length} PDF links`);
-        }
-        
         return result.url;
     }
 
@@ -261,66 +235,230 @@ export class MountainViewExtractor extends BaseMonthlyExtractor {
         const permits: PermitData[] = [];
         const lines = pdfText.split('\n').map(line => line.trim()).filter(line => line);
         
-        // This is a placeholder parser - we'll need to adjust based on actual PDF structure
-        // Common patterns to look for:
-        // - Permit numbers (e.g., "BLD-2025-1234" or "2025-1234")
-        // - Dates (MM/DD/YYYY format)
-        // - Addresses
-        // - Permit types
+        // PDF structure appears to have columns:
+        // APN No. | T/W | Permit # | Permit Type | Permit Date | $ Valuation | Applicant Name / Phone | Contractor Name / Phone
+        // Permit # is in format "2025-XXXX" (not the APN numbers like 14712063)
         
-        // Try to find permit entries
-        // Look for permit number patterns
-        const permitNumberPattern = /\b(BLD-)?\d{4}-?\d{4,6}\b/gi;
+        // Look for permit number patterns in format "YYYY-XXXX" (e.g., "2025-3182")
+        const permitNumberPattern = /\b(\d{4}-\d{4,6})\b/g;
         const permitMatches = Array.from(pdfText.matchAll(permitNumberPattern));
         
-        // For each permit number found, try to extract surrounding information
+        // For each permit number found, extract a larger context to get full permit row
         for (const match of permitMatches) {
-            const permitNumber = match[0].replace(/^BLD-/, ''); // Remove BLD- prefix if present
+            const permitNumber = match[0];
             const matchIndex = match.index || 0;
             
-            // Extract context around the permit number (100 chars before and after)
-            const start = Math.max(0, matchIndex - 100);
-            const end = Math.min(pdfText.length, matchIndex + 200);
-            const context = pdfText.substring(start, end);
+            // Skip if this looks like a T/W permit number (appears in "T/W" column, usually right before main permit #)
+            const beforeText = pdfText.substring(Math.max(0, matchIndex - 100), matchIndex);
+            if (beforeText.includes('T/W') && beforeText.match(/T\/W\s+\d{4}-/)) {
+                continue; // This is likely a T/W permit number, skip it
+            }
             
-            // Try to extract date (look for MM/DD/YYYY near the permit number)
-            const dateMatch = context.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/);
-            const appliedDate = dateMatch ? this.parseDate(dateMatch[0]) : undefined;
-            const appliedDateString = dateMatch ? dateMatch[0] : undefined;
+            // Extract permit row: find the next permit number or description section to mark the end of this permit
+            let rowEndIndex = matchIndex + 800; // Default: 800 chars after permit number
+            const nextPermitMatch = pdfText.substring(matchIndex + 1).match(/\b(\d{4}-\d{4,6})\b/);
+            if (nextPermitMatch && nextPermitMatch.index) {
+                rowEndIndex = matchIndex + 1 + (nextPermitMatch.index || 0);
+            }
             
-            // Try to extract address (look for common address patterns)
-            // This is simplified - actual parsing will need to be more sophisticated
-            const addressPattern = /\d+\s+[\w\s]+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Court|Ct|Way|Circle|Cir)/i;
-            const addressMatch = context.match(addressPattern);
-            const addressStr = addressMatch ? addressMatch[0] : "";
+            // Extract the permit row (from permit number to next permit or end)
+            const permitRow = pdfText.substring(matchIndex, Math.min(pdfText.length, rowEndIndex));
+            
+            // Extract larger context for description and address (includes description section)
+            const contextStart = Math.max(0, matchIndex - 500);
+            const contextEnd = Math.min(pdfText.length, matchIndex + 1200);
+            const context = pdfText.substring(contextStart, contextEnd);
+            
+            // Extract date (MM/DD/YYYY or MM/DD format) - should be in the permit row, after permit number
+            // Look for date patterns: MM/DD/YYYY first, then MM/DD (year defaults to 2025 for monthly PDF)
+            let appliedDate: Date | undefined;
+            let appliedDateString: string | undefined;
+            
+            // Try MM/DD/YYYY format first
+            const dateMatchesYYYY = Array.from(permitRow.matchAll(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g));
+            if (dateMatchesYYYY.length > 0) {
+                const dateStr = dateMatchesYYYY[0][0];
+                appliedDate = this.parseDate(dateStr);
+                appliedDateString = dateStr;
+            } else {
+                // Try MM/DD format (year is assumed to be 2025 for permits in monthly PDF)
+                const dateMatchesMMDD = Array.from(permitRow.matchAll(/\b(\d{1,2})\/(\d{1,2})\b/g));
+                if (dateMatchesMMDD.length > 0) {
+                    // Use the first date found (closest to permit number)
+                    const month = parseInt(dateMatchesMMDD[0][1], 10);
+                    const day = parseInt(dateMatchesMMDD[0][2], 10);
+                    // Assume year is 2025 for monthly PDF
+                    const dateStr = `${month}/${day}/2025`;
+                    appliedDate = this.parseDate(dateStr);
+                    appliedDateString = `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`; // Store as MM/DD
+                }
+            }
+            
+            // Extract Valuation (look for $ followed by number with commas and decimals)
+            // Should be in the permit row, typically after the date
+            // Pattern: $1,234.56 or $1234.56
+            // Find all valuations in the permit row and use the first one
+            const valuationMatches = Array.from(permitRow.matchAll(/\$\s*([\d,]+\.?\d*)/g));
+            let value: number | undefined;
+            
+            if (valuationMatches.length > 0) {
+                // Use the first valuation found (closest to permit number in the row)
+                const valuationStr = valuationMatches[0][1];
+                const cleaned = valuationStr.replace(/,/g, '');
+                const parsed = parseFloat(cleaned);
+                if (!isNaN(parsed) && parsed > 0) {
+                    value = parsed;
+                }
+            }
+            
+            // Extract Contractor Name
+            // Look for "Contractor Name" label or contractor name in the context
+            // Contractor name typically appears after applicant information
+            // Pattern often looks like: "00 Company Name / /" or "Company Name / Phone"
+            let contractorName: string | undefined;
+            
+            // Try to find "Contractor Name" label first
+            const contractorLabelMatch = context.match(/Contractor\s+Name[:\s]*([^\n/]+?)(?:\s*\/|$|\n)/i);
+            if (contractorLabelMatch) {
+                contractorName = contractorLabelMatch[1].trim();
+            } else {
+                // Look for patterns like "00 Company Name / /" which often indicates contractor
+                // The "00 " prefix seems to be used for contractor names in this PDF
+                const contractorPattern00 = /00\s+([A-Z][A-Za-z0-9\s&.,'-]+?)\s*\/\s*\//i;
+                const contractorMatch00 = context.match(contractorPattern00);
+                if (contractorMatch00) {
+                    contractorName = contractorMatch00[1].trim();
+                } else {
+                    // Try pattern without "00 " - company name followed by " / /" or " / Phone"
+                    const contractorPattern = /([A-Z][A-Za-z0-9\s&.,'-]{5,}(?:\s+(?:Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co))?)\s*\/\s*(?:\/|\d)/i;
+                    const contractorMatch = context.match(contractorPattern);
+                    if (contractorMatch) {
+                        const candidate = contractorMatch[1].trim();
+                        // Make sure it's not an address (addresses have street types)
+                        if (!candidate.match(/(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Court|Ct|Way|Circle|Cir|Place|Pl)\b/i)) {
+                            // Make sure it's not just a number or very short
+                            if (!candidate.match(/^\d+$/) && candidate.length >= 5) {
+                                contractorName = candidate;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Additional cleanup
+            if (contractorName) {
+                // Remove leading/trailing slashes, spaces, and "00 " prefix
+                contractorName = contractorName.replace(/^00\s+/, '').replace(/^\/+\s*|\s*\/+$/g, '').trim();
+                // If it's empty or too short, clear it
+                if (contractorName.length < 3 || contractorName.match(/^[\d\s\/-]+$/)) {
+                    contractorName = undefined;
+                }
+            }
+            
+            // Extract Project Address
+            // Address appears after "Project Address:" label (which may appear bold as **Project Address:**)
+            // The address should be in the description section AFTER the permit number, not before it
+            // Look for the "Project Address:" that appears closest to and after the permit number
+            let addressStr = "";
+            
+            // Find the position of the permit number in context
+            const permitNumberPosInContext = context.indexOf(permitNumber);
+            
+            // Look for "Project Address:" that appears AFTER the permit number in the description
+            // The description typically comes after the main permit row data
+            const afterPermitNumber = context.substring(permitNumberPosInContext);
+            
+            // Try to find "Project Address:" in the text after the permit number
+            // Pattern: Project Address: or **Project Address:** followed by address
+            // The address is on the same line or next line after "Project Address:"
+            const projectAddressMatch = afterPermitNumber.match(/(?:\*\*)?Project\s+Address[:\s]+\*\*\s*([^\n]+?)(?:\n|$|Description|\d{4}-)/i);
+            if (projectAddressMatch) {
+                addressStr = projectAddressMatch[1].trim();
+                // Clean up any remaining ** markers or extra spaces
+                addressStr = addressStr.replace(/\*\*/g, '').trim();
+            } else {
+                // Fallback: Look for pattern without bold markers
+                const projectAddressMatch2 = afterPermitNumber.match(/Project\s+Address[:\s]+([^\n]+?)(?:\n|$|Description|\d{4}-)/i);
+                if (projectAddressMatch2) {
+                    addressStr = projectAddressMatch2[1].trim();
+                }
+            }
+            
+            // If still no address found, the address might be in the permit row itself
+            // Look for address pattern in the row data (before description)
+            if (!addressStr) {
+                // Address pattern: number + street name
+                // It should be close to the permit number in the row
+                const rowText = context.substring(Math.max(0, permitNumberPosInContext - 200), permitNumberPosInContext + 400);
+                const addressInRow = rowText.match(/(\d{1,4}\s+\.?\s*[A-Z][A-Z\s]+(?:ST|STREET|AV|AVENUE|RD|ROAD|DR|DRIVE|LN|LANE|BLVD|BOULEVARD|CT|COURT|WAY|CIRCLE|CIR|PL|PLACE|PK|PARK)\s*[A-Z]*)/);
+                if (addressInRow) {
+                    addressStr = addressInRow[1].trim();
+                }
+            }
+            
             const { address, city, zipCode } = this.parseAddress(addressStr);
             
-            // Try to extract permit type (look for keywords)
+            // Extract description (try to find "Description:" field)
+            let description: string | undefined;
+            const descMatch = context.match(/Description:\s*([^\n]+)/i);
+            if (descMatch) {
+                description = descMatch[1].trim();
+            } else {
+                // Fallback: use context but limit length
+                description = context.substring(0, 200).trim();
+            }
+            
+            // Extract permit type from description or type code
+            // Type codes might be like "RF" (Reroofing), "OT" (Other), etc.
+            // Also look for keywords in description
             const permitTypeKeywords = [
                 'Residential', 'Commercial', 'Electrical', 'Plumbing', 'Mechanical',
-                'Building', 'Demolition', 'Addition', 'Remodel', 'Solar', 'Pool'
+                'Building', 'Demolition', 'Addition', 'Remodel', 'Solar', 'Pool',
+                'Reroofing', 'Roofing', 'Roof', 'Window', 'Door', 'Fence'
             ];
             let permitType: string | undefined;
-            for (const keyword of permitTypeKeywords) {
-                if (context.toLowerCase().includes(keyword.toLowerCase())) {
-                    permitType = keyword;
-                    break;
+            
+            // First check for explicit type codes (RF, OT, etc.)
+            const typeCodeMatch = context.match(/\b([A-Z]{2})\s+\d{4}-/);
+            if (typeCodeMatch) {
+                const code = typeCodeMatch[1];
+                // Map codes to types (we can expand this)
+                const codeMap: Record<string, string> = {
+                    'RF': 'ROOFING',
+                    'OT': 'OTHER',
+                    'BL': 'BUILDING',
+                    'EL': 'ELECTRICAL',
+                    'PL': 'PLUMBING',
+                    'ME': 'MECHANICAL',
+                };
+                permitType = codeMap[code];
+            }
+            
+            // If no code match, look for keywords
+            if (!permitType) {
+                for (const keyword of permitTypeKeywords) {
+                    if (context.toLowerCase().includes(keyword.toLowerCase())) {
+                        permitType = keyword.toUpperCase();
+                        break;
+                    }
                 }
             }
             
             const permit: PermitData = {
                 permitNumber,
                 title: undefined,
-                description: context.substring(0, 200).trim(), // Use context as description for now
+                description,
                 address,
-                city,
+                city: city || this.city,
                 state: this.state,
                 zipCode,
                 permitType: permitType as any,
-                status: "UNKNOWN", // PDF might not have status
+                status: "ISSUED", // All permits in monthly PDF reports are issued permits
+                value,
                 appliedDate,
                 appliedDateString,
                 sourceUrl: this.url,
+                licensedProfessionalText: contractorName, // Store contractor name
             };
             
             if (this.validatePermitData(permit)) {
