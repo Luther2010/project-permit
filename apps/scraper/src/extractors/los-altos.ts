@@ -23,7 +23,7 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
         "X25",
     ];
 
-    protected readonly MAX_RESULTS_PER_BATCH = 100; // Conservative estimate
+    protected readonly MAX_RESULTS_PER_BATCH = 10; // 5 pages × 10 results per page = 50 max, but we use 4-digit suffixes to get 10 per batch
 
     /**
      * Normalize status using eTRAKiT status normalizer
@@ -48,14 +48,16 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
             for (const prefix of this.PERMIT_PREFIXES) {
                 console.log(`[LosAltosExtractor] Searching for prefix: ${prefix}`);
 
-                // Search in batches: prefix-00, prefix-01, etc. (each batch covers 00001-00999)
+                // Search in batches: prefix-0000, prefix-0001, prefix-0002, etc.
+                // Los Altos only returns 5 pages × 10 per page = 50 results max
+                // So we need 4-digit suffixes to cover smaller ranges: -0000 covers 00001-00010, -0001 covers 00011-00020, etc.
                 let batchNumber = 0;
                 let hasMoreBatches = true;
 
                 while (hasMoreBatches) {
-                    // Format batch search string: prefix-00, prefix-01, etc.
-                    // This will match permits like prefix-00001, prefix-00002, ..., prefix-00999
-                    const batchSuffix = String(batchNumber).padStart(2, "0");
+                    // Format batch search string: prefix-0000, prefix-0001, etc.
+                    // This will match permits like prefix-00001, prefix-00002, ..., prefix-00010 (for -0000)
+                    const batchSuffix = String(batchNumber).padStart(4, "0");
                     const searchValue = `${prefix}-${batchSuffix}`;
 
                     console.log(`[LosAltosExtractor] Searching batch: ${searchValue}`);
@@ -95,13 +97,16 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
                         break;
                     }
 
-                    // If we got exactly MAX_RESULTS_PER_BATCH results, there might be more
-                    // Otherwise, move to next prefix
-                    if (batchPermits.length < this.MAX_RESULTS_PER_BATCH) {
+                    // With 4-digit suffixes, each batch covers ~10 permits (e.g., -0000 covers 00001-00010)
+                    // Continue to next batch if we got any results
+                    // Stop if we get 0 results (no more permits for this prefix)
+                    if (resultCount > 0) {
+                        batchNumber++;
+                        console.log(`[LosAltosExtractor] Got ${resultCount} results, checking next batch...`);
+                    } else {
+                        // Got no results, we've covered all permits for this prefix
                         hasMoreBatches = false;
                     }
-
-                    batchNumber++;
                 }
 
                 // Check limit after each prefix

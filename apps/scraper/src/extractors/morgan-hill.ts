@@ -24,7 +24,7 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
         "SPEC2025",
     ];
 
-    protected readonly MAX_RESULTS_PER_BATCH = 100; // 20 pages × 5 results per page
+    protected readonly MAX_RESULTS_PER_BATCH = 10; // 5 pages × 10 results per page = 50 max, but we use 3-digit suffixes to get 10 per batch
 
     /**
      * Normalize status using eTRAKiT status normalizer
@@ -49,13 +49,15 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
             for (const prefix of this.PERMIT_PREFIXES) {
                 console.log(`[MorganHillExtractor] Searching for prefix: ${prefix}`);
 
-                // Search in batches: prefix-00, prefix-01, prefix-02, etc.
+                // Search in batches: prefix-000, prefix-001, prefix-002, etc.
+                // Morgan Hill only returns 5 pages × 10 per page = 50 results max
+                // So we need 3-digit suffixes to cover smaller ranges: -000 covers 0001-0010, -001 covers 0011-0020, etc.
                 let batchNumber = 0;
                 let hasMoreBatches = true;
 
                 while (hasMoreBatches) {
-                    // Format batch search string: prefix-00, prefix-01, etc.
-                    const batchSuffix = String(batchNumber).padStart(2, "0");
+                    // Format batch search string: prefix-000, prefix-001, etc.
+                    const batchSuffix = String(batchNumber).padStart(3, "0");
                     const searchValue = `${prefix}-${batchSuffix}`;
 
                     console.log(`[MorganHillExtractor] Searching batch: ${searchValue}`);
@@ -97,13 +99,14 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
                         break;
                     }
 
-                    // If we got exactly MAX_RESULTS_PER_BATCH results, there might be more
-                    // Continue to next batch (prefix-01, prefix-02, etc.)
-                    if (resultCount >= this.MAX_RESULTS_PER_BATCH) {
+                    // With 3-digit suffixes, each batch covers ~10 permits (e.g., -000 covers 0001-0010)
+                    // Continue to next batch if we got any results
+                    // Stop if we get 0 results (no more permits for this prefix)
+                    if (resultCount > 0) {
                         batchNumber++;
-                        console.log(`[MorganHillExtractor] Got ${resultCount} results (max), checking next batch...`);
+                        console.log(`[MorganHillExtractor] Got ${resultCount} results, checking next batch...`);
                     } else {
-                        // Got fewer than max results, we've covered all permits for this prefix
+                        // Got no results, we've covered all permits for this prefix
                         hasMoreBatches = false;
                     }
                 }
