@@ -53,6 +53,7 @@ function mapCity(cityName?: string): City | undefined {
         "CAMPBELL": City.CAMPBELL,
         "MOUNTAIN VIEW": City.MOUNTAIN_VIEW,
         "GILROY": City.GILROY,
+        "MILPITAS": City.MILPITAS,
     };
     
     // Also try with underscores (in case it's already normalized)
@@ -291,6 +292,9 @@ export async function scrapeCity(
             const month = scrapeDate.toLocaleString('default', { month: 'long' });
             const year = scrapeDate.getFullYear();
             dateMessage = ` for ${month} ${year}`;
+        } else if (config.scraperType === ScraperType.ID_BASED) {
+            // ID_BASED scrapers don't use date - ignore it
+            console.log(`ℹ️  Note: ${cityName} uses ID-based scraping (date parameter ignored)`);
         } else {
             dateMessage = ` on ${scrapeDate.toISOString().split("T")[0]}`;
         }

@@ -5,7 +5,7 @@
 export enum ScraperType {
   DAILY = "DAILY", // Can scrape permits by specific date
   MONTHLY = "MONTHLY", // Data only available on a monthly basis
-  // ID_BASED = "ID_BASED", // For future: search by permit ID
+  ID_BASED = "ID_BASED", // Must search by permit ID/number (cannot search by date)
 }
 
 export interface CityConfig {

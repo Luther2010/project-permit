@@ -94,6 +94,14 @@ export const citiesConfig: CityConfig[] = [
         enabled: true,
         scraperType: ScraperType.DAILY,
     },
+    {
+        city: "Milpitas",
+        state: "CA",
+        extractor: "MilpitasExtractor",
+        url: "https://trakit.ci.milpitas.ca.gov/ETRAKIT3/Search/permit.aspx",
+        enabled: true,
+        scraperType: ScraperType.ID_BASED,
+    },
     // Add more cities and their extractors here
     // Example:
     // {

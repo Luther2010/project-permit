@@ -72,6 +72,9 @@ async function main() {
                     const month = scrapeDate.toLocaleString('default', { month: 'long' });
                     const year = scrapeDate.getFullYear();
                     dateMessage = ` for ${month} ${year}`;
+                } else if (config.scraperType === ScraperType.ID_BASED) {
+                    // ID_BASED scrapers don't use date - ignore it
+                    console.log(`ℹ️  Note: ${cityName} uses ID-based scraping (date parameter will be ignored)`);
                 } else {
                     dateMessage = ` on ${scrapeDate.toISOString().split("T")[0]}`;
                 }

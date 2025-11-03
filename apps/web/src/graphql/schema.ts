@@ -58,6 +58,7 @@ export const typeDefs = `
     CAMPBELL
     MOUNTAIN_VIEW
     GILROY
+    MILPITAS
   }
 
   enum SubscriptionPlan {

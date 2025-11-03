@@ -19,7 +19,8 @@ export function normalizeEtrakitStatus(raw?: string): PermitStatus {
         s === "APPLIED" ||
         s === "AWAITING PAYMENT" ||
         s === "AWAITING PA" || // Truncated version
-        s === "PAID ONLINE"
+        s === "PAID ONLINE" ||
+        s === "PLAN CHECK"
     ) {
         return PermitStatus.IN_REVIEW;
     }
@@ -30,7 +31,7 @@ export function normalizeEtrakitStatus(raw?: string): PermitStatus {
     }
 
     if (
-        /UNDER\s*REVIEW|APPLIED|AWAITING|PAID\s*ONLINE|PENDING|SUBMITTED/i.test(raw)
+        /UNDER\s*REVIEW|APPLIED|AWAITING|PAID\s*ONLINE|PENDING|SUBMITTED|PLAN\s*CHECK/i.test(raw)
     ) {
         return PermitStatus.IN_REVIEW;
     }
