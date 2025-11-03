@@ -7,22 +7,34 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
         return "MorganHillExtractor";
     }
 
-    protected readonly PERMIT_PREFIXES = [
-        "BCOM2025",
-        "BRES2025",
-        "ELEC2025",
-        "ENC2025",
-        "FIRE2025",
-        "GRD2025",
-        "IR2025",
-        "MECH2025",
-        "MST2025",
-        "OCC2025",
-        "OSOW2025",
-        "PLMG2025",
-        "SOLR2025",
-        "SPEC2025",
+    /**
+     * Base permit prefixes without year suffix
+     */
+    protected readonly BASE_PREFIXES = [
+        "BCOM",
+        "BRES",
+        "ELEC",
+        "ENC",
+        "FIRE",
+        "GRD",
+        "IR",
+        "MECH",
+        "MST",
+        "OCC",
+        "OSOW",
+        "PLMG",
+        "SOLR",
+        "SPEC",
     ];
+
+    /**
+     * Get permit prefixes with dynamic year suffix (4-digit)
+     * Uses scrapeDate if provided, otherwise current year
+     */
+    protected getPermitPrefixes(scrapeDate?: Date): string[] {
+        const year = scrapeDate ? scrapeDate.getFullYear() : new Date().getFullYear();
+        return this.BASE_PREFIXES.map(prefix => `${prefix}${year}`);
+    }
 
     protected readonly MAX_RESULTS_PER_BATCH = 10; // 5 pages × 10 results per page = 50 max, but we use 3-digit suffixes to get 10 per batch
 
@@ -45,8 +57,11 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
 
             const allPermits: PermitData[] = [];
 
+            // Get permit prefixes with dynamic year
+            const permitPrefixes = this.getPermitPrefixes(scrapeDate);
+
             // Search for each prefix
-            for (const prefix of this.PERMIT_PREFIXES) {
+            for (const prefix of permitPrefixes) {
                 console.log(`[MorganHillExtractor] Searching for prefix: ${prefix}`);
 
                 // Search in batches: prefix-000, prefix-001, prefix-002, etc.

@@ -7,21 +7,34 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
         return "LosAltosExtractor";
     }
 
-    protected readonly PERMIT_PREFIXES = [
-        "ADR25",
-        "BLD25",
-        "E25",
-        "LC25",
-        "ONBLD25",
-        "PAADU25",
-        "PRADU25",
-        "PS25",
-        "SE25",
-        "SOLAR25",
-        "SWO25",
-        "TP25",
-        "X25",
+    /**
+     * Base permit prefixes without year suffix
+     */
+    protected readonly BASE_PREFIXES = [
+        "ADR",
+        "BLD",
+        "E",
+        "LC",
+        "ONBLD",
+        "PAADU",
+        "PRADU",
+        "PS",
+        "SE",
+        "SOLAR",
+        "SWO",
+        "TP",
+        "X",
     ];
+
+    /**
+     * Get permit prefixes with dynamic year suffix (2-digit)
+     * Uses scrapeDate if provided, otherwise current year
+     */
+    protected getPermitPrefixes(scrapeDate?: Date): string[] {
+        const year = scrapeDate ? scrapeDate.getFullYear() : new Date().getFullYear();
+        const yearSuffix = String(year).slice(-2); // Last 2 digits (e.g., "25" for 2025)
+        return this.BASE_PREFIXES.map(prefix => `${prefix}${yearSuffix}`);
+    }
 
     protected readonly MAX_RESULTS_PER_BATCH = 10; // 5 pages × 10 results per page = 50 max, but we use 4-digit suffixes to get 10 per batch
 
@@ -44,8 +57,11 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
 
             const allPermits: PermitData[] = [];
 
+            // Get permit prefixes with dynamic year
+            const permitPrefixes = this.getPermitPrefixes(scrapeDate);
+
             // Search for each prefix
-            for (const prefix of this.PERMIT_PREFIXES) {
+            for (const prefix of permitPrefixes) {
                 console.log(`[LosAltosExtractor] Searching for prefix: ${prefix}`);
 
                 // Search in batches: prefix-0000, prefix-0001, prefix-0002, etc.

@@ -17,44 +17,54 @@ export class MilpitasExtractor extends EtrakitIdBasedExtractor {
         return normalizeEtrakitStatus(rawStatus);
     }
     /**
-     * List of permit number prefixes to search for 2025 permits
-     * Examples: "25", "B-AC25", etc.
+     * Base permit prefixes without year suffix
+     * Examples: "B-AC", "B-AM", etc.
      * Format: permit numbers are like "prefix-0001", "prefix-0002", etc.
      */
-    private readonly PERMIT_PREFIXES = [
-        "B-AC25",
-        "B-AM25",
-        "B-BP25",
-        "B-DF25",
-        "B-DM25",
-        "B-EL25",
-        "B-ES25",
-        "B-EV25",
-        "B-FO25",
-        "B-GR25",
-        "B-IR25",
-        "B-ME25",
-        "B-MH25",
-        "B-MU25",
-        "B-OC25",
-        "B-OT25",
-        "B-PA25",
-        "B-PL25",
-        "B-PS25",
-        "B-RR25",
-        "B-RV25",
-        "B-RW25",
-        "B-SG25",
-        "B-SI25",
-        "B-SO25",
-        "B-SW25",
-        "B-TP25",
-        "B-TS25",
-        "B-UH25",
-        "B-WP25",
-        "E-EN25",
+    private readonly BASE_PREFIXES = [
+        "B-AC",
+        "B-AM",
+        "B-BP",
+        "B-DF",
+        "B-DM",
+        "B-EL",
+        "B-ES",
+        "B-EV",
+        "B-FO",
+        "B-GR",
+        "B-IR",
+        "B-ME",
+        "B-MH",
+        "B-MU",
+        "B-OC",
+        "B-OT",
+        "B-PA",
+        "B-PL",
+        "B-PS",
+        "B-RR",
+        "B-RV",
+        "B-RW",
+        "B-SG",
+        "B-SI",
+        "B-SO",
+        "B-SW",
+        "B-TP",
+        "B-TS",
+        "B-UH",
+        "B-WP",
+        "E-EN",
         // Add more prefixes as needed
     ];
+
+    /**
+     * Get permit prefixes with dynamic year suffix (2-digit)
+     * Uses scrapeDate if provided, otherwise current year
+     */
+    private getPermitPrefixes(scrapeDate?: Date): string[] {
+        const year = scrapeDate ? scrapeDate.getFullYear() : new Date().getFullYear();
+        const yearSuffix = String(year).slice(-2); // Last 2 digits (e.g., "25" for 2025)
+        return this.BASE_PREFIXES.map(prefix => `${prefix}${yearSuffix}`);
+    }
 
     /**
      * Maximum number of results per search batch (20 pages × 5 entries/page = 100)
@@ -73,8 +83,11 @@ export class MilpitasExtractor extends EtrakitIdBasedExtractor {
 
             const allPermits: PermitData[] = [];
 
+            // Get permit prefixes with dynamic year
+            const permitPrefixes = this.getPermitPrefixes(scrapeDate);
+
             // Search for each prefix
-            for (const prefix of this.PERMIT_PREFIXES) {
+            for (const prefix of permitPrefixes) {
                 console.log(`[MilpitasExtractor] Searching for prefix: ${prefix}`);
 
                 // Search in batches: prefix-00, prefix-01, prefix-02, etc.
