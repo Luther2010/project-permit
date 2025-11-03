@@ -25,6 +25,8 @@
 - [ ] **TODO #3**: Implement freemium vs premium logic - limit search results for freemium users (partial entries only)
 - [ ] **TODO #4**: Build premium natural language search feature - integrate AI/LLM for advanced query processing
 - [ ] **TODO #7**: Implement 7-day trial for new users - add trial logic to subscription model and UI
+- [ ] Handle Morgan Hill pagination: pageSize is 10 and it only allows 5 pages maximum (need to handle this limitation properly)
+- [ ] Integrate Email sending functionality
 
 ### Data Enhancement
 - [ ] (Enhancement) Improve contractor linking: parse `licensedProfessionalText` to deterministically match `licenseNo`/name and create `PermitContractor` rows

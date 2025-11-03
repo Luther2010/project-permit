@@ -146,6 +146,7 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
     /**
      * Extract data from the Permit Info tab
      * Morgan Hill-specific: extract "Work Description" as description, leave title blank
+     * Note: Morgan Hill uses ctl07 instead of ctl02 for Permit Info tab
      */
     protected async extractPermitInfoTab(): Promise<Partial<PermitData>> {
         // Use Puppeteer's native methods instead of page.evaluate to avoid triggering page JavaScript
@@ -165,14 +166,15 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
         const data: any = {};
         
         // Work Description -> description (no title)
-        data.description = await getSpanText('cplMain_ctl02_lblWorkDesc');
+        // Morgan Hill uses cplMain_ctl07_lblPermitDesc (not cplMain_ctl02_lblWorkDesc)
+        data.description = await getSpanText('cplMain_ctl07_lblPermitDesc');
         // Status -> status
-        data.status = await getSpanText('cplMain_ctl02_lblPermitStatus');
-        data.appliedDate = await getSpanText('cplMain_ctl02_lblPermitAppliedDate');
-        data.approvedDate = await getSpanText('cplMain_ctl02_lblPermitApprovedDate');
-        data.issuedDate = await getSpanText('cplMain_ctl02_lblPermitIssuedDate');
-        data.finaledDate = await getSpanText('cplMain_ctl02_lblPermitFinaledDate');
-        data.expirationDate = await getSpanText('cplMain_ctl02_lblPermitExpirationDate');
+        data.status = await getSpanText('cplMain_ctl07_lblPermitStatus');
+        data.appliedDate = await getSpanText('cplMain_ctl07_lblPermitAppliedDate');
+        data.approvedDate = await getSpanText('cplMain_ctl07_lblPermitApprovedDate');
+        data.issuedDate = await getSpanText('cplMain_ctl07_lblPermitIssuedDate');
+        data.finaledDate = await getSpanText('cplMain_ctl07_lblPermitFinaledDate');
+        data.expirationDate = await getSpanText('cplMain_ctl07_lblPermitExpirationDate');
 
         // Normalize status
         if (data.status) {
@@ -194,8 +196,9 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
         }
 
         // Verify we're on the detail page by checking for expected elements
+        // Morgan Hill uses ctl07 for Permit Info tab
         try {
-            await this.page!.waitForSelector('#cplMain_ctl02_lblPermitType, #cplMain_ctl02_lblPermitStatus', { timeout: 5000 });
+            await this.page!.waitForSelector('#cplMain_ctl07_lblPermitType, #cplMain_ctl07_lblPermitStatus', { timeout: 5000 });
         } catch (e) {
             console.warn(`[${this.getName()}] Detail page may not have loaded for ${permitNumber}`);
         }
@@ -271,8 +274,122 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
     }
 
     /**
+     * Override navigatePagesAndExtract to handle Morgan Hill's pagination structure
+     * Morgan Hill uses input buttons with class "PagerButton NextPage" and onclick="changePage('next'); return false;"
+     */
+    protected async navigatePagesAndExtract(limit?: number): Promise<PermitData[]> {
+        const allPermits: PermitData[] = [];
+        let pageNum = 1;
+        const maxPages = 50; // Safety limit
+
+        while (pageNum <= maxPages) {
+            console.log(`[${this.getName()}] Processing page ${pageNum}...`);
+
+            // Get all permit rows on current page
+            const rows = await this.getPermitRows();
+            
+            if (rows.length === 0) {
+                console.log(`[${this.getName()}] No more rows found on page ${pageNum}`);
+                break;
+            }
+
+            // Process each permit on this page
+            for (const row of rows) {
+                if (limit && allPermits.length >= limit) {
+                    console.log(`[${this.getName()}] Reached limit of ${limit} permits`);
+                    return allPermits;
+                }
+
+                if (!row.permitNumber) {
+                    continue;
+                }
+
+                console.log(`[${this.getName()}] Extracting permit: ${row.permitNumber}`);
+
+                // Extract permit detail
+                try {
+                    const permitData = await this.extractPermitDetail(row.permitNumber);
+                    if (permitData) {
+                        allPermits.push(permitData);
+                        console.log(`[${this.getName()}] Extracted permit ${row.permitNumber}`);
+                    }
+                } catch (e: any) {
+                    console.warn(`[${this.getName()}] Error extracting permit ${row.permitNumber}: ${e?.message || e}`);
+                }
+
+                // Navigate back to search results
+                await this.navigateBackToResults();
+            }
+
+            // Check if there's a next page
+            // Morgan Hill uses input buttons with class "PagerButton NextPage" and ID pattern btnPageNext
+            const hasNextPage = await this.page!.evaluate(() => {
+                // Look for NextPage button by class or ID pattern
+                const nextBtn = (globalThis as any).document.querySelector('input.PagerButton.NextPage, input[id*="btnPageNext"]') as any;
+                if (nextBtn) {
+                    return !nextBtn.disabled && !nextBtn.classList.contains('aspNetDisabled');
+                }
+                
+                // Fallback: look for buttons with onclick containing "changePage"
+                const allInputs = Array.from((globalThis as any).document.querySelectorAll('input[onclick*="changePage"]')) as any[];
+                for (const input of allInputs) {
+                    if (input.classList.contains('NextPage') && !input.disabled && !input.classList.contains('aspNetDisabled')) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            });
+
+            if (!hasNextPage) {
+                console.log(`[${this.getName()}] No more pages`);
+                break;
+            }
+
+            // Click next page button using Puppeteer's native click
+            const clicked = await this.page!.evaluate(() => {
+                // Try to find and click the NextPage button
+                const nextBtn = (globalThis as any).document.querySelector('input.PagerButton.NextPage:not(.aspNetDisabled), input[id*="btnPageNext"]:not(.aspNetDisabled)') as any;
+                if (nextBtn && !nextBtn.disabled) {
+                    nextBtn.click();
+                    return true;
+                }
+                return false;
+            });
+
+            if (!clicked) {
+                // Fallback: try using Puppeteer's native click
+                try {
+                    const nextButton = await this.page!.$('input.PagerButton.NextPage:not(.aspNetDisabled), input[id*="btnPageNext"]:not(.aspNetDisabled)');
+                    if (nextButton) {
+                        await nextButton.click();
+                    } else {
+                        console.log(`[${this.getName()}] Could not find next page button`);
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`[${this.getName()}] Error clicking next page: ${e}`);
+                    break;
+                }
+            }
+
+            // Wait for page to load
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+            try {
+                await this.page!.waitForSelector('tr.rgRow, tr.rgAltRow', { timeout: 10000 });
+            } catch (e) {
+                console.warn(`[${this.getName()}] Timeout waiting for next page results`);
+            }
+
+            pageNum++;
+        }
+
+        return allPermits;
+    }
+
+    /**
      * Override extractSiteInfoTab to use Morgan Hill-specific element IDs
-     * (Should be similar to Milpitas structure)
+     * Note: Morgan Hill uses ctl08 instead of ctl03 for Site Info tab
      */
     protected async extractSiteInfoTab(): Promise<Partial<PermitData>> {
         const getElementText = async (id: string): Promise<string | null> => {
@@ -288,10 +405,10 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
             return null;
         };
 
-        // Get address from the link (cplMain_ctl03_hlSiteAddress)
+        // Get address from the link (cplMain_ctl08_hlSiteAddress)
         let address: string | undefined;
         try {
-            const addressElement = await this.page!.$('#cplMain_ctl03_hlSiteAddress');
+            const addressElement = await this.page!.$('#cplMain_ctl08_hlSiteAddress');
             if (addressElement) {
                 const addressText = await this.page!.evaluate((el: any) => {
                     // Get text content, but exclude img elements
@@ -306,11 +423,11 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
             // Ignore errors
         }
 
-        // Get zip code from City/State/Zip field (cplMain_ctl03_lblSiteCityStateZip)
+        // Get zip code from City/State/Zip field (cplMain_ctl08_lblSiteCityStateZip)
         // Format: "MORGAN HILL, CA, 95037"
         let zipCode: string | undefined;
         try {
-            const cityStateZipText = await getElementText('cplMain_ctl03_lblSiteCityStateZip');
+            const cityStateZipText = await getElementText('cplMain_ctl08_lblSiteCityStateZip');
             if (cityStateZipText) {
                 // Extract 5-digit zip code
                 const zipMatch = cityStateZipText.match(/\b(\d{5})\b/);
@@ -322,9 +439,22 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
             // Ignore errors
         }
 
+        // Get Property Type (cplMain_ctl08_lblPropertyType)
+        let propertyType: string | undefined;
+        try {
+            const propertyTypeText = await getElementText('cplMain_ctl08_lblPropertyType');
+            if (propertyTypeText) {
+                // Normalize property type (e.g., "ADDRESS" might need mapping)
+                propertyType = propertyTypeText.toUpperCase();
+            }
+        } catch (e) {
+            // Ignore errors
+        }
+
         return {
             address: address || undefined,
             zipCode: zipCode || undefined,
+            // Property type will be handled separately if needed
         };
     }
 }
