@@ -52,6 +52,14 @@
 - [ ] **TODO #4**: Build premium natural language search feature - integrate AI/LLM for advanced query processing
 - [ ] **TODO #7**: Implement 7-day trial for new users - add trial logic to subscription model and UI
 - [ ] Handle Morgan Hill pagination: pageSize is 10 and it only allows 5 pages maximum (need to handle this limitation properly)
+- [ ] **City Update Cadence Display**: Inform users about mapping from city to update cadence (DAILY or MONTHLY)
+  - Create city-to-cadence mapping system
+  - Display update frequency information in UI
+  - Potentially add visual map showing cities with their update cadence
+- [ ] **City Reporting Pages**: Create reporting/dashboard page per city
+  - Display city-specific permit statistics and analytics
+  - Show permit trends, counts by type, status breakdowns
+  - Enable city-level insights and data visualization
 
 ### UI/UX Enhancements
 - [ ] Learn more / Upgrade flow CTA for freemium banner
