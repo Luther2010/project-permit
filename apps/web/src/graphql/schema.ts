@@ -59,6 +59,7 @@ export const typeDefs = `
     MOUNTAIN_VIEW
     GILROY
     MILPITAS
+    MORGAN_HILL
   }
 
   enum SubscriptionPlan {

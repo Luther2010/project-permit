@@ -102,6 +102,14 @@ export const citiesConfig: CityConfig[] = [
         enabled: true,
         scraperType: ScraperType.ID_BASED,
     },
+    {
+        city: "Morgan Hill",
+        state: "CA",
+        extractor: "MorganHillExtractor",
+        url: "https://morg-trk.aspgov.com/etrakit/Search/permit.aspx",
+        enabled: true,
+        scraperType: ScraperType.ID_BASED,
+    },
     // Add more cities and their extractors here
     // Example:
     // {

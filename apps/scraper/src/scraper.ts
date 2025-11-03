@@ -54,6 +54,7 @@ function mapCity(cityName?: string): City | undefined {
         "MOUNTAIN VIEW": City.MOUNTAIN_VIEW,
         "GILROY": City.GILROY,
         "MILPITAS": City.MILPITAS,
+        "MORGAN HILL": City.MORGAN_HILL,
     };
     
     // Also try with underscores (in case it's already normalized)

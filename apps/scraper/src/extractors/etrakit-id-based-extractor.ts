@@ -130,7 +130,14 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
                 throw new Error(`Could not set SearchBy dropdown to "${searchByValue}"`);
             }
             // Wait for postback to complete after changing SearchBy
-            await new Promise((resolve) => setTimeout(resolve, 3000));
+            // Wait longer to ensure page reloads completely
+            await new Promise((resolve) => setTimeout(resolve, 4000));
+            // Wait for search button to appear after postback
+            try {
+                await this.page!.waitForSelector('#cplMain_btnSearch, #ctl00_cplMain_btnSearch', { timeout: 10000 });
+            } catch (e) {
+                console.warn(`[${this.getName()}] Search button not found after postback, continuing...`);
+            }
         } else {
             console.log(`[${this.getName()}] SearchBy already set to ${searchByValue} (skipping)`);
         }
@@ -173,10 +180,15 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
     protected async executeSearch(searchButtonSelector: string): Promise<void> {
         console.log(`[${this.getName()}] Filters set, clicking search...`);
 
-        // Click search button
-        const searchButton = await this.page!.$ (searchButtonSelector);
+        // Click search button - handle multiple selectors separated by comma
+        const selectors = searchButtonSelector.split(',').map(s => s.trim());
+        let searchButton = null;
+        for (const selector of selectors) {
+            searchButton = await this.page!.$ (selector);
+            if (searchButton) break;
+        }
         if (!searchButton) {
-            throw new Error(`Could not find search button with selector '${searchButtonSelector}'`);
+            throw new Error(`Could not find search button with selectors '${searchButtonSelector}'`);
         }
 
         await searchButton.click();
