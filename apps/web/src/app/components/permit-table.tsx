@@ -4,6 +4,8 @@ import { useState } from "react";
 import * as React from "react";
 import type { Permit } from "@/types/permit";
 import { PermitDetailView } from "./permit-detail-view";
+import { getCityDisplayName } from "@/lib/cities";
+import type { City } from "@prisma/client";
 
 interface PermitRowProps {
     permit: Permit;
@@ -11,7 +13,7 @@ interface PermitRowProps {
     onToggle: () => void;
 }
 
-// Formatting utilities (reused from permit-card)
+// Formatting utilities
 const formatCurrency = (amount: number | null) => {
     if (!amount) return "N/A";
     return new Intl.NumberFormat("en-US", {
@@ -100,7 +102,7 @@ function PermitRow({
                     {formatPropertyType(permit.propertyType)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
-                    {permit.city || "-"}
+                    {permit.city ? getCityDisplayName(permit.city as City) : "-"}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
                     {formatCurrency(permit.value)}
