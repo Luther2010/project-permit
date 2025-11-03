@@ -110,6 +110,14 @@ export const citiesConfig: CityConfig[] = [
         enabled: true,
         scraperType: ScraperType.ID_BASED,
     },
+    {
+        city: "Los Altos",
+        state: "CA",
+        extractor: "LosAltosExtractor",
+        url: "https://trakit.losaltosca.gov/etrakit/Search/Permit.aspx",
+        enabled: true,
+        scraperType: ScraperType.ID_BASED,
+    },
     // Add more cities and their extractors here
     // Example:
     // {

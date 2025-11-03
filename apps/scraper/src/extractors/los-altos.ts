@@ -2,29 +2,28 @@ import { EtrakitIdBasedExtractor } from "./etrakit-id-based-extractor";
 import { PermitData, ScrapeResult } from "../types";
 import { normalizeEtrakitStatus } from "../utils/etrakit-status";
 
-export class MorganHillExtractor extends EtrakitIdBasedExtractor {
+export class LosAltosExtractor extends EtrakitIdBasedExtractor {
     getName(): string {
-        return "MorganHillExtractor";
+        return "LosAltosExtractor";
     }
 
     protected readonly PERMIT_PREFIXES = [
-        "BCOM2025",
-        "BRES2025",
-        "ELEC2025",
-        "ENC2025",
-        "FIRE2025",
-        "GRD2025",
-        "IR2025",
-        "MECH2025",
-        "MST2025",
-        "OCC2025",
-        "OSOW2025",
-        "PLMG2025",
-        "SOLR2025",
-        "SPEC2025",
+        "ADR25",
+        "BLD25",
+        "E25",
+        "LC25",
+        "ONBLD25",
+        "PAADU25",
+        "PRADU25",
+        "PS25",
+        "SE25",
+        "SOLAR25",
+        "SWO25",
+        "TP25",
+        "X25",
     ];
 
-    protected readonly MAX_RESULTS_PER_BATCH = 100; // 20 pages × 5 results per page
+    protected readonly MAX_RESULTS_PER_BATCH = 100; // Conservative estimate
 
     /**
      * Normalize status using eTRAKiT status normalizer
@@ -35,7 +34,7 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
 
     async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
         try {
-            console.log(`[MorganHillExtractor] Starting scrape for ${this.city}`);
+            console.log(`[LosAltosExtractor] Starting scrape for ${this.city}`);
 
             // Initialize browser
             await this.initializeBrowser();
@@ -47,37 +46,36 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
 
             // Search for each prefix
             for (const prefix of this.PERMIT_PREFIXES) {
-                console.log(`[MorganHillExtractor] Searching for prefix: ${prefix}`);
+                console.log(`[LosAltosExtractor] Searching for prefix: ${prefix}`);
 
-                // Search in batches: prefix-00, prefix-01, prefix-02, etc.
+                // Search in batches: prefix-00, prefix-01, etc. (each batch covers 00001-00999)
                 let batchNumber = 0;
                 let hasMoreBatches = true;
 
                 while (hasMoreBatches) {
                     // Format batch search string: prefix-00, prefix-01, etc.
+                    // This will match permits like prefix-00001, prefix-00002, ..., prefix-00999
                     const batchSuffix = String(batchNumber).padStart(2, "0");
                     const searchValue = `${prefix}-${batchSuffix}`;
 
-                    console.log(`[MorganHillExtractor] Searching batch: ${searchValue}`);
+                    console.log(`[LosAltosExtractor] Searching batch: ${searchValue}`);
 
                     // Set up search filters
-                    // Note: Dropdown option text is "Permit#" and value is "Permit_Main.PERMIT_NO"
-                    // It's already selected by default, so setDropdownValue should handle it
                     await this.setSearchFilters(
                         '#cplMain_ddSearchBy',        // Search By selector
-                        'Permit#',                    // Search By value (matches option text)
-                        '#cplMain_ddSearchOper',      // Search Operator selector
+                        'Permit_Main.PERMIT_NO',     // Search By value (option value)
+                        '#cplMain_ddSearchOper',     // Search Operator selector
                         'BEGINS WITH',                // Search Operator value
-                        '#cplMain_txtSearchString',   // Search Value selector
-                        searchValue                   // Search Value (e.g., "BCOM2025-00")
+                        '#cplMain_txtSearchString',  // Search Value selector
+                        searchValue                   // Search Value (e.g., "BLD25-00001")
                     );
 
-                    // Execute search - Morgan Hill uses #ctl00_cplMain_btnSearch
-                    await this.executeSearch('#ctl00_cplMain_btnSearch');
+                    // Execute search - try both possible selectors
+                    await this.executeSearch('#ctl00_cplMain_btnSearch, #cplMain_btnSearch');
 
                     // Check how many results we got
                     const resultCount = await this.getResultCount();
-                    console.log(`[MorganHillExtractor] Found ${resultCount} results for ${searchValue}`);
+                    console.log(`[LosAltosExtractor] Found ${resultCount} results for ${searchValue}`);
 
                     // If no results, move to next prefix
                     if (resultCount === 0) {
@@ -91,47 +89,37 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
 
                     // Check if we hit the limit
                     if (limit && allPermits.length >= limit) {
-                        console.log(`[MorganHillExtractor] Reached limit of ${limit} permits`);
+                        console.log(`[LosAltosExtractor] Reached limit of ${limit} permits`);
                         allPermits.splice(limit);
                         hasMoreBatches = false;
                         break;
                     }
 
                     // If we got exactly MAX_RESULTS_PER_BATCH results, there might be more
-                    // Continue to next batch (prefix-01, prefix-02, etc.)
-                    if (resultCount >= this.MAX_RESULTS_PER_BATCH) {
-                        batchNumber++;
-                        console.log(`[MorganHillExtractor] Got ${resultCount} results (max), checking next batch...`);
-                    } else {
-                        // Got fewer than max results, we've covered all permits for this prefix
+                    // Otherwise, move to next prefix
+                    if (batchPermits.length < this.MAX_RESULTS_PER_BATCH) {
                         hasMoreBatches = false;
                     }
+
+                    batchNumber++;
                 }
 
-                // Check if we hit the limit after processing all batches for this prefix
-                // If so, break out of the prefix loop
+                // Check limit after each prefix
                 if (limit && allPermits.length >= limit) {
                     break;
                 }
             }
 
-            // Apply limit if specified
-            const permits = limit && limit > 0
-                ? allPermits.slice(0, limit)
-                : allPermits;
+            console.log(`[LosAltosExtractor] Scraped ${allPermits.length} permits total`);
 
-            if (limit && limit > 0) {
-                console.log(`[MorganHillExtractor] Limited to ${permits.length} permits (from ${allPermits.length})`);
-            }
-
-            console.log(`[MorganHillExtractor] Extracted ${permits.length} permits total`);
             return {
-                permits,
+                permits: allPermits,
                 success: true,
+                error: undefined,
                 scrapedAt: new Date(),
             };
         } catch (error: any) {
-            console.error(`[MorganHillExtractor] Error during scrape:`, error);
+            console.error(`[LosAltosExtractor] Error during scrape: ${error?.message || error}`);
             return {
                 permits: [],
                 success: false,
@@ -144,12 +132,10 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
     }
 
     /**
-     * Extract data from the Permit Info tab
-     * Morgan Hill-specific: extract "Work Description" as description, leave title blank
-     * Note: Morgan Hill uses ctl07 instead of ctl02 for Permit Info tab
+     * Override extractPermitInfoTab for Los Altos
+     * Los Altos uses cplMain_ctl07_* element IDs (same as Morgan Hill)
      */
     protected async extractPermitInfoTab(): Promise<Partial<PermitData>> {
-        // Use Puppeteer's native methods instead of page.evaluate to avoid triggering page JavaScript
         const getSpanText = async (id: string): Promise<string | null> => {
             try {
                 const element = await this.page!.$(`#${id}`);
@@ -165,10 +151,18 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
 
         const data: any = {};
         
-        // Work Description -> description (no title)
-        // Morgan Hill uses cplMain_ctl07_lblPermitDesc (not cplMain_ctl02_lblWorkDesc)
-        data.description = await getSpanText('cplMain_ctl07_lblPermitDesc');
-        // Status -> status
+        // Los Altos has Type, Subtype, Description, Status, and dates
+        data.title = await getSpanText('cplMain_ctl07_lblPermitType'); // Type as title
+        const subtype = await getSpanText('cplMain_ctl07_lblPermitSubtype');
+        const description = await getSpanText('cplMain_ctl07_lblPermitDesc');
+        
+        // Combine subtype and description if both exist
+        if (subtype && description) {
+            data.description = `${subtype}: ${description}`;
+        } else {
+            data.description = subtype || description || undefined;
+        }
+        
         data.status = await getSpanText('cplMain_ctl07_lblPermitStatus');
         data.appliedDate = await getSpanText('cplMain_ctl07_lblPermitAppliedDate');
         data.approvedDate = await getSpanText('cplMain_ctl07_lblPermitApprovedDate');
@@ -185,7 +179,72 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
     }
 
     /**
-     * Override extractPermitDetail to skip Contacts tab (Morgan Hill doesn't have it)
+     * Override extractSiteInfoTab for Los Altos
+     * Los Altos uses cplMain_ctl08_* element IDs (same as Morgan Hill)
+     */
+    protected async extractSiteInfoTab(): Promise<Partial<PermitData>> {
+        const getElementText = async (id: string): Promise<string | null> => {
+            try {
+                const element = await this.page!.$(`#${id}`);
+                if (element) {
+                    const text = await this.page!.evaluate((el: any) => el.textContent?.trim() || '', element);
+                    return text || null;
+                }
+            } catch (e) {
+                // Ignore errors
+            }
+            return null;
+        };
+
+        let address: string | undefined;
+        try {
+            const addressElement = await this.page!.$('#cplMain_ctl08_hlSiteAddress');
+            if (addressElement) {
+                const addressText = await this.page!.evaluate((el: any) => {
+                    const clone = el.cloneNode(true);
+                    const imgs = clone.querySelectorAll('img');
+                    imgs.forEach((img: any) => img.remove());
+                    return clone.textContent?.trim() || '';
+                }, addressElement);
+                address = addressText || undefined;
+            }
+        } catch (e) {
+            // Ignore errors
+        }
+
+        let zipCode: string | undefined;
+        try {
+            const cityStateZipText = await getElementText('cplMain_ctl08_lblSiteCityStateZip');
+            if (cityStateZipText) {
+                const zipMatch = cityStateZipText.match(/\b(\d{5})\b/);
+                if (zipMatch) {
+                    zipCode = zipMatch[1];
+                }
+            }
+        } catch (e) {
+            // Ignore errors
+        }
+
+        let propertyType: string | undefined;
+        try {
+            const propertyTypeText = await getElementText('cplMain_ctl08_lblPropertyType');
+            if (propertyTypeText) {
+                propertyType = propertyTypeText.toUpperCase();
+            }
+        } catch (e) {
+            // Ignore errors
+        }
+
+        // Note: propertyType is not in PermitData interface, so we skip it
+        return {
+            address: address || undefined,
+            zipCode: zipCode || undefined,
+        };
+    }
+
+    /**
+     * Override extractPermitDetail to skip Contacts tab (Los Altos doesn't have it)
+     * Also fix the wait selector to use ctl07 instead of ctl02
      * @param permitNumber - The permit number to extract
      * @param contractorFromTable - Optional contractor name extracted from search results table
      */
@@ -198,7 +257,7 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
         }
 
         // Verify we're on the detail page by checking for expected elements
-        // Morgan Hill uses ctl07 for Permit Info tab
+        // Los Altos uses ctl07 for Permit Info tab
         try {
             await this.page!.waitForSelector('#cplMain_ctl07_lblPermitType, #cplMain_ctl07_lblPermitStatus', { timeout: 5000 });
         } catch (e) {
@@ -220,7 +279,7 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
             const permitInfo = await this.extractPermitInfoTab();
             Object.assign(permitData, permitInfo);
 
-            // Skip Contacts tab - Morgan Hill doesn't have it
+            // Skip Contacts tab - Los Altos doesn't have it
             // (We already have contractor from table if it was available)
 
             // Extract from Site Info tab
@@ -279,8 +338,8 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
     }
 
     /**
-     * Override navigatePagesAndExtract to handle Morgan Hill's pagination structure
-     * Morgan Hill uses input buttons with class "PagerButton NextPage" and onclick="changePage('next'); return false;"
+     * Override navigatePagesAndExtract to handle Los Altos's pagination structure
+     * Los Altos uses input buttons with class "PagerButton NextPage" and onclick="changePage('next'); return false;"
      */
     protected async navigatePagesAndExtract(limit?: number): Promise<PermitData[]> {
         const allPermits: PermitData[] = [];
@@ -311,7 +370,6 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
 
                 console.log(`[${this.getName()}] Extracting permit: ${row.permitNumber}${row.contractor ? ` (contractor from table: ${row.contractor})` : ''}`);
 
-                // Extract permit detail
                 try {
                     // Pass contractor info from table if available
                     // extractPermitDetail will use table contractor if provided
@@ -324,27 +382,17 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
                     console.warn(`[${this.getName()}] Error extracting permit ${row.permitNumber}: ${e?.message || e}`);
                 }
 
-                // Navigate back to search results
+                // Navigate back to results page
                 await this.navigateBackToResults();
             }
 
             // Check if there's a next page
-            // Morgan Hill uses input buttons with class "PagerButton NextPage" and ID pattern btnPageNext
+            // Los Altos uses changePage('next') function with buttons
             const hasNextPage = await this.page!.evaluate(() => {
-                // Look for NextPage button by class or ID pattern
-                const nextBtn = (globalThis as any).document.querySelector('input.PagerButton.NextPage, input[id*="btnPageNext"]') as any;
-                if (nextBtn) {
-                    return !nextBtn.disabled && !nextBtn.classList.contains('aspNetDisabled');
+                const nextBtn = (globalThis as any).document.querySelector('input.PagerButton.NextPage:not(.aspNetDisabled)') as any;
+                if (nextBtn && !nextBtn.disabled) {
+                    return true;
                 }
-                
-                // Fallback: look for buttons with onclick containing "changePage"
-                const allInputs = Array.from((globalThis as any).document.querySelectorAll('input[onclick*="changePage"]')) as any[];
-                for (const input of allInputs) {
-                    if (input.classList.contains('NextPage') && !input.disabled && !input.classList.contains('aspNetDisabled')) {
-                        return true;
-                    }
-                }
-                
                 return false;
             });
 
@@ -353,39 +401,26 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
                 break;
             }
 
-            // Click next page button using Puppeteer's native click
-            const clicked = await this.page!.evaluate(() => {
-                // Try to find and click the NextPage button
-                const nextBtn = (globalThis as any).document.querySelector('input.PagerButton.NextPage:not(.aspNetDisabled), input[id*="btnPageNext"]:not(.aspNetDisabled)') as any;
-                if (nextBtn && !nextBtn.disabled) {
-                    nextBtn.click();
-                    return true;
-                }
-                return false;
-            });
-
-            if (!clicked) {
-                // Fallback: try using Puppeteer's native click
-                try {
-                    const nextButton = await this.page!.$('input.PagerButton.NextPage:not(.aspNetDisabled), input[id*="btnPageNext"]:not(.aspNetDisabled)');
-                    if (nextButton) {
-                        await nextButton.click();
-                    } else {
-                        console.log(`[${this.getName()}] Could not find next page button`);
-                        break;
+            // Click next page button
+            try {
+                const nextButton = await this.page!.$('input.PagerButton.NextPage:not(.aspNetDisabled)');
+                if (nextButton) {
+                    await nextButton.click();
+                    // Wait for page to load
+                    await new Promise((resolve) => setTimeout(resolve, 3000));
+                    // Wait for results table
+                    try {
+                        await this.page!.waitForSelector('tr.rgRow, tr.rgAltRow', { timeout: 10000 });
+                    } catch (e) {
+                        console.warn(`[${this.getName()}] Timeout waiting for results after page change`);
                     }
-                } catch (e) {
-                    console.log(`[${this.getName()}] Error clicking next page: ${e}`);
+                } else {
+                    console.log(`[${this.getName()}] Could not find next page button`);
                     break;
                 }
-            }
-
-            // Wait for page to load
-            await new Promise((resolve) => setTimeout(resolve, 3000));
-            try {
-                await this.page!.waitForSelector('tr.rgRow, tr.rgAltRow', { timeout: 10000 });
-            } catch (e) {
-                console.warn(`[${this.getName()}] Timeout waiting for next page results`);
+            } catch (e: any) {
+                console.warn(`[${this.getName()}] Error clicking next page: ${e?.message || e}`);
+                break;
             }
 
             pageNum++;
@@ -395,74 +430,14 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
     }
 
     /**
-     * Override extractSiteInfoTab to use Morgan Hill-specific element IDs
-     * Note: Morgan Hill uses ctl08 instead of ctl03 for Site Info tab
+     * Cleanup browser resources
      */
-    protected async extractSiteInfoTab(): Promise<Partial<PermitData>> {
-        const getElementText = async (id: string): Promise<string | null> => {
-            try {
-                const element = await this.page!.$(`#${id}`);
-                if (element) {
-                    const text = await this.page!.evaluate((el: any) => el.textContent?.trim() || '', element);
-                    return text || null;
-                }
-            } catch (e) {
-                // Ignore errors
-            }
-            return null;
-        };
-
-        // Get address from the link (cplMain_ctl08_hlSiteAddress)
-        let address: string | undefined;
-        try {
-            const addressElement = await this.page!.$('#cplMain_ctl08_hlSiteAddress');
-            if (addressElement) {
-                const addressText = await this.page!.evaluate((el: any) => {
-                    // Get text content, but exclude img elements
-                    const clone = el.cloneNode(true);
-                    const imgs = clone.querySelectorAll('img');
-                    imgs.forEach((img: any) => img.remove());
-                    return clone.textContent?.trim() || '';
-                }, addressElement);
-                address = addressText || undefined;
-            }
-        } catch (e) {
-            // Ignore errors
+    protected async cleanup(): Promise<void> {
+        if (this.browser) {
+            await this.browser.close();
+            this.browser = null;
+            this.page = null;
         }
-
-        // Get zip code from City/State/Zip field (cplMain_ctl08_lblSiteCityStateZip)
-        // Format: "MORGAN HILL, CA, 95037"
-        let zipCode: string | undefined;
-        try {
-            const cityStateZipText = await getElementText('cplMain_ctl08_lblSiteCityStateZip');
-            if (cityStateZipText) {
-                // Extract 5-digit zip code
-                const zipMatch = cityStateZipText.match(/\b(\d{5})\b/);
-                if (zipMatch) {
-                    zipCode = zipMatch[1];
-                }
-            }
-        } catch (e) {
-            // Ignore errors
-        }
-
-        // Get Property Type (cplMain_ctl08_lblPropertyType)
-        let propertyType: string | undefined;
-        try {
-            const propertyTypeText = await getElementText('cplMain_ctl08_lblPropertyType');
-            if (propertyTypeText) {
-                // Normalize property type (e.g., "ADDRESS" might need mapping)
-                propertyType = propertyTypeText.toUpperCase();
-            }
-        } catch (e) {
-            // Ignore errors
-        }
-
-        return {
-            address: address || undefined,
-            zipCode: zipCode || undefined,
-            // Property type will be handled separately if needed
-        };
     }
 }
 

@@ -264,6 +264,7 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
 
     /**
      * Get all permit rows from the current results page
+     * Also extracts contractor info if available in the table
      */
     protected async getPermitRows(): Promise<any[]> {
         return await this.page!.evaluate(() => {
@@ -277,8 +278,66 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
                 const permitNumberCell = cells[0];
                 const permitNumber = permitNumberCell ? permitNumberCell.textContent?.trim() : null;
                 
+                // Look for contractor information in other columns
+                // Common column names/patterns: Contractor, Contractor Name, License, Professional
+                let contractor: string | null = null;
+                
+                // Try to find a header row to identify which column has contractor info
+                const table = row.closest('table');
+                let headerRow: any = null;
+                if (table) {
+                    // Look for header row (usually has th elements or specific classes)
+                    headerRow = table.querySelector('thead tr, tr.rgHeaderRow, tr.rgHeader');
+                }
+                
+                // If we have headers, use them to find contractor column
+                if (headerRow) {
+                    const headerCells = headerRow.querySelectorAll('th, td');
+                    headerCells.forEach((headerCell: any, index: number) => {
+                        if (index < cells.length && !contractor) {
+                            const headerText = headerCell.textContent?.trim().toUpperCase() || '';
+                            // Check if this column header mentions contractor
+                            if (headerText.includes('CONTRACTOR') || 
+                                headerText.includes('LICENSE') || 
+                                headerText.includes('PROFESSIONAL') ||
+                                headerText.includes('APPLICANT')) {
+                                const cellText = cells[index]?.textContent?.trim();
+                                if (cellText && cellText.length > 0) {
+                                    contractor = cellText;
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // If we didn't find contractor via headers, try common column positions
+                // Many eTRAKiT tables have: Permit #, Description/Type, Status, Contractor (often 3rd or 4th column)
+                if (!contractor && cells.length >= 3) {
+                    // Try columns 2, 3, 4 as potential contractor columns
+                    for (let i = 2; i < Math.min(cells.length, 5); i++) {
+                        const cellText = cells[i]?.textContent?.trim();
+                        if (cellText && cellText.length > 3) {
+                            // Heuristic: if the text looks like a company/person name (not a date, status, or number)
+                            // and it's longer than 3 chars, it might be a contractor
+                            if (!cellText.match(/^\d+$/) && // Not just numbers
+                                !cellText.match(/^\d{1,2}\/\d{1,2}\/\d{4}/) && // Not a date
+                                !cellText.match(/^(ISSUED|APPROVED|IN REVIEW|FINALED|APPLIED|PENDING)/i) && // Not a status
+                                cellText.length > 5) { // Reasonable length for a name
+                                // This could be contractor - but let's be more selective
+                                // Look for common business suffixes or patterns
+                                if (cellText.match(/\b(Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co|Contractor|Contractors)\b/i) ||
+                                    cellText.match(/^[A-Z][a-z]+/)) { // Starts with capital letter
+                                    contractor = cellText;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 return {
                     permitNumber,
+                    contractor: contractor || undefined,
                     link: null, // Rows are clickable, not links
                     rowIndex: Array.from(row.parentElement.children).indexOf(row),
                 };
@@ -528,14 +587,18 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
     /**
      * Extract permit detail from detail page
      * This orchestrates the tab navigation and extraction
+     * @param permitNumber - The permit number to extract
+     * @param contractorFromTable - Optional contractor name extracted from search results table
      */
-    protected async extractPermitDetail(permitNumber: string): Promise<PermitData | null> {
+    protected async extractPermitDetail(permitNumber: string, contractorFromTable?: string): Promise<PermitData | null> {
         // Start with basic permit data
         const permitData: Partial<PermitData> = {
             permitNumber,
             city: this.city,
             state: this.state,
             sourceUrl: this.url,
+            // Use contractor from table if available, otherwise will try to extract from Contacts tab
+            licensedProfessionalText: contractorFromTable || undefined,
         };
 
         try {
@@ -557,11 +620,14 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
             const permitInfo = await this.extractPermitInfoTab();
             Object.assign(permitData, permitInfo);
 
-            // Extract from Contacts tab
-            const contactsClicked = await this.clickTab('Contacts');
-            if (contactsClicked) {
-                const contactsInfo = await this.extractContactsTab();
-                Object.assign(permitData, contactsInfo);
+            // Extract from Contacts tab (only if we don't already have contractor from table)
+            // Contractor can be in either the search results table or the Contacts tab
+            if (!contractorFromTable) {
+                const contactsClicked = await this.clickTab('Contacts');
+                if (contactsClicked) {
+                    const contactsInfo = await this.extractContactsTab();
+                    Object.assign(permitData, contactsInfo);
+                }
             }
 
             // Extract from Site Info tab
@@ -659,11 +725,13 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
                     continue;
                 }
 
-                console.log(`[${this.getName()}] Extracting permit: ${row.permitNumber}`);
+                console.log(`[${this.getName()}] Extracting permit: ${row.permitNumber}${row.contractor ? ` (contractor from table: ${row.contractor})` : ''}`);
 
                 // Click into the permit detail page
                 try {
-                    const permitData = await this.extractPermitDetail(row.permitNumber);
+                    // Pass contractor info from table if available
+                    // extractPermitDetail will use table contractor if provided, otherwise try Contacts tab
+                    const permitData = await this.extractPermitDetail(row.permitNumber, row.contractor);
                     if (permitData) {
                         allPermits.push(permitData);
                         console.log(`[${this.getName()}] Extracted permit ${row.permitNumber}`);

@@ -60,6 +60,7 @@ export const typeDefs = `
     GILROY
     MILPITAS
     MORGAN_HILL
+    LOS_ALTOS
   }
 
   enum SubscriptionPlan {
