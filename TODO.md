@@ -18,18 +18,40 @@
 - [x] **TODO #10**: Populate contractor entities - imported contractors via CSV script
 - [x] **TODO #11**: Link permits to contractors - current, intentional approach uses randomized classifier association for sampling/testing
 
-## 🔄 Pending Tasks
+## 🎯 Main Priorities
+
+1. **Stripe Integration**
+   - Setup checkout flow for freemium to premium upgrade
+   - Connect upgrade CTA in freemium banner
+   - Handle subscription webhooks and payment processing
+
+2. **Classification Improvements**
+   - **PermitType**: Enhance classification accuracy and coverage
+   - **PropertyType**: Improve classification accuracy and coverage
+   - **Contractor**: Implement deterministic contractor linking from scraped `licensedProfessionalText` data
+
+3. **Email Integration**
+   - Setup email sending functionality
+   - Implement notification system for permit updates/alerts
+
+4. **Incremental Scraping**
+   - Design and implement incremental permit scraping strategy
+   - Avoid re-scraping all permits on each run
+   - Track last scrape date and only fetch new/updated permits
+   - Handle updates to existing permit records
+
+5. **PermitType-Contractor Classification Mapping**
+   - Organize PermitType structure to enable smart contractor matching
+   - Map permit types (e.g., ADU) to relevant contractor classifications (e.g., ELECTRICAL)
+   - Create relationship system where contractors with ELECTRICAL classification can be matched to ADU permits
+
+## 🔄 Other Pending Tasks
 
 ### Core Features
-- [ ] **TODO #2**: Add Stripe payment integration - setup checkout flow for freemium to premium upgrade
 - [ ] **TODO #3**: Implement freemium vs premium logic - limit search results for freemium users (partial entries only)
 - [ ] **TODO #4**: Build premium natural language search feature - integrate AI/LLM for advanced query processing
 - [ ] **TODO #7**: Implement 7-day trial for new users - add trial logic to subscription model and UI
 - [ ] Handle Morgan Hill pagination: pageSize is 10 and it only allows 5 pages maximum (need to handle this limitation properly)
-- [ ] Integrate Email sending functionality
-
-### Data Enhancement
-- [ ] (Enhancement) Improve contractor linking: parse `licensedProfessionalText` to deterministically match `licenseNo`/name and create `PermitContractor` rows
 
 ### UI/UX Enhancements
 - [ ] Learn more / Upgrade flow CTA for freemium banner
@@ -38,17 +60,10 @@
 
 - **Subscription Model**: Simplified to use only `plan` and `validUntil` fields (no cleanup scripts needed)
 - **Authentication**: Using `session.user.id` for secure, provider-agnostic user identification
-- **Freemium Logic**: 3 permits for non-premium users, unlimited for premium users; for freemium we lock the same 3-permit subset (canonical: Issue Date DESC) and sort/page locally so sorting doesn’t change the subset
+- **Freemium Logic**: 3 permits for non-premium users, unlimited for premium users; for freemium we lock the same 3-permit subset (canonical: Issue Date DESC) and sort/page locally so sorting doesn't change the subset
 - **Classification**: PropertyType and PermitType classification working with 80-90% confidence
 - **Contractors**: Prisma models for `Contractor`, `ContractorClassification`, and `PermitContractor` are in place; GraphQL exposes `Permit.contractors`; UI shows contractor details in expanded view. Contractor import is done; current linking is randomized (by design for now).
 
-## 🎯 Next Priority
-
-Consider working on:
-1. **TODO #2**: Stripe payment + upgrade flow (connect banner CTA)
-2. (Enhancement) Deterministic contractor linking from scraped text
-3. **TODO #7**: 7-day trial UX and enforcement
-
 ---
 
-*Last updated: 2025-10-30*
+*Last updated: 2025-01-31*
