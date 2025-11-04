@@ -8,6 +8,88 @@ import { BaseExtractor } from "../base-extractor";
 import { PermitData, ScrapeResult } from "../types";
 import puppeteer, { Browser, Page } from "puppeteer";
 
+/**
+ * Configuration interface for ID-based eTRAKiT extractors
+ * Child classes provide this configuration to customize behavior
+ */
+export interface EtrakitIdBasedConfig {
+    /**
+     * Base permit prefixes without year suffix (e.g., ["B-AC", "B-AM"] for Milpitas)
+     */
+    basePrefixes: string[];
+    
+    /**
+     * Number of digits for year suffix: 2 for "25", 4 for "2025"
+     */
+    yearSuffixDigits: 2 | 4;
+    
+    /**
+     * Maximum results per batch (determines when to move to next batch)
+     */
+    maxResultsPerBatch: number;
+    
+    /**
+     * Number of digits for batch suffixes (pagestart)
+     * Milpitas: 2 digits, Morgan Hill: 3 digits, Los Altos: 4 digits
+     */
+    suffixDigits: number;
+    
+    /**
+     * Search filter configuration
+     */
+    searchByValue: string;  // e.g., "Permit Number" or "Permit#"
+    searchOperatorValue: string;  // e.g., "BEGINS WITH"
+    
+    /**
+     * Search button selector(s) - can be comma-separated for multiple fallbacks
+     */
+    searchButtonSelector: string;
+    
+    /**
+     * Element ID prefix for Permit Info tab (e.g., "ctl02" or "ctl07")
+     * Used to build selectors like cplMain_ctl02_lblPermitDesc
+     */
+    permitInfoTabIdPrefix: string;
+    
+    /**
+     * Whether to extract title from Permit Info tab
+     * Some cities use "Short Description" for title, others leave it blank
+     */
+    extractTitle: boolean;
+    
+    /**
+     * Description field selector suffix
+     * If set, description comes from cplMain_{prefix}_lblPermitNotes (e.g., "Notes" field)
+     * If not set, description comes from cplMain_{prefix}_lblPermitDesc (same as title field)
+     */
+    descriptionFieldSuffix?: string;  // e.g., "lblPermitNotes" for Milpitas, undefined for others
+    
+    /**
+     * Element ID prefix for Site Info tab (e.g., "ctl03" or "ctl08")
+     */
+    siteInfoTabIdPrefix: string;
+    
+    /**
+     * Whether Contacts tab exists and should be extracted
+     */
+    hasContactsTab: boolean;
+    
+    /**
+     * Pagination configuration
+     */
+    paginationConfig: {
+        maxPages: number;
+        /**
+         * Selector for next page button (e.g., "input.PagerButton.NextPage")
+         */
+        nextPageSelector: string;
+        /**
+         * Wait time after clicking next page (ms)
+         */
+        waitAfterPageClick?: number;
+    };
+}
+
 export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
     protected browser: Browser | null = null;
     protected page: Page | null = null;
@@ -19,15 +101,23 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
     protected startingBatchNumbers: Map<string, number> = new Map();
 
     /**
-     * Get the number of digits used for batch suffixes (pagestart)
-     * Milpitas: 2 digits, Morgan Hill: 3 digits, Los Altos: 4 digits
+     * Get configuration for this extractor
+     * Child classes must provide this
      */
-    protected abstract getSuffixDigits(): number;
+    protected abstract getConfig(): EtrakitIdBasedConfig;
     
     /**
      * Get permit prefixes for a given date (used for incremental scraping)
+     * Default implementation uses config, but can be overridden if needed
      */
-    protected abstract getPermitPrefixes(startDate?: Date): string[];
+    protected getPermitPrefixes(startDate?: Date): string[] {
+        const config = this.getConfig();
+        const year = startDate ? startDate.getFullYear() : new Date().getFullYear();
+        const yearSuffix = config.yearSuffixDigits === 2 
+            ? String(year).slice(-2) 
+            : String(year);
+        return config.basePrefixes.map(prefix => `${prefix}${yearSuffix}`);
+    }
 
     /**
      * Format date for eTRAKiT system (MM/DD/YYYY)
@@ -398,54 +488,55 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
 
     /**
      * Extract data from the Permit Info tab
-     * Default implementation tries to extract common fields from tables
-     * Subclasses can override for city-specific element IDs or structure
+     * Uses configurable element IDs from getConfig()
      */
     protected async extractPermitInfoTab(): Promise<Partial<PermitData>> {
-        const data = await this.page!.evaluate(() => {
-            const result: any = {};
-            
-            // Try to extract from tables - common eTRAKiT pattern
-            const tables = (globalThis as any).document.querySelectorAll('table');
-            for (const table of tables) {
-                const rows = table.querySelectorAll('tr');
-                for (const row of rows) {
-                    const cells = row.querySelectorAll('td');
-                    if (cells.length >= 2) {
-                        const label = cells[0]?.textContent?.trim();
-                        const value = cells[1]?.textContent?.trim();
-                        
-                        if (label && value) {
-                            // Map common labels to fields
-                            const labelUpper = label.toUpperCase();
-                            if (labelUpper.includes('DESCRIPTION') || labelUpper.includes('WORK DESC')) {
-                                result.description = value;
-                            } else if (labelUpper === 'STATUS') {
-                                result.status = value;
-                            } else if (labelUpper.includes('APPLIED DATE')) {
-                                result.appliedDate = value;
-                            } else if (labelUpper.includes('APPROVED DATE')) {
-                                result.approvedDate = value;
-                            } else if (labelUpper.includes('ISSUED DATE')) {
-                                result.issuedDate = value;
-                            } else if (labelUpper.includes('FINALED DATE') || labelUpper.includes('FINAL DATE')) {
-                                result.finaledDate = value;
-                            } else if (labelUpper.includes('EXPIRATION DATE')) {
-                                result.expirationDate = value;
-                            } else if (labelUpper.includes('VALUATION') || labelUpper.includes('VALUE')) {
-                                const match = value.match(/[\d,]+\.?\d*/);
-                                if (match) {
-                                    result.value = parseFloat(match[0].replace(/,/g, ''));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            return result;
-        });
+        const config = this.getConfig();
+        const prefix = config.permitInfoTabIdPrefix;
         
+        // Use Puppeteer's native methods instead of page.evaluate to avoid triggering page JavaScript
+        const getSpanText = async (id: string): Promise<string | null> => {
+            try {
+                const element = await this.page!.$(`#${id}`);
+                if (element) {
+                    const text = await this.page!.evaluate((el: any) => el.textContent?.trim() || '', element);
+                    return text || null;
+                }
+            } catch (e) {
+                // Ignore errors
+            }
+            return null;
+        };
+
+        const data: any = {};
+        
+        // Extract title if configured (e.g., "Short Description" for Milpitas)
+        if (config.extractTitle) {
+            data.title = await getSpanText(`cplMain_${prefix}_lblPermitDesc`);
+        }
+        
+        // Extract description
+        // If descriptionFieldSuffix is set, use it (e.g., "lblPermitNotes" for Milpitas)
+        // Otherwise, use the same field as title (e.g., "lblPermitDesc" for Morgan Hill/Los Altos)
+        const descFieldSuffix = config.descriptionFieldSuffix || 'lblPermitDesc';
+        data.description = await getSpanText(`cplMain_${prefix}_${descFieldSuffix}`);
+        
+        // Extract status
+        data.status = await getSpanText(`cplMain_${prefix}_lblPermitStatus`);
+        
+        // Extract dates
+        data.appliedDate = await getSpanText(`cplMain_${prefix}_lblPermitAppliedDate`);
+        data.approvedDate = await getSpanText(`cplMain_${prefix}_lblPermitApprovedDate`);
+        data.issuedDate = await getSpanText(`cplMain_${prefix}_lblPermitIssuedDate`);
+        data.finaledDate = await getSpanText(`cplMain_${prefix}_lblPermitFinaledDate`);
+        data.expirationDate = await getSpanText(`cplMain_${prefix}_lblPermitExpirationDate`);
+
+        // Normalize status using eTRAKiT status normalizer
+        if (data.status) {
+            const { normalizeEtrakitStatus } = await import("../utils/etrakit-status");
+            data.status = normalizeEtrakitStatus(data.status);
+        }
+
         return data;
     }
 
@@ -494,46 +585,63 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
 
     /**
      * Extract data from the Site Info tab (for address information)
-     * Default implementation searches tables for address-related labels
-     * Subclasses can override for city-specific structure
+     * Uses configurable element IDs from getConfig()
      */
     protected async extractSiteInfoTab(): Promise<Partial<PermitData>> {
-        const addressData = await this.page!.evaluate(() => {
-            // Look for address in Site Info tab
-            const tables = (globalThis as any).document.querySelectorAll('table');
-            let address = null;
-            let zipCode = null;
-            
-            for (const table of tables) {
-                const rows = table.querySelectorAll('tr');
-                for (const row of rows) {
-                    const cells = row.querySelectorAll('td');
-                    if (cells.length >= 2) {
-                        const label = cells[0]?.textContent?.trim();
-                        const value = cells[1]?.textContent?.trim();
-                        
-                        if (label && value) {
-                            const labelUpper = label.toUpperCase();
-                            if ((labelUpper.includes('ADDRESS') || labelUpper.includes('SITE')) && !address) {
-                                address = value;
-                                // Extract ZIP code
-                                const zipMatch = value.match(/\b(\d{5})\b/);
-                                if (zipMatch) {
-                                    zipCode = zipMatch[1];
-                                }
-                            }
-                        }
-                    }
+        const config = this.getConfig();
+        const prefix = config.siteInfoTabIdPrefix;
+        
+        const getElementText = async (id: string): Promise<string | null> => {
+            try {
+                const element = await this.page!.$(`#${id}`);
+                if (element) {
+                    const text = await this.page!.evaluate((el: any) => el.textContent?.trim() || '', element);
+                    return text || null;
                 }
-                if (address) break;
+            } catch (e) {
+                // Ignore errors
             }
-            
-            return { address, zipCode };
-        });
+            return null;
+        };
+
+        // Get address from the link (cplMain_{prefix}_hlSiteAddress)
+        // The link text contains the address, but we need to clean it up (remove the map icon text if present)
+        let address: string | undefined;
+        try {
+            const addressElement = await this.page!.$(`#cplMain_${prefix}_hlSiteAddress`);
+            if (addressElement) {
+                const addressText = await this.page!.evaluate((el: any) => {
+                    // Get text content, but exclude img elements
+                    const clone = el.cloneNode(true);
+                    const imgs = clone.querySelectorAll('img');
+                    imgs.forEach((img: any) => img.remove());
+                    return clone.textContent?.trim() || '';
+                }, addressElement);
+                address = addressText || undefined;
+            }
+        } catch (e) {
+            // Ignore errors
+        }
+
+        // Get zip code from City/State/Zip field (cplMain_{prefix}_lblSiteCityStateZip)
+        // Format: "CITY, STATE, ZIP"
+        let zipCode: string | undefined;
+        try {
+            const cityStateZipText = await getElementText(`cplMain_${prefix}_lblSiteCityStateZip`);
+            if (cityStateZipText) {
+                // Extract 5-digit zip code
+                const zipMatch = cityStateZipText.match(/\b(\d{5})\b/);
+                if (zipMatch) {
+                    zipCode = zipMatch[1];
+                }
+            }
+        } catch (e) {
+            // Ignore errors
+        }
 
         return {
-            address: addressData.address || undefined,
-            zipCode: addressData.zipCode || undefined,
+            address: address || undefined,
+            zipCode: zipCode || undefined,
         };
     }
 
@@ -627,8 +735,10 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
             }
 
             // Verify we're on the detail page by checking for expected elements
+            const config = this.getConfig();
+            const permitInfoPrefix = config.permitInfoTabIdPrefix;
             try {
-                await this.page!.waitForSelector('#cplMain_ctl02_lblPermitType, #cplMain_ctl02_lblPermitStatus', { timeout: 5000 });
+                await this.page!.waitForSelector(`#cplMain_${permitInfoPrefix}_lblPermitType, #cplMain_${permitInfoPrefix}_lblPermitStatus`, { timeout: 5000 });
             } catch (e) {
                 console.warn(`[${this.getName()}] Detail page may not have loaded for ${permitNumber}`);
             }
@@ -637,9 +747,9 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
             const permitInfo = await this.extractPermitInfoTab();
             Object.assign(permitData, permitInfo);
 
-            // Extract from Contacts tab (only if we don't already have contractor from table)
+            // Extract from Contacts tab (only if configured and we don't already have contractor from table)
             // Contractor can be in either the search results table or the Contacts tab
-            if (!contractorFromTable) {
+            if (config.hasContactsTab && !contractorFromTable) {
                 const contactsClicked = await this.clickTab('Contacts');
                 if (contactsClicked) {
                     const contactsInfo = await this.extractContactsTab();
@@ -714,11 +824,13 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
 
     /**
      * Navigate through pagination and extract permits
+     * Uses pagination configuration from getConfig()
      */
     protected async navigatePagesAndExtract(limit?: number): Promise<PermitData[]> {
+        const config = this.getConfig();
         const allPermits: PermitData[] = [];
         let pageNum = 1;
-        const maxPages = 20; // eTRAKiT typically limits to 20 pages
+        const maxPages = config.paginationConfig.maxPages;
 
         while (pageNum <= maxPages) {
             console.log(`[${this.getName()}] Processing page ${pageNum}...`);
@@ -761,27 +873,70 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
                 await this.navigateBackToResults();
             }
 
-            // Check if there's a next page
-            const hasNextPage = await this.page!.evaluate(() => {
-                // Look for next page button/link
-                const nextBtn = (globalThis as any).document.querySelector('a[href*="Page$Next"], input[value*="Next"]');
-                return nextBtn && !nextBtn.disabled && !nextBtn.classList.contains('disabled');
-            });
+            // Check if there's a next page using configured selector
+            const nextPageSelector = config.paginationConfig.nextPageSelector;
+            const hasNextPage = await this.page!.evaluate((selector: string) => {
+                // Look for next page button by selector
+                const nextBtn = (globalThis as any).document.querySelector(selector) as any;
+                if (nextBtn) {
+                    return !nextBtn.disabled && !nextBtn.classList.contains('aspNetDisabled');
+                }
+                
+                // Fallback: try finding by onclick attribute if selector contains pattern
+                if (selector.includes('btnPageNext') || selector.includes('NextPage')) {
+                    const allInputs = Array.from((globalThis as any).document.querySelectorAll('input[onclick*="changePage"]')) as any[];
+                    for (const input of allInputs) {
+                        if (input.classList.contains('NextPage') && !input.disabled && !input.classList.contains('aspNetDisabled')) {
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }, nextPageSelector);
 
             if (!hasNextPage) {
                 console.log(`[${this.getName()}] No more pages`);
                 break;
             }
 
-            // Click next page
-            await this.page!.evaluate(() => {
-                const nextBtn = (globalThis as any).document.querySelector('a[href*="Page$Next"], input[value*="Next"]') as any;
-                if (nextBtn) {
+            // Click next page button
+            const clicked = await this.page!.evaluate((selector: string) => {
+                // Try to find and click the NextPage button
+                const nextBtn = (globalThis as any).document.querySelector(`${selector}:not(.aspNetDisabled)`) as any;
+                if (nextBtn && !nextBtn.disabled) {
                     nextBtn.click();
+                    return true;
                 }
-            });
+                return false;
+            }, nextPageSelector);
 
-            await new Promise((resolve) => setTimeout(resolve, 3000));
+            if (!clicked) {
+                // Fallback: try using Puppeteer's native click
+                try {
+                    const nextButton = await this.page!.$(`${nextPageSelector}:not(.aspNetDisabled)`);
+                    if (nextButton) {
+                        await nextButton.click();
+                    } else {
+                        console.log(`[${this.getName()}] Could not find next page button`);
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`[${this.getName()}] Error clicking next page: ${e}`);
+                    break;
+                }
+            }
+
+            // Wait for page to load (use configured wait time or default)
+            const waitTime = config.paginationConfig.waitAfterPageClick || 3000;
+            await new Promise((resolve) => setTimeout(resolve, waitTime));
+            
+            try {
+                await this.page!.waitForSelector('tr.rgRow, tr.rgAltRow', { timeout: 10000 });
+            } catch (e) {
+                console.warn(`[${this.getName()}] Timeout waiting for next page results`);
+            }
+
             pageNum++;
         }
 
@@ -869,6 +1024,137 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
         }
         
         return undefined;
+    }
+
+    /**
+     * Main scrape method - implements common ID-based scraping logic
+     * Uses configuration from getConfig() for city-specific behavior
+     */
+    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
+        try {
+            const config = this.getConfig();
+            console.log(`[${this.getName()}] Starting scrape for ${this.city}`);
+
+            // Initialize browser
+            await this.initializeBrowser();
+
+            // Navigate to search page
+            await this.navigateToSearchPage();
+
+            const allPermits: PermitData[] = [];
+
+            // Get permit prefixes with dynamic year (use startDate for year determination)
+            const permitPrefixes = this.getPermitPrefixes(startDate);
+
+            // Search for each prefix
+            for (const prefix of permitPrefixes) {
+                console.log(`[${this.getName()}] Searching for prefix: ${prefix}`);
+
+                // Search in batches: prefix-00, prefix-01, etc. (number of digits from getSuffixDigits())
+                // Start from the calculated starting batch number (for incremental scraping)
+                let batchNumber = this.startingBatchNumbers.get(prefix) ?? 0;
+                if (batchNumber > 0) {
+                    console.log(`[${this.getName()}] Starting from batch ${batchNumber} for ${prefix} (incremental scraping)`);
+                }
+                let hasMoreBatches = true;
+
+                while (hasMoreBatches) {
+                    // Format batch search string: prefix-00, prefix-01, etc. (or prefix-000, prefix-0000 depending on suffixDigits)
+                    const batchSuffix = String(batchNumber).padStart(config.suffixDigits, "0");
+                    const searchValue = `${prefix}-${batchSuffix}`;
+
+                    console.log(`[${this.getName()}] Searching batch: ${searchValue}`);
+
+                    // Set up search filters using configuration
+                    await this.setSearchFilters(
+                        '#cplMain_ddSearchBy',        // Search By selector
+                        config.searchByValue,         // Search By value from config
+                        '#cplMain_ddSearchOper',      // Search Operator selector
+                        config.searchOperatorValue,   // Search Operator value from config
+                        '#cplMain_txtSearchString',   // Search Value selector
+                        searchValue                   // Search Value (e.g., "B-AC25-00")
+                    );
+
+                    // Execute search using configured button selector
+                    await this.executeSearch(config.searchButtonSelector);
+
+                    // Check how many results we got
+                    const resultCount = await this.getResultCount();
+                    console.log(`[${this.getName()}] Found ${resultCount} results for ${searchValue}`);
+
+                    // If no results, move to next prefix
+                    if (resultCount === 0) {
+                        hasMoreBatches = false;
+                        continue;
+                    }
+
+                    // Extract permits by clicking into detail pages
+                    const batchPermits = await this.navigatePagesAndExtract(limit ? limit - allPermits.length : undefined);
+                    allPermits.push(...batchPermits);
+
+                    // Check if we hit the limit
+                    if (limit && allPermits.length >= limit) {
+                        console.log(`[${this.getName()}] Reached limit of ${limit} permits`);
+                        allPermits.splice(limit);
+                        hasMoreBatches = false;
+                        break; // Break out of batch loop
+                    }
+
+                    // Determine if we should continue to next batch
+                    // For cities with larger batch sizes (like Milpitas), check if we hit max
+                    // For cities with smaller batch sizes (like Morgan Hill/Los Altos), continue if we got any results
+                    if (resultCount >= config.maxResultsPerBatch) {
+                        batchNumber++;
+                        console.log(`[${this.getName()}] Got ${resultCount} results (max), checking next batch...`);
+                    } else {
+                        // Got fewer than max results, we've covered all permits for this batch
+                        // For smaller batch sizes, continue anyway if we got results
+                        if (resultCount > 0 && config.maxResultsPerBatch <= 50) {
+                            // Small batch size - continue as long as we get results
+                            batchNumber++;
+                            console.log(`[${this.getName()}] Got ${resultCount} results, checking next batch...`);
+                        } else {
+                            // Large batch size or no results - we're done with this prefix
+                            hasMoreBatches = false;
+                        }
+                    }
+                }
+
+                // Check if we hit the limit after processing all batches for this prefix
+                // If so, break out of the prefix loop
+                if (limit && allPermits.length >= limit) {
+                    break;
+                }
+            }
+
+            // Apply limit if specified
+            const permits = limit && limit > 0
+                ? allPermits.slice(0, limit)
+                : allPermits;
+
+            if (limit && limit > 0) {
+                console.log(`[${this.getName()}] Limited to ${permits.length} permits (from ${allPermits.length})`);
+            }
+
+            console.log(`[${this.getName()}] Extracted ${permits.length} permits total`);
+
+            return {
+                permits,
+                success: true,
+                scrapedAt: new Date(),
+            };
+        } catch (error: any) {
+            console.error(`[${this.getName()}] Error during scrape:`, error);
+            return {
+                permits: [],
+                success: false,
+                error: error?.message || String(error),
+                scrapedAt: new Date(),
+            };
+        } finally {
+            // Clean up using base class method
+            await this.cleanup();
+        }
     }
 
     /**

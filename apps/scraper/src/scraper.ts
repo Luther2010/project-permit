@@ -394,9 +394,10 @@ export async function scrapeCity(
                 // Cast to any to access protected members, then cast to specific interface
                 const idBasedExtractor = extractor as any;
                 
-                if (idBasedExtractor.getPermitPrefixes && idBasedExtractor.getSuffixDigits) {
+                if (idBasedExtractor.getPermitPrefixes && idBasedExtractor.getConfig) {
                     const prefixes = idBasedExtractor.getPermitPrefixes(startDate);
-                    const suffixDigits = idBasedExtractor.getSuffixDigits();
+                    const config = idBasedExtractor.getConfig();
+                    const suffixDigits = config.suffixDigits;
                     
                     const startingBatchNumbers = new Map<string, number>();
                     for (const prefix of prefixes) {
