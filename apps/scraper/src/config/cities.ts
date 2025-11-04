@@ -52,7 +52,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "LosAltosHillsExtractor",
         url: "https://trakit.losaltoshills.ca.gov/etrakit/Search/permit.aspx",
         enabled: true,
-        scraperType: ScraperType.DAILY,
+        scraperType: ScraperType.ID_BASED,
     },
     {
         city: "Sunnyvale",
