@@ -313,24 +313,38 @@ export async function getLargestPermitSuffix(prefix: string, city: City): Promis
 }
 
 /**
- * Round down a permit suffix to the nearest pagestart
- * @param suffix The numeric suffix (e.g., 51)
- * @param suffixDigits Number of digits in the pagestart (2 for Milpitas, 3 for Morgan Hill, 4 for Los Altos)
- * @returns The pagestart batch number (e.g., for suffixDigits=3, 51 -> 50, so returns 5 for batch "005")
+ * Calculate the starting batch number for incremental scraping
+ * @param suffix The numeric suffix of the largest existing permit (e.g., 19)
+ * @param suffixDigits Number of digits in the pagestart (2 for Milpitas, 3 for Morgan Hill/Saratoga, 4 for Los Altos)
+ * @returns The starting batch number
+ * 
+ * Logic:
+ * - If suffix is the last number in its batch, start at the next batch
+ * - Otherwise, start at the current batch (since the batch may not be fully scraped)
+ * 
+ * Examples:
+ * - suffixDigits=3: suffix 19 (last in batch 001) -> start at batch 002
+ * - suffixDigits=3: suffix 18 (in batch 001) -> start at batch 001
+ * - suffixDigits=2: suffix 99 (last in batch 00) -> start at batch 01
+ * - suffixDigits=2: suffix 98 (in batch 00) -> start at batch 00
  */
-export function roundDownToPagestart(suffix: number, suffixDigits: number): number {
-    // For 2 digits: round down to nearest 100, then divide by 100 to get batch number
-    // (e.g., 51 -> 0, 151 -> 1, so batch "00" or "01")
-    // For 3 digits: round down to nearest 10, then divide by 10 to get batch number
-    // (e.g., 51 -> 50 -> 5, so batch "005")
-    // For 4 digits: round down to nearest 10, then divide by 10 to get batch number
-    // (e.g., 51 -> 50 -> 5, so batch "0005")
+export function calculateStartingBatch(suffix: number, suffixDigits: number): number {
+    let batchNumber: number;
+    let isLastInBatch: boolean;
+    
     if (suffixDigits === 2) {
-        return Math.floor(suffix / 100);
+        // Batches: 00 (001-099), 01 (100-199), etc.
+        batchNumber = Math.floor(suffix / 100);
+        isLastInBatch = suffix % 100 === 99;
     } else {
-        // 3 or 4 digits: round down to nearest 10, then divide by 10
-        return Math.floor(suffix / 10);
+        // suffixDigits === 3 or 4: Batches: 000 (001-009), 001 (010-019), 002 (020-029), etc.
+        batchNumber = Math.floor(suffix / 10);
+        isLastInBatch = suffix % 10 === 9;
     }
+    
+    // If suffix is the last in its batch, start at the next batch
+    // Otherwise, start at the current batch (may not be fully scraped)
+    return isLastInBatch ? batchNumber + 1 : batchNumber;
 }
 
 /**
@@ -403,7 +417,7 @@ export async function scrapeCity(
                     for (const prefix of prefixes) {
                         const largestSuffix = await getLargestPermitSuffix(prefix, cityEnum);
                         if (largestSuffix !== null) {
-                            const batchNumber = roundDownToPagestart(largestSuffix, suffixDigits);
+                            const batchNumber = calculateStartingBatch(largestSuffix, suffixDigits);
                             startingBatchNumbers.set(prefix, batchNumber);
                             console.log(`📊 Starting batch for ${prefix}: ${batchNumber} (largest suffix: ${largestSuffix})`);
                         } else {
@@ -412,6 +426,18 @@ export async function scrapeCity(
                         }
                     }
                     idBasedExtractor.startingBatchNumbers = startingBatchNumbers;
+                    
+                    // If limit is specified, load existing permit numbers to track new vs existing permits
+                    if (limit) {
+                        const existingPermits = await prisma.permit.findMany({
+                            where: { city: cityEnum },
+                            select: { permitNumber: true },
+                        });
+                        idBasedExtractor.existingPermitNumbers = new Set(
+                            existingPermits.map(p => p.permitNumber)
+                        );
+                        console.log(`📋 Loaded ${existingPermits.length} existing permits for limit tracking`);
+                    }
                 }
             }
         }

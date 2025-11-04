@@ -120,6 +120,12 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
      * Set by scraper.ts before calling scrape()
      */
     protected startingBatchNumbers: Map<string, number> = new Map();
+    
+    /**
+     * Set of existing permit numbers (for tracking new vs existing permits)
+     * Set by scraper.ts before calling scrape() when limit is specified
+     */
+    protected existingPermitNumbers: Set<string> = new Set();
 
     /**
      * Get configuration for this extractor
@@ -350,6 +356,56 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
 
         // Additional wait for page to stabilize after postback
         await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Navigate to first page to ensure we start from page 1 for this search
+        // This prevents issues where we might be on page 2 from a previous search
+        await this.navigateToFirstPage();
+    }
+
+    /**
+     * Navigate to the first page of search results
+     * This ensures we always start from page 1 after each search
+     * This prevents issues where we might be on page 2 from a previous search
+     */
+    protected async navigateToFirstPage(): Promise<void> {
+        try {
+            // Try multiple selectors for the first page button
+            const firstPageSelectors = [
+                'input.PagerButton.FirstPage',
+                'input[id*="btnPageFirst"]',
+                'input[title*="first page" i]',
+            ];
+
+            let firstPageButton = null;
+            for (const selector of firstPageSelectors) {
+                firstPageButton = await this.page!.$(selector);
+                if (firstPageButton) break;
+            }
+
+            // If button exists, check if it's disabled (disabled = already on page 1)
+            if (firstPageButton) {
+                const isDisabled = await this.page!.evaluate((el: any) => {
+                    return el.disabled || el.classList.contains('aspNetDisabled');
+                }, firstPageButton);
+
+                // If not disabled, we're not on page 1, so click to go to first page
+                if (!isDisabled) {
+                    await firstPageButton.click();
+                    console.log(`[${this.getName()}] Navigated to first page`);
+                    // Wait for page to load
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                    try {
+                        await this.page!.waitForSelector('tr.rgRow, tr.rgAltRow', { timeout: 5000 });
+                    } catch (e) {
+                        // Ignore timeout - page might already be loaded
+                    }
+                }
+            }
+            // If button doesn't exist or is disabled, we're already on page 1
+        } catch (e) {
+            // Ignore errors - navigation to first page is best effort
+            // If we can't navigate, we'll just proceed with whatever page we're on
+        }
     }
 
     /**
@@ -1287,6 +1343,7 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
             await this.navigateToSearchPage();
 
             const allPermits: PermitData[] = [];
+            let newPermitsCount = 0; // Track only newly added permits for limit
 
             // Get permit prefixes with dynamic year (use startDate for year determination)
             const permitPrefixes = this.getPermitPrefixes(startDate);
@@ -1334,13 +1391,30 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
                     }
 
                     // Extract permits by clicking into detail pages
-                    const batchPermits = await this.navigatePagesAndExtract(limit ? limit - allPermits.length : undefined);
-                    allPermits.push(...batchPermits);
+                    // If limit is specified, extract a bit more than needed to account for existing permits
+                    // We'll filter and count only new ones after extraction
+                    const remainingNewPermitsNeeded = limit ? limit - newPermitsCount : undefined;
+                    // Extract more than needed (multiply by 1.5) to account for existing permits
+                    const extractionLimit = remainingNewPermitsNeeded 
+                        ? Math.ceil(remainingNewPermitsNeeded * 1.5) 
+                        : undefined;
+                    const batchPermits = await this.navigatePagesAndExtract(extractionLimit);
+                    
+                    // Count only new permits (not already in DB) toward the limit
+                    for (const permit of batchPermits) {
+                        if (!this.existingPermitNumbers.has(permit.permitNumber)) {
+                            newPermitsCount++;
+                            // If we've reached the limit of new permits, we can stop processing this batch
+                            if (limit && newPermitsCount >= limit) {
+                                break;
+                            }
+                        }
+                    }
+                    allPermits.push(...batchPermits); // Keep all permits for return value
 
-                    // Check if we hit the limit
-                    if (limit && allPermits.length >= limit) {
-                        console.log(`[${this.getName()}] Reached limit of ${limit} permits`);
-                        allPermits.splice(limit);
+                    // Check if we hit the limit of NEW permits
+                    if (limit && newPermitsCount >= limit) {
+                        console.log(`[${this.getName()}] Reached limit of ${limit} new permits (${newPermitsCount} new, ${allPermits.length} total)`);
                         hasMoreBatches = false;
                         break; // Break out of batch loop
                     }
@@ -1365,20 +1439,23 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
                     }
                 }
 
-                // Check if we hit the limit after processing all batches for this prefix
+                // Check if we hit the limit of NEW permits after processing all batches for this prefix
                 // If so, break out of the prefix loop
-                if (limit && allPermits.length >= limit) {
+                if (limit && newPermitsCount >= limit) {
                     break;
                 }
             }
 
-            // Apply limit if specified
-            const permits = limit && limit > 0
-                ? allPermits.slice(0, limit)
-                : allPermits;
-
+            // Filter out existing permits if limit was specified (only return new permits up to limit)
+            // If no limit, return all permits
+            let permits: PermitData[];
             if (limit && limit > 0) {
-                console.log(`[${this.getName()}] Limited to ${permits.length} permits (from ${allPermits.length})`);
+                // Only return new permits up to the limit
+                const newPermits = allPermits.filter(p => !this.existingPermitNumbers.has(p.permitNumber));
+                permits = newPermits.slice(0, limit);
+                console.log(`[${this.getName()}] Returning ${permits.length} new permits (${newPermitsCount} new total, ${allPermits.length} total extracted)`);
+            } else {
+                permits = allPermits;
             }
 
             console.log(`[${this.getName()}] Extracted ${permits.length} permits total`);
