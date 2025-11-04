@@ -11,6 +11,23 @@ import puppeteer, { Browser, Page } from "puppeteer";
 export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
     protected browser: Browser | null = null;
     protected page: Page | null = null;
+    
+    /**
+     * Starting batch numbers for each prefix (for incremental scraping)
+     * Set by scraper.ts before calling scrape()
+     */
+    protected startingBatchNumbers: Map<string, number> = new Map();
+
+    /**
+     * Get the number of digits used for batch suffixes (pagestart)
+     * Milpitas: 2 digits, Morgan Hill: 3 digits, Los Altos: 4 digits
+     */
+    protected abstract getSuffixDigits(): number;
+    
+    /**
+     * Get permit prefixes for a given date (used for incremental scraping)
+     */
+    protected abstract getPermitPrefixes(startDate?: Date): string[];
 
     /**
      * Format date for eTRAKiT system (MM/DD/YYYY)

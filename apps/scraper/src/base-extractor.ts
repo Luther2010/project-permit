@@ -18,10 +18,11 @@ export abstract class BaseExtractor {
     /**
      * Main method to scrape permits
      * Each extractor implements this differently based on the city's website structure
-     * @param scrapeDate Optional specific date to scrape for
      * @param limit Optional maximum number of permits to scrape (for testing)
+     * @param startDate Optional start date for date range scraping
+     * @param endDate Optional end date for date range scraping
      */
-    abstract scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult>;
+    abstract scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult>;
 
     /**
      * Parse permit data from HTML or API response
@@ -51,10 +52,11 @@ export abstract class BaseExtractor {
 export abstract class BaseDailyExtractor extends BaseExtractor {
     /**
      * Main method to scrape permits by date
-     * @param scrapeDate Optional specific date to scrape for (defaults to today)
      * @param limit Optional maximum number of permits to scrape (for testing)
+     * @param startDate Optional start date for date range scraping
+     * @param endDate Optional end date for date range scraping
      */
-    abstract scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult>;
+    abstract scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult>;
 }
 
 /**
@@ -63,10 +65,11 @@ export abstract class BaseDailyExtractor extends BaseExtractor {
 export abstract class BaseMonthlyExtractor extends BaseExtractor {
     /**
      * Main method to scrape permits by month/year
-     * @param scrapeDate Date object - only month and year are used
      * @param limit Optional maximum number of permits to scrape (for testing)
+     * @param startDate Optional start date - scrapes from beginning of startDate's month
+     * @param endDate Optional end date - not currently used for monthly scrapers
      */
-    abstract scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult>;
+    abstract scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult>;
 
     /**
      * Extract month and year from a date (defaults to current month if not provided)

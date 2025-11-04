@@ -28,15 +28,22 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
 
     /**
      * Get permit prefixes with dynamic year suffix (2-digit)
-     * Uses scrapeDate if provided, otherwise current year
+     * Uses startDate if provided, otherwise current year
      */
-    protected getPermitPrefixes(scrapeDate?: Date): string[] {
-        const year = scrapeDate ? scrapeDate.getFullYear() : new Date().getFullYear();
+    protected getPermitPrefixes(startDate?: Date): string[] {
+        const year = startDate ? startDate.getFullYear() : new Date().getFullYear();
         const yearSuffix = String(year).slice(-2); // Last 2 digits (e.g., "25" for 2025)
         return this.BASE_PREFIXES.map(prefix => `${prefix}${yearSuffix}`);
     }
 
     protected readonly MAX_RESULTS_PER_BATCH = 10; // 5 pages × 10 results per page = 50 max, but we use 4-digit suffixes to get 10 per batch
+
+    /**
+     * Get suffix digits for pagestart calculation (4 for Los Altos)
+     */
+    protected getSuffixDigits(): number {
+        return 4;
+    }
 
     /**
      * Normalize status using eTRAKiT status normalizer
@@ -45,7 +52,7 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
         return normalizeEtrakitStatus(rawStatus);
     }
 
-    async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
+    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
         try {
             console.log(`[LosAltosExtractor] Starting scrape for ${this.city}`);
 
@@ -57,8 +64,8 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
 
             const allPermits: PermitData[] = [];
 
-            // Get permit prefixes with dynamic year
-            const permitPrefixes = this.getPermitPrefixes(scrapeDate);
+            // Get permit prefixes with dynamic year (use startDate for year determination)
+            const permitPrefixes = this.getPermitPrefixes(startDate);
 
             // Search for each prefix
             for (const prefix of permitPrefixes) {
@@ -67,7 +74,11 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
                 // Search in batches: prefix-0000, prefix-0001, prefix-0002, etc.
                 // Los Altos only returns 5 pages × 10 per page = 50 results max
                 // So we need 4-digit suffixes to cover smaller ranges: -0000 covers 00001-00010, -0001 covers 00011-00020, etc.
-                let batchNumber = 0;
+                // Start from the calculated starting batch number (for incremental scraping)
+                let batchNumber = this.startingBatchNumbers.get(prefix) ?? 0;
+                if (batchNumber > 0) {
+                    console.log(`[LosAltosExtractor] Starting from batch ${batchNumber} for ${prefix} (incremental scraping)`);
+                }
                 let hasMoreBatches = true;
 
                 while (hasMoreBatches) {

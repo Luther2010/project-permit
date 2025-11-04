@@ -112,7 +112,8 @@ export class SanJoseExtractor extends BaseDailyExtractor {
     }
 
     /**
-     * Format date for SQL query (M/D/YYYY format)
+     * Format date for SQL query (M/D/YYYY format, matching database format)
+     * Note: Database uses unpadded format (e.g., "4/10/2018" not "04/10/2018")
      */
     private formatDateForAPI(date: Date): string {
         const month = date.getMonth() + 1; // getMonth() is 0-indexed
@@ -150,28 +151,83 @@ export class SanJoseExtractor extends BaseDailyExtractor {
         return data;
     }
 
-    async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
+    /**
+     * Generate array of dates between startDate and endDate (inclusive)
+     */
+    private generateDateRange(startDate: Date, endDate: Date): Date[] {
+        const dates: Date[] = [];
+        const current = new Date(startDate);
+        current.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        
+        while (current <= end) {
+            dates.push(new Date(current));
+            current.setDate(current.getDate() + 1);
+        }
+        
+        return dates;
+    }
+
+    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
         try {
             console.log(`[SanJoseExtractor] Starting scrape for ${this.city}`);
 
-            // Calculate date to search
-            const searchDate = scrapeDate || new Date();
-            const dateStr = this.formatDateForAPI(searchDate);
-            console.log(`[SanJoseExtractor] Searching for permits with issue date: ${dateStr}`);
-
-            // Build SQL query
-            // Note: San Jose uses ISSUEDATE field and LIKE pattern matching
-            const sql = `SELECT * FROM "${this.RESOURCE_ID}" WHERE "ISSUEDATE" LIKE '${dateStr}%'`;
+            // San Jose API stores ISSUEDATE as text in "M/D/YYYY HH:MM:SS AM/PM" format
+            // We need to use LIKE pattern matching instead of date comparisons
+            // For date ranges, we'll query each date individually using LIKE 'M/D/YYYY%'
             
-            // Query API
-            const apiResponse = await this.queryAPI(sql);
+            let allRecords: SanJoseRecord[] = [];
             
-            console.log(`[SanJoseExtractor] API returned ${apiResponse.result.records.length} records`);
+            if (startDate && endDate) {
+                // Both dates provided - query each date in the range
+                const dates = this.generateDateRange(startDate, endDate);
+                console.log(`[SanJoseExtractor] Scraping date range: ${this.formatDateForAPI(startDate)} to ${this.formatDateForAPI(endDate)} (${dates.length} days)`);
+                
+                for (const date of dates) {
+                    const dateStr = this.formatDateForAPI(date);
+                    const sql = `SELECT * FROM "${this.RESOURCE_ID}" WHERE "ISSUEDATE" LIKE '${dateStr}%'`;
+                    
+                    const apiResponse = await this.queryAPI(sql);
+                    allRecords.push(...apiResponse.result.records);
+                }
+            } else if (startDate) {
+                // Only start date provided - scrape from startDate onwards
+                // Query day by day from startDate to today (or a reasonable future date)
+                const today = new Date();
+                today.setHours(23, 59, 59, 999);
+                const effectiveEndDate = today;
+                const dates = this.generateDateRange(startDate, effectiveEndDate);
+                console.log(`[SanJoseExtractor] Scraping from ${this.formatDateForAPI(startDate)} onwards (${dates.length} days)`);
+                
+                for (const date of dates) {
+                    const dateStr = this.formatDateForAPI(date);
+                    const sql = `SELECT * FROM "${this.RESOURCE_ID}" WHERE "ISSUEDATE" LIKE '${dateStr}%'`;
+                    
+                    const apiResponse = await this.queryAPI(sql);
+                    allRecords.push(...apiResponse.result.records);
+                }
+            } else {
+                // No date provided - scrape today only
+                const todayStr = this.formatDateForAPI(new Date());
+                console.log(`[SanJoseExtractor] Scraping today: ${todayStr}`);
+                
+                const sql = `SELECT * FROM "${this.RESOURCE_ID}" WHERE "ISSUEDATE" LIKE '${todayStr}%'`;
+                const apiResponse = await this.queryAPI(sql);
+                allRecords.push(...apiResponse.result.records);
+            }
+            
+            console.log(`[SanJoseExtractor] API returned ${allRecords.length} records total`);
 
             // Parse permit data
-            const permits = await this.parsePermitData(apiResponse.result.records, limit);
+            const allPermits = await this.parsePermitData(allRecords, limit);
 
-            console.log(`[SanJoseExtractor] Scraped ${permits.length} permits total`);
+            console.log(`[SanJoseExtractor] Scraped ${allPermits.length} permits total`);
+
+            // Apply limit if specified (already applied in parsePermitData, but keep for consistency)
+            const permits = limit && limit > 0 
+                ? allPermits.slice(0, limit)
+                : allPermits;
 
             return {
                 permits,

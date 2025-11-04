@@ -11,47 +11,97 @@ import * as fs from "fs";
 
 export class LosAltosHillsExtractor extends EtrakitBaseExtractor {
 
-    async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
+    /**
+     * Generate array of dates between startDate and endDate (inclusive)
+     */
+    private generateDateRange(startDate: Date, endDate: Date): Date[] {
+        const dates: Date[] = [];
+        const current = new Date(startDate);
+        current.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        
+        while (current <= end) {
+            dates.push(new Date(current));
+            current.setDate(current.getDate() + 1);
+        }
+        
+        return dates;
+    }
+
+    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
         try {
             console.log(`[LosAltosHillsExtractor] Starting scrape for ${this.city}`);
+
+            // Determine dates to scrape
+            let datesToScrape: Date[] = [];
+            if (startDate && endDate) {
+                datesToScrape = this.generateDateRange(startDate, endDate);
+                console.log(`[LosAltosHillsExtractor] Scraping date range: ${datesToScrape.length} days`);
+            } else if (startDate) {
+                // Only start date provided - scrape from startDate to today
+                datesToScrape = this.generateDateRange(startDate, new Date());
+                console.log(`[LosAltosHillsExtractor] Scraping from ${startDate.toISOString().split("T")[0]} to today: ${datesToScrape.length} days`);
+            } else {
+                // No date provided - scrape today only
+                datesToScrape = [new Date()];
+            }
 
             // Initialize browser and setup downloads using base class methods
             await this.initializeBrowser();
             const { downloadsDir, downloadPromise } = await this.setupDownloads();
 
-            // Navigate to search page
-            await this.navigateToSearchPage();
+            const allPermits: PermitData[] = [];
 
-            // Format date for eTRAKiT (MM/DD/YYYY format)
-            const dateStr = scrapeDate 
-                ? this.formatDateForETRAKiT(scrapeDate)
-                : this.formatDateForETRAKiT(new Date());
+            // Scrape each date in the range
+            for (const date of datesToScrape) {
+                if (limit && allPermits.length >= limit) {
+                    console.log(`[LosAltosHillsExtractor] Reached limit of ${limit} permits`);
+                    break;
+                }
 
-            console.log(`[LosAltosHillsExtractor] Searching for permits with applied date: ${dateStr}`);
+                // Navigate to search page (re-navigate for each date to avoid stale state)
+                await this.navigateToSearchPage();
 
-            // Set search filters using base class method
-            // Note: Los Altos Hills uses "APPLIED" instead of "APPLIED DATE"
-            await this.setSearchFilters(
-                '#cplMain_ddSearchBy',  // Search By selector
-                'APPLIED',              // Search By value (not "APPLIED DATE")
-                '#cplMain_ddSearchOper', // Search Operator selector
-                'EQUALS',               // Search Operator value (try "EQUALS" first, will fallback to "Equals")
-                '#cplMain_txtSearchString', // Search Value selector
-                dateStr                 // Search Value
-            );
+                // Format date for eTRAKiT (MM/DD/YYYY format)
+                const dateStr = this.formatDateForETRAKiT(date);
 
-            // Execute search using base class method
-            await this.executeSearch('#ctl00_cplMain_btnSearch');
+                console.log(`[LosAltosHillsExtractor] Searching for permits with applied date: ${dateStr}`);
 
-            // Click export button and wait for download using base class method
-            const excelFile = await this.clickExportButton(
-                downloadPromise,
-                downloadsDir,
-                '#cplMain_btnExportToExcel' // Specific export button selector for eTRAKiT
-            );
+                // Set search filters using base class method
+                // Note: Los Altos Hills uses "APPLIED" instead of "APPLIED DATE"
+                await this.setSearchFilters(
+                    '#cplMain_ddSearchBy',  // Search By selector
+                    'APPLIED',              // Search By value (not "APPLIED DATE")
+                    '#cplMain_ddSearchOper', // Search Operator selector
+                    'EQUALS',               // Search Operator value (try "EQUALS" first, will fallback to "Equals")
+                    '#cplMain_txtSearchString', // Search Value selector
+                    dateStr                 // Search Value
+                );
 
-            // Parse Excel file (subclass-specific)
-            const allPermits = await this.parseExcelFile(excelFile);
+                // Execute search using base class method
+                await this.executeSearch('#ctl00_cplMain_btnSearch');
+
+                // Click export button and wait for download using base class method
+                const excelFile = await this.clickExportButton(
+                    downloadPromise,
+                    downloadsDir,
+                    '#cplMain_btnExportToExcel' // Specific export button selector for eTRAKiT
+                );
+
+                if (!excelFile) {
+                    console.warn(`[LosAltosHillsExtractor] No Excel file downloaded for ${dateStr}, skipping...`);
+                    continue;
+                }
+
+                // Parse Excel file (subclass-specific)
+                const datePermits = await this.parseExcelFile(excelFile);
+                allPermits.push(...datePermits);
+                console.log(`[LosAltosHillsExtractor] Found ${datePermits.length} permits for ${dateStr}`);
+                
+                // Clean up downloaded file after processing
+                this.cleanupFiles(excelFile, downloadsDir);
+            }
 
             // Apply limit if specified (for testing)
             const permits = limit && limit > 0 
@@ -61,9 +111,6 @@ export class LosAltosHillsExtractor extends EtrakitBaseExtractor {
             if (limit && limit > 0) {
                 console.log(`[LosAltosHillsExtractor] Limited to ${permits.length} permits (from ${allPermits.length})`);
             }
-
-            // Clean up downloaded file using base class method
-            this.cleanupFiles(excelFile, downloadsDir);
 
             console.log(`[LosAltosHillsExtractor] Parsed ${permits.length} permits from Excel`);
 

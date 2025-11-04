@@ -39,7 +39,9 @@ export function normalizeAccelaStatus(raw?: string): PermitStatus {
         s === "plan review" ||
         s === "submitted" ||
         s === "pending resubmittal" ||
-        s === "incomplete"
+        s === "incomplete" ||
+        s === "received" ||
+        s === "accepted"
     ) {
         return PermitStatus.IN_REVIEW;
     }

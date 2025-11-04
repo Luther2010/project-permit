@@ -469,7 +469,7 @@ export class MountainViewExtractor extends BaseMonthlyExtractor {
         return permits;
     }
 
-    async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
+    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
         try {
             // Launch browser
             this.browser = await puppeteer.launch({
@@ -490,8 +490,8 @@ export class MountainViewExtractor extends BaseMonthlyExtractor {
                 'Upgrade-Insecure-Requests': '1',
             });
 
-            // Get month and year from scrapeDate (defaults to current month)
-            const { month, year } = this.getMonthYear(scrapeDate);
+            // Get month and year from startDate if provided (defaults to current month)
+            const { month, year } = this.getMonthYear(startDate);
             const targetDate = new Date(year, month - 1, 1); // First day of target month
 
             // Find the PDF URL for the target month

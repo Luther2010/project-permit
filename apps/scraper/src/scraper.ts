@@ -269,12 +269,78 @@ async function savePermits(permits: any[]): Promise<void> {
 }
 
 /**
+ * Get the largest permit number suffix for a given prefix from the database
+ * Returns the numeric suffix (e.g., for "BCOM2025-0051", returns 51)
+ */
+export async function getLargestPermitSuffix(prefix: string, city: City): Promise<number | null> {
+    try {
+        // Find all permits for this city that start with the prefix
+        const permits = await prisma.permit.findMany({
+            where: {
+                city: city,
+                permitNumber: {
+                    startsWith: prefix,
+                },
+            },
+            select: {
+                permitNumber: true,
+            },
+        });
+
+        if (permits.length === 0) {
+            return null;
+        }
+
+        // Extract numeric suffixes and find the largest
+        let maxSuffix = 0;
+        for (const permit of permits) {
+            // Extract suffix after the prefix (e.g., "BCOM2025-0051" -> "0051")
+            // Handle both with and without dash: "BCOM2025-0051" or "BCOM20250051"
+            const match = permit.permitNumber.match(new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-?(\\d+)$`));
+            if (match && match[1]) {
+                const suffix = parseInt(match[1], 10);
+                if (!isNaN(suffix) && suffix > maxSuffix) {
+                    maxSuffix = suffix;
+                }
+            }
+        }
+
+        return maxSuffix > 0 ? maxSuffix : null;
+    } catch (error) {
+        console.warn(`⚠️  Error getting largest permit suffix for ${prefix}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Round down a permit suffix to the nearest pagestart
+ * @param suffix The numeric suffix (e.g., 51)
+ * @param suffixDigits Number of digits in the pagestart (2 for Milpitas, 3 for Morgan Hill, 4 for Los Altos)
+ * @returns The pagestart batch number (e.g., for suffixDigits=3, 51 -> 50, so returns 5 for batch "005")
+ */
+export function roundDownToPagestart(suffix: number, suffixDigits: number): number {
+    // For 2 digits: round down to nearest 100, then divide by 100 to get batch number
+    // (e.g., 51 -> 0, 151 -> 1, so batch "00" or "01")
+    // For 3 digits: round down to nearest 10, then divide by 10 to get batch number
+    // (e.g., 51 -> 50 -> 5, so batch "005")
+    // For 4 digits: round down to nearest 10, then divide by 10 to get batch number
+    // (e.g., 51 -> 50 -> 5, so batch "0005")
+    if (suffixDigits === 2) {
+        return Math.floor(suffix / 100);
+    } else {
+        // 3 or 4 digits: round down to nearest 10, then divide by 10
+        return Math.floor(suffix / 10);
+    }
+}
+
+/**
  * Scrape permits for a specific city
  */
 export async function scrapeCity(
     cityName: string,
-    scrapeDate?: Date,
-    limit?: number
+    limit?: number,
+    startDate?: Date,
+    endDate?: Date
 ): Promise<void> {
     const config = getCityConfig(cityName);
 
@@ -289,40 +355,108 @@ export async function scrapeCity(
 
     // Provide appropriate messaging based on scraper type
     let dateMessage = "";
-    if (scrapeDate) {
+    if (startDate && endDate) {
         if (config.scraperType === ScraperType.MONTHLY) {
-            const month = scrapeDate.toLocaleString('default', { month: 'long' });
-            const year = scrapeDate.getFullYear();
+            const month = startDate.toLocaleString('default', { month: 'long' });
+            const year = startDate.getFullYear();
             dateMessage = ` for ${month} ${year}`;
         } else if (config.scraperType === ScraperType.ID_BASED) {
-            // ID_BASED scrapers don't use date - ignore it
-            console.log(`ℹ️  Note: ${cityName} uses ID-based scraping (date parameter ignored)`);
+            const year = startDate.getFullYear();
+            dateMessage = ` for year ${year}`;
         } else {
-            dateMessage = ` on ${scrapeDate.toISOString().split("T")[0]}`;
+            dateMessage = ` (range: ${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]})`;
+        }
+    } else if (startDate) {
+        if (config.scraperType === ScraperType.MONTHLY) {
+            const month = startDate.toLocaleString('default', { month: 'long' });
+            const year = startDate.getFullYear();
+            dateMessage = ` for ${month} ${year}`;
+        } else if (config.scraperType === ScraperType.ID_BASED) {
+            const year = startDate.getFullYear();
+            dateMessage = ` for year ${year}`;
+        } else {
+            dateMessage = ` (from: ${startDate.toISOString().split("T")[0]})`;
         }
     }
     
     console.log(`🏙️  Starting scrape for ${cityName}${dateMessage}...`);
 
     const extractor = createExtractor(config);
-    const result = await extractor.scrape(scrapeDate, limit);
-
-    if (result.success && result.permits.length > 0) {
-        await savePermits(result.permits);
-        console.log(
-            `✅ ${cityName} scrape complete: ${result.permits.length} permits`
-        );
+    
+    // For ID-based scrapers, implement incremental scraping
+    if (config.scraperType === ScraperType.ID_BASED && startDate) {
+        // Calculate starting batch numbers for each prefix
+        const { EtrakitIdBasedExtractor } = await import("./extractors/etrakit-id-based-extractor.js");
+        if (extractor instanceof EtrakitIdBasedExtractor) {
+            const cityEnum = mapCity(cityName);
+            if (cityEnum) {
+                // Use type assertion to access protected methods for incremental scraping
+                // Cast to any to access protected members, then cast to specific interface
+                const idBasedExtractor = extractor as any;
+                
+                if (idBasedExtractor.getPermitPrefixes && idBasedExtractor.getSuffixDigits) {
+                    const prefixes = idBasedExtractor.getPermitPrefixes(startDate);
+                    const suffixDigits = idBasedExtractor.getSuffixDigits();
+                    
+                    const startingBatchNumbers = new Map<string, number>();
+                    for (const prefix of prefixes) {
+                        const largestSuffix = await getLargestPermitSuffix(prefix, cityEnum);
+                        if (largestSuffix !== null) {
+                            const batchNumber = roundDownToPagestart(largestSuffix, suffixDigits);
+                            startingBatchNumbers.set(prefix, batchNumber);
+                            console.log(`📊 Starting batch for ${prefix}: ${batchNumber} (largest suffix: ${largestSuffix})`);
+                        } else {
+                            startingBatchNumbers.set(prefix, 0);
+                            console.log(`📊 Starting batch for ${prefix}: 0 (no existing permits)`);
+                        }
+                    }
+                    idBasedExtractor.startingBatchNumbers = startingBatchNumbers;
+                }
+            }
+        }
+        
+        const result = await extractor.scrape(limit, startDate, endDate);
+        
+        // For ID-based scrapers, the extractor handles date filtering internally
+        // No need to filter again here as the extractor already filters by appliedDate
+        
+        if (result.success && result.permits.length > 0) {
+            await savePermits(result.permits);
+            console.log(
+                `✅ ${cityName} scrape complete: ${result.permits.length} permits`
+            );
+        } else {
+            console.log(
+                `⚠️  ${cityName} scrape failed: ${result.error || "No permits found"}`
+            );
+        }
     } else {
-        console.log(
-            `⚠️  ${cityName} scrape failed: ${result.error || "No permits found"}`
-        );
+        // For daily and monthly scrapers
+        // The extractors handle date filtering at the search level (e.g., setting date ranges in search forms)
+        // No need to filter again here as the search itself is already filtered
+        const result = await extractor.scrape(limit, startDate, endDate);
+
+        if (result.success && result.permits.length > 0) {
+            await savePermits(result.permits);
+            console.log(
+                `✅ ${cityName} scrape complete: ${result.permits.length} permits`
+            );
+        } else {
+            console.log(
+                `⚠️  ${cityName} scrape failed: ${result.error || "No permits found"}`
+            );
+        }
     }
 }
 
 /**
  * Scrape permits for all enabled cities
  */
-export async function scrapeAllCities(scrapeDate?: Date, limit?: number): Promise<void> {
+export async function scrapeAllCities(
+    limit?: number,
+    startDate?: Date,
+    endDate?: Date
+): Promise<void> {
     console.log("🚀 Starting permit scraping for all cities...");
 
     const enabledCities = getEnabledCities();
@@ -334,7 +468,7 @@ export async function scrapeAllCities(scrapeDate?: Date, limit?: number): Promis
 
     for (const cityConfig of enabledCities) {
         try {
-            await scrapeCity(cityConfig.city, scrapeDate, limit);
+            await scrapeCity(cityConfig.city, limit, startDate, endDate);
         } catch (error) {
             console.error(`❌ Failed to scrape ${cityConfig.city}:`, error);
         }

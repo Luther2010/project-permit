@@ -18,6 +18,69 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
     protected abstract getBaseUrl(): string;
 
     /**
+     * Default scrape implementation for Energov-based extractors
+     * Can be overridden by subclasses if needed
+     */
+    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
+        try {
+            // Launch browser
+            this.browser = await puppeteer.launch({
+                headless: true,
+                args: ["--no-sandbox", "--disable-setuid-sandbox"],
+            });
+
+            this.page = await this.browser.newPage();
+            await this.page.setViewport({ width: 1920, height: 1080 });
+
+            // Navigate to search page
+            await this.page.goto(this.url, {
+                waitUntil: "networkidle2",
+                timeout: 60000,
+            });
+
+            // Calculate dates to search
+            let startDateStr: string;
+            let endDateStr: string | undefined;
+            if (startDate && endDate) {
+                startDateStr = this.formatDate(startDate);
+                endDateStr = this.formatDate(endDate);
+            } else if (startDate) {
+                startDateStr = this.formatDate(startDate);
+                endDateStr = undefined; // Don't set end date filter if not provided
+            } else {
+                // No date provided - use today
+                const today = new Date();
+                startDateStr = this.formatDate(today);
+                endDateStr = this.formatDate(today);
+            }
+
+            // Set up search filters
+            await this.setupSearchFilters(this.page, startDateStr, endDateStr);
+
+            // Perform search
+            await this.performSearch(this.page);
+
+            // Parse permits from all pages
+            const permits = await this.navigatePages(this.page, limit);
+
+            return {
+                permits,
+                success: true,
+                scrapedAt: new Date(),
+            };
+        } catch (error: any) {
+            return {
+                permits: [],
+                success: false,
+                error: error.message,
+                scrapedAt: new Date(),
+            };
+        } finally {
+            await this.cleanup();
+        }
+    }
+
+    /**
      * Normalize Energov/Tyler status text to our PermitStatus enum
      * Can be overridden by subclasses for city-specific mappings
      */
@@ -262,7 +325,9 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
     /**
      * Set up search filters (select Permit, click Advanced, set dates)
      */
-    protected async setupSearchFilters(page: Page, dateStr: string): Promise<void> {
+    protected async setupSearchFilters(page: Page, startDateStr: string, endDateStr?: string): Promise<void> {
+        // Only set toDateStr if endDateStr is provided
+        const toDateStr = endDateStr || null;
         // Wait for AngularJS to be ready
         await this.waitForAngular(page);
 
@@ -588,13 +653,14 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 return true;
             }
             return false;
-        }, dateStr);
+        }, startDateStr);
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
         await this.waitForAngular(page);
 
-        // Step 4: Set Applied Date (To) - same date
-        const toDateSet = await page.evaluate((dateValue: string) => {
+        // Step 4: Set Applied Date (To) - only if endDateStr is provided
+        if (toDateStr) {
+            const toDateSet = await page.evaluate((dateValue: string) => {
             // @ts-expect-error - page.evaluate runs in browser context
             const input = document.getElementById('ApplyDateTo');
             if (!input) return false;
@@ -649,10 +715,11 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 return true;
             }
             return false;
-        }, dateStr);
+        }, toDateStr);
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await this.waitForAngular(page);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await this.waitForAngular(page);
+        }
     }
 
     /**
@@ -856,11 +923,23 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             }
 
             // Check if there's a next page
+            // Try multiple pagination patterns: Energov-specific (#link-NextPage) and generic AngularJS patterns
             const hasNextPage = await page.evaluate(() => {
-                // @ts-expect-error - page.evaluate runs in browser context where document exists
-                const nextBtn = document.querySelector('button[ng-click*="next"], a[ng-click*="next"]');
-                if (!nextBtn) return false;
-                return !(nextBtn as any).disabled && !(nextBtn as any).classList.contains('disabled');
+                // Try Energov-specific pagination (Sunnyvale, Gilroy, etc.)
+                const nextBtnEnergov = (globalThis as any).document.getElementById('link-NextPage');
+                if (nextBtnEnergov) {
+                    // Check if the parent <li> has 'disabled' class
+                    const parentLi = nextBtnEnergov.closest('li');
+                    return parentLi && !parentLi.classList.contains('disabled');
+                }
+                
+                // Fallback to AngularJS patterns
+                const nextBtn = (globalThis as any).document.querySelector('button[ng-click*="next"], a[ng-click*="next"]');
+                if (nextBtn) {
+                    return !(nextBtn as any).disabled && !(nextBtn as any).classList.contains('disabled');
+                }
+                
+                return false;
             });
 
             if (!hasNextPage) {
@@ -868,12 +947,31 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             }
 
             // Navigate to next page
-            await page.evaluate(() => {
-                // @ts-expect-error - page.evaluate runs in browser context
-                const nextBtn = document.querySelector('button[ng-click*="next"], a[ng-click*="next"]') as HTMLElement;
+            const clicked = await page.evaluate(() => {
+                // Try Energov-specific pagination first
+                const nextBtnEnergov = (globalThis as any).document.getElementById('link-NextPage');
+                if (nextBtnEnergov) {
+                    const parentLi = nextBtnEnergov.closest('li');
+                    if (parentLi && !parentLi.classList.contains('disabled')) {
+                        const angular = (globalThis as any).window.angular;
+                        if (angular) {
+                            const element = angular.element(nextBtnEnergov);
+                            const scope = element.scope();
+                            if (scope && scope.vm && scope.vm.nextPage) {
+                                scope.$apply(() => {
+                                    scope.vm.nextPage();
+                                });
+                            }
+                        }
+                        nextBtnEnergov.click();
+                        return true;
+                    }
+                }
+                
+                // Fallback to generic AngularJS patterns
+                const nextBtn = (globalThis as any).document.querySelector('button[ng-click*="next"], a[ng-click*="next"]');
                 if (nextBtn) {
-                    // @ts-expect-error - page.evaluate runs in browser context
-                    const angular = window.angular;
+                    const angular = (globalThis as any).window.angular;
                     if (angular) {
                         const element = angular.element(nextBtn);
                         const scope = element.scope();
@@ -884,8 +982,16 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                         }
                     }
                     nextBtn.click();
+                    return true;
                 }
+                
+                return false;
             });
+            
+            if (!clicked) {
+                console.warn(`[${this.constructor.name}] Could not find or click next page button`);
+                break;
+            }
 
             await new Promise((resolve) => setTimeout(resolve, 2000));
             await this.waitForAngular(page);

@@ -28,7 +28,7 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
      */
     protected abstract getScreenshotPrefix(): string;
 
-    async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
+    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
         try {
             console.log(
                 `${this.getLoggerPrefix()} Starting scrape for ${this.city}`
@@ -59,12 +59,19 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
             let startDateStr: string;
             let endDateStr: string;
 
-            if (scrapeDate) {
-                // If specific date provided, use that date for both start and end
-                startDateStr = this.formatDateForAccela(scrapeDate);
-                endDateStr = this.formatDateForAccela(scrapeDate);
+            if (startDate && endDate) {
+                // Use provided date range
+                startDateStr = this.formatDateForAccela(startDate);
+                endDateStr = this.formatDateForAccela(endDate);
                 console.log(
-                    `${this.getLoggerPrefix()} Searching for permits on ${startDateStr}`
+                    `${this.getLoggerPrefix()} Searching for permits from ${startDateStr} to ${endDateStr}`
+                );
+            } else if (startDate) {
+                // Only start date provided - use startDate to today
+                startDateStr = this.formatDateForAccela(startDate);
+                endDateStr = this.formatDateForAccela(new Date());
+                console.log(
+                    `${this.getLoggerPrefix()} Searching for permits from ${startDateStr} to ${endDateStr}`
                 );
             } else {
                 // Default: last 30 days from today
@@ -77,8 +84,6 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
                     `${this.getLoggerPrefix()} Searching for permits from ${startDateStr} to ${endDateStr}`
                 );
             }
-
-            const startDate = startDateStr;
 
             // Wait for the page to be interactive
             await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -108,11 +113,11 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
                     }
                 }
                 return false;
-            }, startDate);
+            }, startDateStr);
 
             if (startDateValue) {
                 console.log(
-                    `${this.getLoggerPrefix()} Filled start date: ${startDate}`
+                    `${this.getLoggerPrefix()} Filled start date: ${startDateStr}`
                 );
 
                 // Fill end date

@@ -9,13 +9,38 @@
 import { scrapeAllCities, scrapeCity } from "./scraper.js";
 import { prisma } from "./lib/db";
 
+/**
+ * Parse date string (YYYY-MM-DD format) to Date object
+ */
+function parseDate(dateStr: string): Date {
+    const dateParts = dateStr.split("-");
+    if (dateParts.length === 3) {
+        const date = new Date(
+            parseInt(dateParts[0]),
+            parseInt(dateParts[1]) - 1,
+            parseInt(dateParts[2])
+        );
+        if (isNaN(date.getTime())) {
+            throw new Error(`Invalid date format: ${dateStr}. Expected YYYY-MM-DD`);
+        }
+        return date;
+    } else {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) {
+            throw new Error(`Invalid date format: ${dateStr}. Expected YYYY-MM-DD`);
+        }
+        return date;
+    }
+}
+
 async function main() {
     const args = process.argv.slice(2);
     let cityName: string | undefined;
-    let dateParam: string | undefined;
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
     let limit: number | undefined;
 
-    // Parse arguments: city name, date, and optional --limit flag
+    // Parse arguments: city name, date flags, and optional --limit flag
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
         if (arg === "--limit" || arg === "-l") {
@@ -31,65 +56,55 @@ async function main() {
                 console.error(`❌ --limit flag requires a value`);
                 process.exit(1);
             }
-        } else if (!cityName) {
+        } else if (arg === "--start-date" || arg === "--start") {
+            const dateValue = args[i + 1];
+            if (dateValue) {
+                try {
+                    startDate = parseDate(dateValue);
+                    i++; // Skip the next argument as it's the date value
+                } catch (e: any) {
+                    console.error(`❌ Invalid start date: ${e.message}`);
+                    process.exit(1);
+                }
+            } else {
+                console.error(`❌ --start-date flag requires a value (YYYY-MM-DD)`);
+                process.exit(1);
+            }
+        } else if (arg === "--end-date" || arg === "--end") {
+            const dateValue = args[i + 1];
+            if (dateValue) {
+                try {
+                    endDate = parseDate(dateValue);
+                    i++; // Skip the next argument as it's the date value
+                } catch (e: any) {
+                    console.error(`❌ Invalid end date: ${e.message}`);
+                    process.exit(1);
+                }
+            } else {
+                console.error(`❌ --end-date flag requires a value (YYYY-MM-DD)`);
+                process.exit(1);
+            }
+        } else if (!cityName && !arg.startsWith("--") && !arg.startsWith("-")) {
             cityName = arg;
-        } else if (!dateParam) {
-            dateParam = arg;
-        }
-    }
-
-    // Parse date if provided (expecting YYYY-MM-DD format)
-    let scrapeDate: Date | undefined;
-    if (dateParam) {
-        // Parse YYYY-MM-DD and create date in local timezone to avoid timezone issues
-        const dateParts = dateParam.split("-");
-        if (dateParts.length === 3) {
-            scrapeDate = new Date(
-                parseInt(dateParts[0]),
-                parseInt(dateParts[1]) - 1,
-                parseInt(dateParts[2])
-            );
-        } else {
-            scrapeDate = new Date(dateParam);
-        }
-        if (isNaN(scrapeDate.getTime())) {
-            console.error(
-                `❌ Invalid date format: ${dateParam}. Expected YYYY-MM-DD`
-            );
-            process.exit(1);
         }
     }
 
     try {
         if (cityName) {
-            // Get city config to determine scraper type for better messaging
-            const { getCityConfig } = await import("./config/cities.js");
-            const config = getCityConfig(cityName);
-            let dateMessage = "";
-            if (scrapeDate && config) {
-                const { ScraperType } = await import("./types.js");
-                if (config.scraperType === ScraperType.MONTHLY) {
-                    const month = scrapeDate.toLocaleString('default', { month: 'long' });
-                    const year = scrapeDate.getFullYear();
-                    dateMessage = ` for ${month} ${year}`;
-                } else if (config.scraperType === ScraperType.ID_BASED) {
-                    // ID_BASED scrapers don't use date - ignore it
-                    console.log(`ℹ️  Note: ${cityName} uses ID-based scraping (date parameter will be ignored)`);
-                } else {
-                    dateMessage = ` on ${scrapeDate.toISOString().split("T")[0]}`;
-                }
-            } else if (scrapeDate) {
-                dateMessage = ` on ${scrapeDate.toISOString().split("T")[0]}`;
-            }
             console.log(
-                `Scraping permits for: ${cityName}${dateMessage}${limit ? ` (limit: ${limit})` : ""}`
+                `Scraping permits for: ${cityName}${startDate && endDate ? ` (range: ${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]})` : startDate ? ` (from: ${startDate.toISOString().split("T")[0]})` : ""}${limit ? ` (limit: ${limit})` : ""}`
             );
-            await scrapeCity(cityName, scrapeDate, limit);
+            await scrapeCity(cityName, limit, startDate, endDate);
         } else {
+            const rangeMessage = startDate && endDate 
+                ? ` (range: ${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]})`
+                : startDate 
+                    ? ` (from: ${startDate.toISOString().split("T")[0]})`
+                    : "";
             console.log(
-                `Scraping permits for all enabled cities${scrapeDate ? ` on ${scrapeDate.toISOString().split("T")[0]}` : ""}${limit ? ` (limit: ${limit})` : ""}`
+                `Scraping permits for all enabled cities${rangeMessage}${limit ? ` (limit: ${limit})` : ""}`
             );
-            await scrapeAllCities(scrapeDate, limit);
+            await scrapeAllCities(limit, startDate, endDate);
         }
 
         process.exit(0);

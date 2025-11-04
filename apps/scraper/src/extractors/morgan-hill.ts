@@ -29,14 +29,21 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
 
     /**
      * Get permit prefixes with dynamic year suffix (4-digit)
-     * Uses scrapeDate if provided, otherwise current year
+     * Uses startDate if provided, otherwise current year
      */
-    protected getPermitPrefixes(scrapeDate?: Date): string[] {
-        const year = scrapeDate ? scrapeDate.getFullYear() : new Date().getFullYear();
+    protected getPermitPrefixes(startDate?: Date): string[] {
+        const year = startDate ? startDate.getFullYear() : new Date().getFullYear();
         return this.BASE_PREFIXES.map(prefix => `${prefix}${year}`);
     }
 
     protected readonly MAX_RESULTS_PER_BATCH = 10; // 5 pages × 10 results per page = 50 max, but we use 3-digit suffixes to get 10 per batch
+
+    /**
+     * Get suffix digits for pagestart calculation (3 for Morgan Hill)
+     */
+    protected getSuffixDigits(): number {
+        return 3;
+    }
 
     /**
      * Normalize status using eTRAKiT status normalizer
@@ -45,7 +52,7 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
         return normalizeEtrakitStatus(rawStatus);
     }
 
-    async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
+    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
         try {
             console.log(`[MorganHillExtractor] Starting scrape for ${this.city}`);
 
@@ -57,8 +64,8 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
 
             const allPermits: PermitData[] = [];
 
-            // Get permit prefixes with dynamic year
-            const permitPrefixes = this.getPermitPrefixes(scrapeDate);
+            // Get permit prefixes with dynamic year (use startDate for year determination)
+            const permitPrefixes = this.getPermitPrefixes(startDate);
 
             // Search for each prefix
             for (const prefix of permitPrefixes) {
@@ -67,7 +74,11 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
                 // Search in batches: prefix-000, prefix-001, prefix-002, etc.
                 // Morgan Hill only returns 5 pages × 10 per page = 50 results max
                 // So we need 3-digit suffixes to cover smaller ranges: -000 covers 0001-0010, -001 covers 0011-0020, etc.
-                let batchNumber = 0;
+                // Start from the calculated starting batch number (for incremental scraping)
+                let batchNumber = this.startingBatchNumbers.get(prefix) ?? 0;
+                if (batchNumber > 0) {
+                    console.log(`[MorganHillExtractor] Starting from batch ${batchNumber} for ${prefix} (incremental scraping)`);
+                }
                 let hasMoreBatches = true;
 
                 while (hasMoreBatches) {

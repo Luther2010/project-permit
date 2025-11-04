@@ -284,8 +284,9 @@ export class CampbellExtractor extends BaseDailyExtractor {
     /**
      * Fill in search form and submit
      */
-    private async fillSearchForm(page: Page, searchDate: Date): Promise<void> {
-        const dateStr = this.formatDate(searchDate);
+    private async fillSearchForm(page: Page, startDate: Date, endDate?: Date): Promise<void> {
+        const startDateStr = this.formatDate(startDate);
+        const endDateStr = endDate ? this.formatDate(endDate) : null;
 
         // Wait for the form to be visible - the multiselect should be inside .grid-item-right-content > ngx-search-project-result
         await page.waitForSelector('.grid-item-right-content ngx-search-project-result p-multiselect[placeholder="Status"]', {
@@ -574,17 +575,19 @@ export class CampbellExtractor extends BaseDailyExtractor {
             throw new Error("Could not find 'Created After' input");
         }
         await createdAfterInput.click({ clickCount: 3 }); // Select all
-        await createdAfterInput.type(dateStr);
+        await createdAfterInput.type(startDateStr);
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // Step 3: Set "Created Before" date
-        const createdBeforeInput = await page.$('.grid-item-right-content ngx-search-project-result input[placeholder="Created Before"]');
-        if (!createdBeforeInput) {
-            throw new Error("Could not find 'Created Before' input");
+        // Step 3: Set "Created Before" date (only if endDate is provided)
+        if (endDateStr) {
+            const createdBeforeInput = await page.$('.grid-item-right-content ngx-search-project-result input[placeholder="Created Before"]');
+            if (!createdBeforeInput) {
+                throw new Error("Could not find 'Created Before' input");
+            }
+            await createdBeforeInput.click({ clickCount: 3 }); // Select all
+            await createdBeforeInput.type(endDateStr);
+            await new Promise((resolve) => setTimeout(resolve, 500));
         }
-        await createdBeforeInput.click({ clickCount: 3 }); // Select all
-        await createdBeforeInput.type(dateStr);
-        await new Promise((resolve) => setTimeout(resolve, 500));
 
         // Step 4: Find and check "Description" checkbox in the multiselect that shows "X items selected"
         // This multiselect is inside app-form-multi-select component
@@ -872,7 +875,7 @@ export class CampbellExtractor extends BaseDailyExtractor {
         }
     }
 
-    async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
+    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
         try {
             // Launch browser
             this.browser = await puppeteer.launch({
@@ -1007,11 +1010,14 @@ export class CampbellExtractor extends BaseDailyExtractor {
             await new Promise((resolve) => setTimeout(resolve, 2000));
             await this.waitForAngular(this.page);
 
-            // Calculate date to search
-            const searchDate = scrapeDate || new Date();
+            // Calculate dates to search
+            // If startDate is provided, use it; otherwise default to today
+            // If endDate is provided, use it; otherwise don't set an upper bound
+            const searchStartDate = startDate || new Date();
+            const searchEndDate = endDate || undefined;
 
             // Fill search form and submit
-            await this.fillSearchForm(this.page, searchDate);
+            await this.fillSearchForm(this.page, searchStartDate, searchEndDate);
 
             // Extract permit data from results table
             const permits = await this.parsePermitData(null, limit);

@@ -58,10 +58,10 @@ export class MilpitasExtractor extends EtrakitIdBasedExtractor {
 
     /**
      * Get permit prefixes with dynamic year suffix (2-digit)
-     * Uses scrapeDate if provided, otherwise current year
+     * Uses startDate if provided, otherwise current year
      */
-    private getPermitPrefixes(scrapeDate?: Date): string[] {
-        const year = scrapeDate ? scrapeDate.getFullYear() : new Date().getFullYear();
+    protected getPermitPrefixes(startDate?: Date): string[] {
+        const year = startDate ? startDate.getFullYear() : new Date().getFullYear();
         const yearSuffix = String(year).slice(-2); // Last 2 digits (e.g., "25" for 2025)
         return this.BASE_PREFIXES.map(prefix => `${prefix}${yearSuffix}`);
     }
@@ -71,7 +71,14 @@ export class MilpitasExtractor extends EtrakitIdBasedExtractor {
      */
     private readonly MAX_RESULTS_PER_BATCH = 100;
 
-    async scrape(scrapeDate?: Date, limit?: number): Promise<ScrapeResult> {
+    /**
+     * Get suffix digits for pagestart calculation (2 for Milpitas)
+     */
+    protected getSuffixDigits(): number {
+        return 2;
+    }
+
+    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
         try {
             console.log(`[MilpitasExtractor] Starting scrape for ${this.city}`);
 
@@ -83,15 +90,19 @@ export class MilpitasExtractor extends EtrakitIdBasedExtractor {
 
             const allPermits: PermitData[] = [];
 
-            // Get permit prefixes with dynamic year
-            const permitPrefixes = this.getPermitPrefixes(scrapeDate);
+            // Get permit prefixes with dynamic year (use startDate for year determination)
+            const permitPrefixes = this.getPermitPrefixes(startDate);
 
             // Search for each prefix
             for (const prefix of permitPrefixes) {
                 console.log(`[MilpitasExtractor] Searching for prefix: ${prefix}`);
 
                 // Search in batches: prefix-00, prefix-01, prefix-02, etc.
-                let batchNumber = 0;
+                // Start from the calculated starting batch number (for incremental scraping)
+                let batchNumber = this.startingBatchNumbers.get(prefix) ?? 0;
+                if (batchNumber > 0) {
+                    console.log(`[MilpitasExtractor] Starting from batch ${batchNumber} for ${prefix} (incremental scraping)`);
+                }
                 let hasMoreBatches = true;
 
                 while (hasMoreBatches) {
