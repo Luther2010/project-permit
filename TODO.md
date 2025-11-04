@@ -17,6 +17,12 @@
 - [x] Expose contractors in GraphQL and render in permit expanded detail view
 - [x] **TODO #10**: Populate contractor entities - imported contractors via CSV script
 - [x] **TODO #11**: Link permits to contractors - current, intentional approach uses randomized classifier association for sampling/testing
+- [x] **Incremental Scraping**: Implemented for ID-based extractors
+  - Track largest permit suffix for each prefix to determine starting batch
+  - Calculate starting batch: if suffix is last in batch, start at next batch; otherwise start at current batch
+  - Load existing permit numbers to track new vs existing permits
+  - Limit now represents newly added permits, not total extracted
+  - Navigate to first page after each search to prevent pagination issues
 
 ## 🎯 Main Priorities
 
@@ -34,13 +40,7 @@
    - Setup email sending functionality
    - Implement notification system for permit updates/alerts
 
-4. **Incremental Scraping**
-   - Design and implement incremental permit scraping strategy
-   - Avoid re-scraping all permits on each run
-   - Track last scrape date and only fetch new/updated permits
-   - Handle updates to existing permit records
-
-5. **PermitType-Contractor Classification Mapping**
+4. **PermitType-Contractor Classification Mapping**
    - Organize PermitType structure to enable smart contractor matching
    - Map permit types (e.g., ADU) to relevant contractor classifications (e.g., ELECTRICAL)
    - Create relationship system where contractors with ELECTRICAL classification can be matched to ADU permits
