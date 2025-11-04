@@ -14,8 +14,8 @@ export class SaratogaExtractor extends EtrakitIdBasedExtractor {
         return {
             basePrefixes: [""], // Empty prefix - permit numbers are "25-0001", "25-0002", etc.
             yearSuffixDigits: 2,
-            maxResultsPerBatch: 100, // 20 pages × 5 entries/page = 100
-            suffixDigits: 2, // For 25-000, 25-001, etc. (searches "25-000" matches "25-0001", "25-0002", etc.)
+            maxResultsPerBatch: 10, // With 3-digit suffixes, each batch covers ~10 permits, continues as long as there are results
+            suffixDigits: 3, // For 25-000, 25-001, etc. (searches "25-000" matches "25-0001", "25-0002", etc.)
             searchByValue: "PERMIT #", // Value is "Permit_Main.PERMIT_NO"
             searchOperatorValue: "BEGINS WITH",
             searchButtonSelector: "#ctl00_cplMain_btnSearch",

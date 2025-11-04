@@ -47,8 +47,8 @@ export class MilpitasExtractor extends EtrakitIdBasedExtractor {
                 "E-EN",
             ],
             yearSuffixDigits: 2,
-            maxResultsPerBatch: 100, // 20 pages × 5 entries/page = 100
-            suffixDigits: 2,
+            maxResultsPerBatch: 10, // With 3-digit suffixes, each batch covers ~10 permits, continues as long as there are results
+            suffixDigits: 3, // For B-AC25-000, B-AC25-001, etc.
             searchByValue: "Permit Number",
             searchOperatorValue: "BEGINS WITH",
             searchButtonSelector: "#cplMain_btnSearch",
