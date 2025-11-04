@@ -1,10 +1,6 @@
 import { EtrakitIdBasedExtractor, EtrakitIdBasedConfig } from "./etrakit-id-based-extractor";
 
 export class MorganHillExtractor extends EtrakitIdBasedExtractor {
-    getName(): string {
-        return "MorganHillExtractor";
-    }
-
     /**
      * Get configuration for Morgan Hill extractor
      */

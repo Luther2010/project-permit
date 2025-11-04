@@ -20,7 +20,7 @@ export const citiesConfig: CityConfig[] = [
         extractor: "SaratogaExtractor",
         url: "https://sara.csqrcloud.com/community-etrakit/Search/permit.aspx",
         enabled: true,
-        scraperType: ScraperType.DAILY,
+        scraperType: ScraperType.ID_BASED,
     },
     {
         city: "Santa Clara",

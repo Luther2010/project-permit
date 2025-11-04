@@ -1,10 +1,6 @@
 import { EtrakitIdBasedExtractor, EtrakitIdBasedConfig } from "./etrakit-id-based-extractor";
 
 export class LosAltosExtractor extends EtrakitIdBasedExtractor {
-    getName(): string {
-        return "LosAltosExtractor";
-    }
-
     /**
      * Get configuration for Los Altos extractor
      */

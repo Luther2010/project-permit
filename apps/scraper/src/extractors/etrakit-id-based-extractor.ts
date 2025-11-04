@@ -75,6 +75,27 @@ export interface EtrakitIdBasedConfig {
     hasContactsTab: boolean;
     
     /**
+     * Whether to extract data directly from search results table (no detail pages)
+     * If true, all data is extracted from table columns and navigatePagesAndExtract will use table extraction
+     */
+    extractFromTableOnly?: boolean;
+    
+    /**
+     * Table column mapping for table-only extraction (only used if extractFromTableOnly is true)
+     * Maps column indices to permit data fields
+     */
+    tableColumnMapping?: {
+        permitNumber: number;      // Column index for permit number
+        appliedDate?: number;      // Column index for applied date
+        issuedDate?: number;       // Column index for issued date
+        status?: number;           // Column index for status
+        address?: number;          // Column index for address
+        description?: number;      // Column index for description/title
+        value?: number;            // Column index for value/valuation
+        contractor?: number;      // Column index for contractor name
+    };
+    
+    /**
      * Pagination configuration
      */
     paginationConfig: {
@@ -825,9 +846,17 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
     /**
      * Navigate through pagination and extract permits
      * Uses pagination configuration from getConfig()
+     * If extractFromTableOnly is true, extracts directly from table without clicking into detail pages
      */
     protected async navigatePagesAndExtract(limit?: number): Promise<PermitData[]> {
         const config = this.getConfig();
+        
+        // If table-only extraction, use simplified method
+        if (config.extractFromTableOnly) {
+            return await this.navigatePagesAndExtractFromTable(limit);
+        }
+        
+        // Otherwise, use detail page extraction (original behavior)
         const allPermits: PermitData[] = [];
         let pageNum = 1;
         const maxPages = config.paginationConfig.maxPages;
@@ -941,6 +970,222 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
         }
 
         return allPermits;
+    }
+
+    /**
+     * Navigate through pagination and extract permits directly from table (no detail pages)
+     * Used when extractFromTableOnly is true in config
+     */
+    protected async navigatePagesAndExtractFromTable(limit?: number): Promise<PermitData[]> {
+        const config = this.getConfig();
+        const allPermits: PermitData[] = [];
+        let pageNum = 1;
+        const maxPages = config.paginationConfig.maxPages;
+
+        while (pageNum <= maxPages) {
+            console.log(`[${this.getName()}] Processing page ${pageNum}...`);
+
+            // Extract all permit data from current page's table
+            const pagePermits = await this.extractPermitsFromTable();
+            
+            if (pagePermits.length === 0) {
+                console.log(`[${this.getName()}] No more permits found on page ${pageNum}`);
+                break;
+            }
+
+            // Add permits to result
+            for (const permit of pagePermits) {
+                if (limit && allPermits.length >= limit) {
+                    console.log(`[${this.getName()}] Reached limit of ${limit} permits`);
+                    return allPermits;
+                }
+                allPermits.push(permit);
+            }
+
+            // Check if there's a next page
+            const nextPageSelector = config.paginationConfig.nextPageSelector;
+            const hasNextPage = await this.page!.evaluate((selector: string) => {
+                const nextBtn = (globalThis as any).document.querySelector(selector) as any;
+                if (nextBtn) {
+                    return !nextBtn.disabled && !nextBtn.classList.contains('aspNetDisabled');
+                }
+                return false;
+            }, nextPageSelector);
+
+            if (!hasNextPage) {
+                console.log(`[${this.getName()}] No more pages`);
+                break;
+            }
+
+            // Click next page button
+            const clicked = await this.page!.evaluate((selector: string) => {
+                const nextBtn = (globalThis as any).document.querySelector(`${selector}:not(.aspNetDisabled)`) as any;
+                if (nextBtn && !nextBtn.disabled) {
+                    nextBtn.click();
+                    return true;
+                }
+                return false;
+            }, nextPageSelector);
+
+            if (!clicked) {
+                // Fallback: try using Puppeteer's native click
+                try {
+                    const nextButton = await this.page!.$(`${nextPageSelector}:not(.aspNetDisabled)`);
+                    if (nextButton) {
+                        await nextButton.click();
+                    } else {
+                        console.log(`[${this.getName()}] Could not find next page button`);
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`[${this.getName()}] Error clicking next page: ${e}`);
+                    break;
+                }
+            }
+
+            // Wait for page to load
+            const waitTime = config.paginationConfig.waitAfterPageClick || 3000;
+            await new Promise((resolve) => setTimeout(resolve, waitTime));
+            
+            try {
+                await this.page!.waitForSelector('tr.rgRow, tr.rgAltRow', { timeout: 10000 });
+            } catch (e) {
+                console.warn(`[${this.getName()}] Timeout waiting for next page results`);
+            }
+
+            pageNum++;
+        }
+
+        return allPermits;
+    }
+
+    /**
+     * Extract permit data directly from the search results table
+     * Uses tableColumnMapping from config to map columns to permit fields
+     */
+    protected async extractPermitsFromTable(): Promise<PermitData[]> {
+        const config = this.getConfig();
+        const mapping = config.tableColumnMapping;
+        
+        if (!mapping) {
+            throw new Error(`Table column mapping is required when extractFromTableOnly is true`);
+        }
+
+        const permits: PermitData[] = [];
+
+        // Use Puppeteer's native methods to avoid page.evaluate() issues
+        const rowElements = await this.page!.$$('tr.rgRow, tr.rgAltRow');
+        
+        for (const rowElement of rowElements) {
+            // Get all cells in this row
+            const cells = await rowElement.$$('td');
+            if (cells.length === 0) continue;
+
+            // Extract text from each cell using Puppeteer's native methods
+            const extractCellText = async (cellIndex: number): Promise<string> => {
+                if (cellIndex >= cells.length) return '';
+                const cell = cells[cellIndex];
+                // Try to get span first, then fall back to cell text
+                const span = await cell.$('span');
+                if (span) {
+                    const text = await this.page!.evaluate((el: any) => el.textContent?.trim() || '', span);
+                    return text || '';
+                }
+                const text = await this.page!.evaluate((el: any) => el.textContent?.trim() || '', cell);
+                return text || '';
+            };
+
+            const permitNumber = await extractCellText(mapping.permitNumber);
+            if (!permitNumber) continue;
+
+            const row: {
+                permitNumber: string;
+                appliedDateStr?: string;
+                issuedDateStr?: string;
+                statusStr?: string;
+                address?: string;
+                description?: string;
+                valueStr?: string;
+                contractor?: string;
+            } = {
+                permitNumber,
+            };
+
+            if (mapping.appliedDate !== undefined) {
+                row.appliedDateStr = await extractCellText(mapping.appliedDate);
+            }
+            if (mapping.issuedDate !== undefined) {
+                row.issuedDateStr = await extractCellText(mapping.issuedDate);
+            }
+            if (mapping.status !== undefined) {
+                row.statusStr = await extractCellText(mapping.status);
+            }
+            if (mapping.address !== undefined) {
+                row.address = await extractCellText(mapping.address);
+            }
+            if (mapping.description !== undefined) {
+                row.description = await extractCellText(mapping.description);
+            }
+            if (mapping.value !== undefined) {
+                row.valueStr = await extractCellText(mapping.value);
+            }
+            if (mapping.contractor !== undefined) {
+                row.contractor = await extractCellText(mapping.contractor);
+            }
+
+            // Process row and convert to PermitData
+            // Parse dates
+            const appliedDate = row.appliedDateStr ? this.parseDate(row.appliedDateStr) : undefined;
+            const issuedDate = row.issuedDateStr ? this.parseDate(row.issuedDateStr) : undefined;
+
+            // Normalize status
+            let status: string | undefined;
+            if (row.statusStr) {
+                const { normalizeEtrakitStatus } = await import("../utils/etrakit-status");
+                status = normalizeEtrakitStatus(row.statusStr.trim());
+            }
+
+            // Parse value
+            let value: number | undefined;
+            if (row.valueStr) {
+                const parsed = parseFloat(row.valueStr.replace(/,/g, ''));
+                if (!isNaN(parsed)) {
+                    value = parsed;
+                }
+            }
+
+            // Parse address - extract zip code if present
+            let streetAddress = row.address || undefined;
+            let zipCode: string | undefined;
+            if (streetAddress) {
+                // Check if address contains zip code (5 digits)
+                const zipMatch = streetAddress.match(/\b(\d{5})\b/);
+                if (zipMatch) {
+                    zipCode = zipMatch[1];
+                    // Remove zip code from address (keep everything before the zip)
+                    streetAddress = streetAddress.replace(/\s*\d{5}(?:-\d{4})?\s*$/, '').trim();
+                }
+            }
+
+            permits.push({
+                permitNumber: row.permitNumber.trim(),
+                title: row.description || undefined,
+                description: row.description || undefined,
+                address: streetAddress,
+                city: this.city,
+                state: this.state,
+                zipCode: zipCode || undefined,
+                status: status || undefined,
+                value: value || undefined,
+                appliedDate: appliedDate || issuedDate || undefined, // Use applied date, fallback to issued date
+                appliedDateString: row.appliedDateStr || undefined,
+                expirationDate: undefined, // Not available in table
+                sourceUrl: this.url,
+                licensedProfessionalText: row.contractor || undefined,
+            });
+        }
+
+        return permits;
     }
 
     /**
