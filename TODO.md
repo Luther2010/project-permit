@@ -64,6 +64,34 @@
 ### UI/UX Enhancements
 - [ ] Learn more / Upgrade flow CTA for freemium banner
 
+## 📊 Classification Status by City
+
+| City | PermitType Classification | PropertyType Classification | Contractor Matching |
+|------|---------------------------|----------------------------|---------------------|
+| Los Gatos | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Saratoga | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Santa Clara | ✅ | ✅ | ✅ (tested) |
+| Cupertino | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Palo Alto | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Los Altos Hills | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Sunnyvale | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| San Jose | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Campbell | ✅ | ✅ | ❌ (not extracted) |
+| Mountain View | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Gilroy | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Milpitas | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Morgan Hill | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Los Altos | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+
+**Legend:**
+- ✅ = Implemented and working
+- ⚠️ = Needs verification/testing
+- ❌ = Not implemented/not available
+
+**Notes:**
+- **PermitType & PropertyType**: All cities use the same classification service, so classification works for all cities
+- **Contractor Matching**: Depends on whether `licensedProfessionalText` is extracted by each extractor. Most extractors support this, but some may need verification.
+
 ## 📝 Notes
 
 - **Subscription Model**: Simplified to use only `plan` and `validUntil` fields (no cleanup scripts needed)

@@ -21,6 +21,9 @@
 import { prisma } from "./db";
 import { getCountyForCity, BAY_AREA_COUNTIES } from "./city-to-county";
 import { County } from "@prisma/client";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
 export interface ParsedContractorInfo {
   licenseNumber?: string;
@@ -469,19 +472,103 @@ export async function matchContractor(
   return null;
 }
 
+// Debug logging file handle
+let debugLogFile: string | null = null;
+let debugLogStream: fs.WriteStream | null = null;
+
+/**
+ * Initialize debug logging to a temporary file
+ */
+export function initDebugLogging(): void {
+  if (debugLogFile) {
+    return; // Already initialized
+  }
+  
+  debugLogFile = path.join(
+    os.tmpdir(),
+    `contractor-matching-debug-${Date.now()}.jsonl`
+  );
+  debugLogStream = fs.createWriteStream(debugLogFile, { flags: 'a' });
+  console.log(`📝 Debug logging to: ${debugLogFile}`);
+}
+
+/**
+ * Close debug logging file
+ */
+export function closeDebugLogging(): void {
+  if (debugLogStream) {
+    debugLogStream.end();
+    debugLogStream = null;
+  }
+}
+
+/**
+ * Get the debug log file path (if initialized)
+ */
+export function getDebugLogFile(): string | null {
+  return debugLogFile;
+}
+
+/**
+ * Log debug information to temporary file
+ */
+function logDebugInfo(
+  permitNumber: string,
+  licensedProfessionalText: string | undefined,
+  parsed: ParsedContractorInfo,
+  matchResult: ContractorMatch | null
+): void {
+  if (!debugLogStream) {
+    initDebugLogging();
+  }
+  
+  const logEntry = {
+    permitNumber,
+    licensedProfessionalText: licensedProfessionalText || null,
+    parsedContractorInfo: {
+      licenseNumber: parsed.licenseNumber || null,
+      name: parsed.name || null,
+      phone: parsed.phone || null,
+      email: parsed.email || null,
+      address: parsed.address || null,
+    },
+    matchResult: matchResult ? {
+      contractorId: matchResult.contractorId,
+      confidence: matchResult.confidence,
+      matchMethod: matchResult.matchMethod,
+    } : null,
+    timestamp: new Date().toISOString(),
+  };
+  
+  if (debugLogStream) {
+    debugLogStream.write(JSON.stringify(logEntry) + '\n');
+  }
+}
+
 /**
  * Match contractor from raw licensedProfessionalText
  * Convenience method that combines parsing and matching
  */
 export async function matchContractorFromText(
   text: string | undefined,
-  permitCity?: string
+  permitCity?: string,
+  permitNumber?: string
 ): Promise<ContractorMatch | null> {
   if (!text) {
+    if (permitNumber) {
+      logDebugInfo(permitNumber, text, {}, null);
+    }
     return null;
   }
 
   const parsed = parseContractorText(text);
-  return await matchContractor(parsed, permitCity);
+  const match = await matchContractor(parsed, permitCity);
+  
+  // Log debug info
+  if (permitNumber) {
+    logDebugInfo(permitNumber, text, parsed, match);
+  }
+  
+  return match;
 }
 

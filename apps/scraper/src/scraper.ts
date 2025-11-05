@@ -13,6 +13,7 @@ import {
     type PermitData,
 } from "./lib/permit-classification";
 import { ScraperType } from "./types";
+import { initDebugLogging, closeDebugLogging, getDebugLogFile } from "./lib/contractor-matching";
 
 /**
  * Map string permit types to Prisma enum
@@ -375,122 +376,134 @@ export async function scrapeCity(
     startDate?: Date,
     endDate?: Date
 ): Promise<void> {
-    const config = getCityConfig(cityName);
-
-    if (!config) {
-        throw new Error(`City not found in configuration: ${cityName}`);
-    }
-
-    if (!config.enabled) {
-        console.log(`⏭️  Skipping ${cityName} - disabled in config`);
-        return;
-    }
-
-    // Provide appropriate messaging based on scraper type
-    let dateMessage = "";
-    if (startDate && endDate) {
-        if (config.scraperType === ScraperType.MONTHLY) {
-            const month = startDate.toLocaleString('default', { month: 'long' });
-            const year = startDate.getFullYear();
-            dateMessage = ` for ${month} ${year}`;
-        } else if (config.scraperType === ScraperType.ID_BASED) {
-            const year = startDate.getFullYear();
-            dateMessage = ` for year ${year}`;
-        } else {
-            dateMessage = ` (range: ${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]})`;
-        }
-    } else if (startDate) {
-        if (config.scraperType === ScraperType.MONTHLY) {
-            const month = startDate.toLocaleString('default', { month: 'long' });
-            const year = startDate.getFullYear();
-            dateMessage = ` for ${month} ${year}`;
-        } else if (config.scraperType === ScraperType.ID_BASED) {
-            const year = startDate.getFullYear();
-            dateMessage = ` for year ${year}`;
-        } else {
-            dateMessage = ` (from: ${startDate.toISOString().split("T")[0]})`;
-        }
-    }
+    // Initialize debug logging for contractor matching
+    initDebugLogging();
     
-    console.log(`🏙️  Starting scrape for ${cityName}${dateMessage}...`);
+    try {
+        const config = getCityConfig(cityName);
 
-    const extractor = createExtractor(config);
-    
-    // For ID-based scrapers, implement incremental scraping
-    if (config.scraperType === ScraperType.ID_BASED && startDate) {
-        // Calculate starting batch numbers for each prefix
-        const { EtrakitIdBasedExtractor } = await import("./extractors/etrakit-id-based-extractor.js");
-        if (extractor instanceof EtrakitIdBasedExtractor) {
-            const cityEnum = mapCity(cityName);
-            if (cityEnum) {
-                // Use type assertion to access protected methods for incremental scraping
-                // Cast to any to access protected members, then cast to specific interface
-                const idBasedExtractor = extractor as any;
-                
-                if (idBasedExtractor.getPermitPrefixes && idBasedExtractor.getConfig) {
-                    const prefixes = idBasedExtractor.getPermitPrefixes(startDate);
-                    const config = idBasedExtractor.getConfig();
-                    const suffixDigits = config.suffixDigits;
-                    
-                    const startingBatchNumbers = new Map<string, number>();
-                    for (const prefix of prefixes) {
-                        const largestSuffix = await getLargestPermitSuffix(prefix, cityEnum);
-                        if (largestSuffix !== null) {
-                            const batchNumber = calculateStartingBatch(largestSuffix, suffixDigits);
-                            startingBatchNumbers.set(prefix, batchNumber);
-                            console.log(`📊 Starting batch for ${prefix}: ${batchNumber} (largest suffix: ${largestSuffix})`);
-                        } else {
-                            startingBatchNumbers.set(prefix, 0);
-                            console.log(`📊 Starting batch for ${prefix}: 0 (no existing permits)`);
-                        }
-                    }
-                    idBasedExtractor.startingBatchNumbers = startingBatchNumbers;
-                    
-                    // If limit is specified, load existing permit numbers to track new vs existing permits
-                    if (limit) {
-                        const existingPermits = await prisma.permit.findMany({
-                            where: { city: cityEnum },
-                            select: { permitNumber: true },
-                        });
-                        idBasedExtractor.existingPermitNumbers = new Set(
-                            existingPermits.map(p => p.permitNumber)
-                        );
-                        console.log(`📋 Loaded ${existingPermits.length} existing permits for limit tracking`);
-                    }
-                }
+        if (!config) {
+            throw new Error(`City not found in configuration: ${cityName}`);
+        }
+
+        if (!config.enabled) {
+            console.log(`⏭️  Skipping ${cityName} - disabled in config`);
+            return;
+        }
+
+        // Provide appropriate messaging based on scraper type
+        let dateMessage = "";
+        if (startDate && endDate) {
+            if (config.scraperType === ScraperType.MONTHLY) {
+                const month = startDate.toLocaleString('default', { month: 'long' });
+                const year = startDate.getFullYear();
+                dateMessage = ` for ${month} ${year}`;
+            } else if (config.scraperType === ScraperType.ID_BASED) {
+                const year = startDate.getFullYear();
+                dateMessage = ` for year ${year}`;
+            } else {
+                dateMessage = ` (range: ${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]})`;
+            }
+        } else if (startDate) {
+            if (config.scraperType === ScraperType.MONTHLY) {
+                const month = startDate.toLocaleString('default', { month: 'long' });
+                const year = startDate.getFullYear();
+                dateMessage = ` for ${month} ${year}`;
+            } else if (config.scraperType === ScraperType.ID_BASED) {
+                const year = startDate.getFullYear();
+                dateMessage = ` for year ${year}`;
+            } else {
+                dateMessage = ` (from: ${startDate.toISOString().split("T")[0]})`;
             }
         }
         
-        const result = await extractor.scrape(limit, startDate, endDate);
-        
-        // For ID-based scrapers, the extractor handles date filtering internally
-        // No need to filter again here as the extractor already filters by appliedDate
-        
-        if (result.success && result.permits.length > 0) {
-            await savePermits(result.permits);
-            console.log(
-                `✅ ${cityName} scrape complete: ${result.permits.length} permits`
-            );
-        } else {
-            console.log(
-                `⚠️  ${cityName} scrape failed: ${result.error || "No permits found"}`
-            );
-        }
-    } else {
-        // For daily and monthly scrapers
-        // The extractors handle date filtering at the search level (e.g., setting date ranges in search forms)
-        // No need to filter again here as the search itself is already filtered
-        const result = await extractor.scrape(limit, startDate, endDate);
+        console.log(`🏙️  Starting scrape for ${cityName}${dateMessage}...`);
 
-        if (result.success && result.permits.length > 0) {
-            await savePermits(result.permits);
-            console.log(
-                `✅ ${cityName} scrape complete: ${result.permits.length} permits`
-            );
+        const extractor = createExtractor(config);
+        
+        // For ID-based scrapers, implement incremental scraping
+        if (config.scraperType === ScraperType.ID_BASED && startDate) {
+            // Calculate starting batch numbers for each prefix
+            const { EtrakitIdBasedExtractor } = await import("./extractors/etrakit-id-based-extractor.js");
+            if (extractor instanceof EtrakitIdBasedExtractor) {
+                const cityEnum = mapCity(cityName);
+                if (cityEnum) {
+                    // Use type assertion to access protected methods for incremental scraping
+                    // Cast to any to access protected members, then cast to specific interface
+                    const idBasedExtractor = extractor as any;
+                    
+                    if (idBasedExtractor.getPermitPrefixes && idBasedExtractor.getConfig) {
+                        const prefixes = idBasedExtractor.getPermitPrefixes(startDate);
+                        const config = idBasedExtractor.getConfig();
+                        const suffixDigits = config.suffixDigits;
+                        
+                        const startingBatchNumbers = new Map<string, number>();
+                        for (const prefix of prefixes) {
+                            const largestSuffix = await getLargestPermitSuffix(prefix, cityEnum);
+                            if (largestSuffix !== null) {
+                                const batchNumber = calculateStartingBatch(largestSuffix, suffixDigits);
+                                startingBatchNumbers.set(prefix, batchNumber);
+                                console.log(`📊 Starting batch for ${prefix}: ${batchNumber} (largest suffix: ${largestSuffix})`);
+                            } else {
+                                startingBatchNumbers.set(prefix, 0);
+                                console.log(`📊 Starting batch for ${prefix}: 0 (no existing permits)`);
+                            }
+                        }
+                        idBasedExtractor.startingBatchNumbers = startingBatchNumbers;
+                        
+                        // If limit is specified, load existing permit numbers to track new vs existing permits
+                        if (limit) {
+                            const existingPermits = await prisma.permit.findMany({
+                                where: { city: cityEnum },
+                                select: { permitNumber: true },
+                            });
+                            idBasedExtractor.existingPermitNumbers = new Set(
+                                existingPermits.map(p => p.permitNumber)
+                            );
+                            console.log(`📋 Loaded ${existingPermits.length} existing permits for limit tracking`);
+                        }
+                    }
+                }
+            }
+            
+            const result = await extractor.scrape(limit, startDate, endDate);
+            
+            // For ID-based scrapers, the extractor handles date filtering internally
+            // No need to filter again here as the extractor already filters by appliedDate
+            
+            if (result.success && result.permits.length > 0) {
+                await savePermits(result.permits);
+                console.log(
+                    `✅ ${cityName} scrape complete: ${result.permits.length} permits`
+                );
+            } else {
+                console.log(
+                    `⚠️  ${cityName} scrape failed: ${result.error || "No permits found"}`
+                );
+            }
         } else {
-            console.log(
-                `⚠️  ${cityName} scrape failed: ${result.error || "No permits found"}`
-            );
+            // For daily and monthly scrapers
+            // The extractors handle date filtering at the search level (e.g., setting date ranges in search forms)
+            // No need to filter again here as the search itself is already filtered
+            const result = await extractor.scrape(limit, startDate, endDate);
+
+            if (result.success && result.permits.length > 0) {
+                await savePermits(result.permits);
+                console.log(
+                    `✅ ${cityName} scrape complete: ${result.permits.length} permits`
+                );
+            } else {
+                console.log(
+                    `⚠️  ${cityName} scrape failed: ${result.error || "No permits found"}`
+                );
+            }
+        }
+    } finally {
+        // Close debug logging
+        const debugLogFile = getDebugLogFile();
+        closeDebugLogging();
+        if (debugLogFile) {
+            console.log(`📝 Contractor matching debug log saved to: ${debugLogFile}`);
         }
     }
 }

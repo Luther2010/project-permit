@@ -52,12 +52,13 @@ export class PermitClassificationService {
 
     // Match contractor from scraped licensedProfessionalText
     let contractorId: string | null = null;
-    try {
-      if (permit.licensedProfessionalText) {
-        const match = await matchContractorFromText(
-          permit.licensedProfessionalText,
-          permit.city
-        );
+      try {
+        if (permit.licensedProfessionalText) {
+          const match = await matchContractorFromText(
+            permit.licensedProfessionalText,
+            permit.city,
+            permit.permitNumber
+          );
         
         if (match) {
           contractorId = match.contractorId;
