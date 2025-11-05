@@ -46,6 +46,16 @@
      - Shovels reportedly has contractor info for Cupertino and Palo Alto
      - Need to investigate Shovels API/access methods and data format
      - Could potentially supplement or replace monthly document extraction for these cities
+   - **Contractor-Based Permit Search**: Some cities support searching permits by contractor ID/name, but don't show contractor info on permit detail pages
+     - Cities: Saratoga, Cupertino, Palo Alto
+     - Strategy: Implement contractor-based search as a complementary approach
+     - Approach A (Recommended): Hybrid - Continue date-based scraping for all permits (primary), plus periodic contractor-based search to link contractors (secondary)
+     - Approach B: Contractor-based scraping - Search by contractor ID from our database to find associated permits
+     - Considerations:
+       * Use our contractor database to determine which contractors to search
+       * Run contractor-based linking less frequently (weekly/monthly) to avoid rate limiting
+       * Focus on active contractors (those with recent permits) for efficiency
+       * Can be run as a background job separate from daily permit scraping
 
 3. **Email Integration**
    - Setup email sending functionality
