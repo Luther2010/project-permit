@@ -104,6 +104,7 @@ async function savePermits(permits: any[]): Promise<void> {
                 value: permit.value,
                 rawExplicitType: permit.permitType, // Pass the raw type from scraper
                 rawPermitType: permit.permitType,
+                licensedProfessionalText: permit.licensedProfessionalText, // Pass contractor info for matching
             };
 
             const classification =
