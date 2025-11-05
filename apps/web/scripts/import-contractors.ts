@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { prisma } from "../src/lib/db";
-import { ContractorBusinessType, CSLBClassification } from "@prisma/client";
+import { ContractorBusinessType, CSLBClassification, County } from "@prisma/client";
 
 type Row = Record<string, string>;
 
@@ -104,17 +104,56 @@ function parseDate(value?: string): Date | null {
     return isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * Map CSV county names to County enum values
+ */
+function mapCountyToEnum(countyName?: string): County | null {
+    if (!countyName) return null;
+    
+    const normalized = countyName.trim().toUpperCase();
+    
+    // Map common variations
+    const countyMap: Record<string, County> = {
+        "SANTA CLARA": County.SANTA_CLARA,
+        "SAN MATEO": County.SAN_MATEO,
+        "ALAMEDA": County.ALAMEDA,
+        "SANTA CRUZ": County.SANTA_CRUZ,
+        "SAN BENITO": County.SAN_BENITO,
+        "MONTEREY": County.MONTEREY,
+        "CONTRA COSTA": County.CONTRA_COSTA,
+    };
+    
+    return countyMap[normalized] || null;
+}
+
+/**
+ * Bay Area counties we want to import
+ */
+const BAY_AREA_COUNTIES = new Set<County>([
+    County.SANTA_CLARA,
+    County.SAN_MATEO,
+    County.ALAMEDA,
+    County.SANTA_CRUZ,
+    County.SAN_BENITO,
+    County.MONTEREY,
+    County.CONTRA_COSTA,
+]);
+
 //
 
 async function main() {
+    // Default to Downloads/MasterLicenseData.csv if not specified
     const csvPath = process.env.CONTRACTORS_CSV_PATH
         ? path.resolve(process.env.CONTRACTORS_CSV_PATH)
-        : path.resolve(process.cwd(), "data/contractors.sample.csv");
+        : path.resolve(process.env.HOME || "", "Downloads/MasterLicenseData.csv");
 
     if (!fs.existsSync(csvPath)) {
         console.error(`CSV not found at ${csvPath}`);
+        console.error(`Set CONTRACTORS_CSV_PATH env var to specify a different path`);
         process.exit(1);
     }
+    
+    console.log(`Reading CSV from: ${csvPath}`);
 
     const content = fs.readFileSync(csvPath, "utf8");
     const rows = parseCsv(content);
@@ -125,8 +164,17 @@ async function main() {
 
     let created = 0;
     let updated = 0;
+    let skipped = 0;
 
     for (const r of rows) {
+        // Filter: only import Bay Area counties
+        const countyName = r["County"]?.trim();
+        const county = mapCountyToEnum(countyName);
+        
+        if (!county || !BAY_AREA_COUNTIES.has(county)) {
+            skipped++;
+            continue;
+        }
         const classificationsRaw = (r["Classifications(s)"] ?? "").trim();
         const ALLOWED_CLASS_CODES = new Set<string>([
             "A",
@@ -211,6 +259,7 @@ async function main() {
                 null,
             mailingAddress: r["MailingAddress"]?.trim() || null,
             city: r["City"]?.trim() || null,
+            county: county,
             state: r["State"]?.trim() || null,
             zipCode: r["ZIPCode"]?.trim() || null,
             phone: r["BusinessPhone"]?.trim() || null,
@@ -286,7 +335,7 @@ async function main() {
     }
 
     console.log(
-        `Imported contractors. Created: ${created}, Updated: ${updated}`
+        `Imported contractors. Created: ${created}, Updated: ${updated}, Skipped (non-Bay Area): ${skipped}`
     );
 }
 

@@ -75,6 +75,16 @@ enum City {
   LOS_ALTOS
 }
 
+enum County {
+  SANTA_CLARA
+  SAN_MATEO
+  ALAMEDA
+  SANTA_CRUZ
+  SAN_BENITO
+  MONTEREY
+  CONTRA_COSTA
+}
+
 enum SubscriptionPlan {
   FREEMIUM
   PREMIUM
@@ -262,6 +272,7 @@ model Contractor {
   // Contact and address
   mailingAddress   String?
   city             String?
+  county           County?
   state            String?
   zipCode          String?
   phone            String?
@@ -279,6 +290,7 @@ model Contractor {
 
   @@index([licenseNo])
   @@index([city])
+  @@index([county])
 
   // Relations
   permits          PermitContractor[]
