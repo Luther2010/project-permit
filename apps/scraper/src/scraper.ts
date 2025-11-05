@@ -91,9 +91,16 @@ function mapPermitStatus(status?: string): PermitStatus {
 async function savePermits(permits: any[]): Promise<void> {
     let saved = 0;
     let skipped = 0;
+    let withContractorText = 0;
+    let matchedContractors = 0;
 
     for (const permit of permits) {
         try {
+            // Track contractor text availability
+            if (permit.licensedProfessionalText) {
+                withContractorText++;
+            }
+
             // Classify the permit using our classification service
             const permitData: PermitData = {
                 permitNumber: permit.permitNumber,
@@ -109,6 +116,11 @@ async function savePermits(permits: any[]): Promise<void> {
 
             const classification =
                 await permitClassificationService.classify(permitData);
+            
+            // Track successful contractor matches
+            if (classification.contractorId) {
+                matchedContractors++;
+            }
             console.log(
                 `🔎 Classification for ${permit.permitNumber}: propertyType=${classification.propertyType} permitType=${classification.permitType} contractorId=${classification.contractorId}`
             );
@@ -267,6 +279,12 @@ async function savePermits(permits: any[]): Promise<void> {
     }
 
     console.log(`✅ Saved ${saved} permits, skipped ${skipped}`);
+    console.log(`📊 Contractor Matching Stats:`);
+    console.log(`   - Permits with licensedProfessionalText: ${withContractorText} / ${permits.length}`);
+    console.log(`   - Successfully matched to contractors: ${matchedContractors} / ${withContractorText}`);
+    if (withContractorText > 0) {
+        console.log(`   - Match rate: ${((matchedContractors / withContractorText) * 100).toFixed(1)}%`);
+    }
 }
 
 /**
