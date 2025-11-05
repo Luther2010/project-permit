@@ -35,6 +35,9 @@
    - **PermitType**: Enhance classification accuracy and coverage
    - **PropertyType**: Improve classification accuracy and coverage
    - **Contractor**: Implement deterministic contractor linking from scraped `licensedProfessionalText` data
+   - **Contractor Database**: Import all contractors from the master license data sheet (not just Bay Area counties)
+     - Current import only includes Bay Area counties, but permits show contractors from other areas (e.g., Los Angeles, Glendale)
+     - Need to expand import to include all California contractors to improve match rates
 
 3. **Email Integration**
    - Setup email sending functionality
@@ -68,7 +71,7 @@
 
 | City | PermitType Classification | PropertyType Classification | Contractor Matching |
 |------|---------------------------|----------------------------|---------------------|
-| Los Gatos | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Los Gatos | ✅ | ✅ | ✅ (tested) |
 | Saratoga | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | Santa Clara | ✅ | ✅ | ✅ (tested) |
 | Cupertino | ✅ | ✅ | ⚠️ (implemented, needs testing) |
