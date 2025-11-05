@@ -38,6 +38,14 @@
    - **Contractor Database**: Import all contractors from the master license data sheet (not just Bay Area counties)
      - Current import only includes Bay Area counties, but permits show contractors from other areas (e.g., Los Angeles, Glendale)
      - Need to expand import to include all California contractors to improve match rates
+   - **Monthly Document Contractor Extraction**: Some cities' portals don't have contractor info, but they release monthly documents (PDFs/reports) that contain contractor information
+     - Cupertino: Portal doesn't show contractor info, but monthly documents DO have contractor info
+     - Need to implement monthly document extraction for Cupertino (similar to Mountain View's monthly PDF extraction approach)
+     - Identify other cities that may have contractor info in monthly documents
+   - **Shovels Data Source**: Research Shovels service/platform as a potential data source for contractor information
+     - Shovels reportedly has contractor info for Cupertino and Palo Alto
+     - Need to investigate Shovels API/access methods and data format
+     - Could potentially supplement or replace monthly document extraction for these cities
 
 3. **Email Integration**
    - Setup email sending functionality
@@ -74,8 +82,8 @@
 | Los Gatos | ✅ | ✅ | ✅ (tested) |
 | Saratoga | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | Santa Clara | ✅ | ✅ | ✅ (tested) |
-| Cupertino | ✅ | ✅ | ⚠️ (implemented, needs testing) |
-| Palo Alto | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Cupertino | ✅ | ✅ | ⚠️ (portal: not available, monthly docs: confirmed to have) |
+| Palo Alto | ✅ | ✅ | ❌ (not available on portal, no monthly docs) |
 | Los Altos Hills | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | Sunnyvale | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | San Jose | ✅ | ✅ | ⚠️ (implemented, needs testing) |
