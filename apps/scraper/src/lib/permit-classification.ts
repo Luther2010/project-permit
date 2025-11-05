@@ -6,7 +6,7 @@
  */
 
 import { PropertyType, PermitType } from "@prisma/client";
-import { prisma } from "./db";
+import { matchContractorFromText } from "./contractor-matching";
 
 export interface PermitData {
   permitNumber: string;
@@ -50,25 +50,29 @@ export class PermitClassificationService {
     const propertyTypeResult = await this.propertyTypeClassifier.classify(permit);
     const permitTypeResult = await this.permitTypeClassifier.classify(permit);
 
-    // TEMP: Random contractor association for sampling/testing (~25%)
-    // Future: parse licensedProfessionalText and map to a real contractor by license/name
+    // Match contractor from scraped licensedProfessionalText
     let contractorId: string | null = null;
     try {
-      if (Math.random() < 0.8) {
-        const total = await prisma.contractor.count();
-        if (total > 0) {
-          const skip = Math.floor(Math.random() * total);
-          const random = await prisma.contractor.findFirst({
-            skip,
-            take: 1,
-            select: { id: true },
-          });
-          contractorId = random?.id ?? null;
-          console.log(`[Classifier] ${permit.permitNumber}: picked contractorId=${contractorId} (total contractors=${total})`);
+      if (permit.licensedProfessionalText) {
+        const match = await matchContractorFromText(
+          permit.licensedProfessionalText,
+          permit.city
+        );
+        
+        if (match) {
+          contractorId = match.contractorId;
+          console.log(
+            `[Classifier] ${permit.permitNumber}: matched contractorId=${contractorId} ` +
+            `(method: ${match.matchMethod}, confidence: ${match.confidence.toFixed(2)})`
+          );
+        } else {
+          console.log(
+            `[Classifier] ${permit.permitNumber}: no contractor match found for "${permit.licensedProfessionalText}"`
+          );
         }
       }
     } catch (e) {
-      console.warn(`[Classifier] ${permit.permitNumber}: contractor pick failed`, e);
+      console.warn(`[Classifier] ${permit.permitNumber}: contractor matching failed`, e);
       contractorId = null;
     }
 
