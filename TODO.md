@@ -35,6 +35,10 @@
    - **PermitType**: Enhance classification accuracy and coverage
    - **PropertyType**: Improve classification accuracy and coverage
    - **Contractor**: Implement deterministic contractor linking from scraped `licensedProfessionalText` data
+   - **Contractor Data Enrichment**: Enrich contractor data if we can associate the scraped contractor with an existing contractor and the scraped contractor has additional information that doesn't exist yet
+     - When matching a scraped contractor to an existing contractor, check if scraped data has fields missing in DB (e.g., phone, email, address)
+     - Update contractor record with missing information from scraped permits
+     - This helps build a more complete contractor database over time
    - **Contractor Database**: Import all contractors from the master license data sheet (not just Bay Area counties)
      - Current import only includes Bay Area counties, but permits show contractors from other areas (e.g., Los Angeles, Glendale)
      - Need to expand import to include all California contractors to improve match rates
