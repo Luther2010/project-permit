@@ -107,7 +107,7 @@
 | San Jose | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | Campbell | ✅ | ✅ | ❌ (not extracted) |
 | Mountain View | ✅ | ✅ | ⚠️ (implemented, needs testing) |
-| Gilroy | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Gilroy | ✅ | ✅ | ✅ (tested) |
 | Milpitas | ✅ | ✅ | ✅ (tested) |
 | Morgan Hill | ✅ | ✅ | ✅ (tested) |
 | Los Altos | ✅ | ✅ | ⚠️ (implemented, needs testing) |

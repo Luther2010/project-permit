@@ -203,10 +203,10 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
     }
 
     /**
-     * Extract Valuation and Assigned To from permit detail page
+     * Extract Valuation and Contractor License from permit detail page
      * Opens the detail page in a new tab, extracts the data, then closes the tab
      */
-    protected async extractDetailPageData(detailUrl: string): Promise<{ value?: number; assignedTo?: string }> {
+    protected async extractDetailPageData(detailUrl: string): Promise<{ value?: number; contractorLicense?: string }> {
         if (!this.page || !this.browser) {
             throw new Error("Page or browser not initialized");
         }
@@ -290,33 +290,73 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 }
             }
 
-            // Extract Assigned To
-            let assignedTo: string | undefined;
+            // Extract Contractor License # from More Info tab
+            let contractorLicense: string | undefined;
             try {
-                assignedTo = await detailPage.evaluate(() => {
-                    const selectors = [
-                        'div[name="label-AssignedTo"] span',
-                        'div[label*="Assigned To"] span',
-                        'div[label*="AssignedTo"] span',
-                    ];
+                // Click on More Info tab
+                const moreInfoTabClicked = await detailPage.evaluate(() => {
+                    // @ts-expect-error - page.evaluate runs in browser context
+                    const moreInfoBtn = document.getElementById('button-TabButton-MoreInfo') as HTMLElement;
+                    if (!moreInfoBtn) return false;
 
-                    for (const selector of selectors) {
-                        // @ts-expect-error - page.evaluate runs in browser context
-                        const el = document.querySelector(selector);
-                        if (el) {
-                            const text = (el.textContent || '').trim();
-                            if (text && text !== 'N/A' && text !== '') {
-                                return text;
-                            }
+                    // @ts-expect-error - page.evaluate runs in browser context
+                    const angular = window.angular;
+                    if (angular) {
+                        const element = angular.element(moreInfoBtn);
+                        const scope = element.scope();
+                        if (scope && scope.vm && scope.vm.tabNavigatorService) {
+                            scope.$apply(() => {
+                                // Navigate to More Info tab
+                                if (scope.vm.tabNavigatorService.navigate) {
+                                    scope.vm.tabNavigatorService.navigate(scope.vm.tabNavigatorService.tabConstant.Moreinfo);
+                                }
+                            });
                         }
                     }
-                    return undefined;
+                    moreInfoBtn.click();
+                    return true;
                 });
+
+                if (moreInfoTabClicked) {
+                    // Wait for tab to load
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
+                    await this.waitForAngular(detailPage);
+
+                    // Extract Contractor License #
+                    contractorLicense = await detailPage.evaluate(() => {
+                        // Try multiple selectors for Contractor License #
+                        const selectors = [
+                            '#NUM_ContractorLicense',
+                            'span[name="NUM_ContractorLicense"]',
+                            'span[id="NUM_ContractorLicense"]',
+                            'div[id="NUM_ContractorLicense"] span',
+                        ];
+
+                        for (const selector of selectors) {
+                            // @ts-expect-error - page.evaluate runs in browser context
+                            const el = document.querySelector(selector);
+                            if (el) {
+                                const text = (el.textContent || '').trim();
+                                // Only return if it's a valid license number (6-8 digits)
+                                // Filter out labels like "Contractor License #" or empty values
+                                if (text && 
+                                    text !== 'N/A' && 
+                                    text !== '' && 
+                                    text !== '&nbsp;' &&
+                                    !text.toLowerCase().includes('contractor license') &&
+                                    /^\d{6,8}$/.test(text)) { // Must be 6-8 digits only
+                                    return text;
+                                }
+                            }
+                        }
+                        return undefined;
+                    });
+                }
             } catch (e) {
-                // Ignore errors extracting Assigned To
+                // Ignore errors extracting Contractor License
             }
 
-            return { value, assignedTo };
+            return { value, contractorLicense };
         } finally {
             await detailPage.close();
         }
@@ -865,14 +905,14 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                     }
                 }
 
-                // Extract Valuation and Assigned To from detail page
+                // Extract Valuation and Contractor License from detail page
                 let value: number | undefined;
-                let assignedTo: string | undefined;
+                let contractorLicense: string | undefined;
                 if (sourceUrl) {
                     try {
                         const detailData = await this.extractDetailPageData(sourceUrl);
                         value = detailData.value;
-                        assignedTo = detailData.assignedTo;
+                        contractorLicense = detailData.contractorLicense;
                     } catch (error: any) {
                         // Ignore errors extracting detail data
                     }
@@ -893,7 +933,7 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                     appliedDateString,
                     expirationDate,
                     sourceUrl,
-                    licensedProfessionalText: assignedTo, // Store "Assigned To" value
+                    licensedProfessionalText: contractorLicense, // Store contractor license from More Info tab
                 };
 
                 if (this.validatePermitData(permit)) {
