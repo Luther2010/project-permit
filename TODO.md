@@ -106,7 +106,7 @@
 | Sunnyvale | ✅ | ✅ | ❌ (not available) |
 | San Jose | ✅ | ✅ | ✅ (tested) |
 | Campbell | ✅ | ✅ | ❌ (not extracted) |
-| Mountain View | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Mountain View | ✅ | ✅ | ✅ (tested) |
 | Gilroy | ✅ | ✅ | ✅ (tested) |
 | Milpitas | ✅ | ✅ | ✅ (tested) |
 | Morgan Hill | ✅ | ✅ | ✅ (tested) |

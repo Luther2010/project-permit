@@ -312,43 +312,147 @@ export class MountainViewExtractor extends BaseMonthlyExtractor {
             }
             
             // Extract Contractor Name
-            // Look for "Contractor Name" label or contractor name in the context
-            // Contractor name typically appears after applicant information
-            // Pattern often looks like: "00 Company Name / /" or "Company Name / Phone"
+            // PDF structure: APN No. | T/W | Permit # | Permit Type | Permit Date | $ Valuation | Applicant Name / Phone | Contractor Name / Phone
+            // Format example: "$15,000.00 DEVCON CONSTRUCTION, INC. / DEVCON CONSTRUCTION, INC."
+            // The contractor is the text AFTER the " / " separator (second company name)
             let contractorName: string | undefined;
             
-            // Try to find "Contractor Name" label first
-            const contractorLabelMatch = context.match(/Contractor\s+Name[:\s]*([^\n/]+?)(?:\s*\/|$|\n)/i);
-            if (contractorLabelMatch) {
-                contractorName = contractorLabelMatch[1].trim();
-            } else {
-                // Look for patterns like "00 Company Name / /" which often indicates contractor
-                // The "00 " prefix seems to be used for contractor names in this PDF
-                const contractorPattern00 = /00\s+([A-Z][A-Za-z0-9\s&.,'-]+?)\s*\/\s*\//i;
-                const contractorMatch00 = context.match(contractorPattern00);
-                if (contractorMatch00) {
-                    contractorName = contractorMatch00[1].trim();
-                } else {
-                    // Try pattern without "00 " - company name followed by " / /" or " / Phone"
-                    const contractorPattern = /([A-Z][A-Za-z0-9\s&.,'-]{5,}(?:\s+(?:Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co))?)\s*\/\s*(?:\/|\d)/i;
-                    const contractorMatch = context.match(contractorPattern);
-                    if (contractorMatch) {
-                        const candidate = contractorMatch[1].trim();
-                        // Make sure it's not an address (addresses have street types)
-                        if (!candidate.match(/(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Court|Ct|Way|Circle|Cir|Place|Pl)\b/i)) {
-                            // Make sure it's not just a number or very short
-                            if (!candidate.match(/^\d+$/) && candidate.length >= 5) {
-                                contractorName = candidate;
-                            }
+            // Find the valuation position to anchor our search
+            const valuationMatch = permitRow.match(/\$\s*([\d,]+\.?\d*)/);
+            if (valuationMatch && valuationMatch.index !== undefined) {
+                // After valuation, we have: Applicant Name/Phone | Contractor Name/Phone
+                // Extract text after the valuation, up to the description section
+                const afterValuation = permitRow.substring(valuationMatch.index + valuationMatch[0].length);
+                
+                // Look for the pattern: "Applicant / Contractor" or "Applicant / Phone"
+                // The contractor is the text after " / "
+                const slashSeparatorMatch = afterValuation.match(/\s+\/\s+(.+?)(?:\s+Description|$)/);
+                if (slashSeparatorMatch && slashSeparatorMatch[1]) {
+                    // Found text after slash - this should be the contractor
+                    let candidate = slashSeparatorMatch[1].trim();
+                    
+                    // Clean up: remove trailing periods, slashes, and extra whitespace
+                    candidate = candidate.replace(/\.+$/, '').replace(/\/+$/, '').trim();
+                    
+                    // Validate it's a real company name
+                    const isPersonName = candidate.match(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/);
+                    const isPDFArtifact = candidate.match(/(?:City of|Report|Page|\d+\s+of\s+\d+|County Assessor)/i);
+                    const isAddress = candidate.match(/\b(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Court|Ct|Way|Circle|Cir|Place|Pl|DR|ST|AV|PY|BL)\b/i);
+                    const isPhone = candidate.match(/^(?:Phone|PHONE|\d{3}[\s.-]?\d{3}[\s.-]?\d{4})/i);
+                    const hasBusinessSuffix = candidate.match(/\b(?:Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co|LLP|LP|Services|Contractors|Contracting|Construction|Builders|Group|SYSTEMS|DESIGN|PROTECTION)\b/i);
+                    
+                    // Accept if it's a valid company name
+                    if (candidate.length >= 3 && 
+                        !isPDFArtifact &&
+                        !isAddress &&
+                        !isPhone &&
+                        (hasBusinessSuffix || (candidate.length >= 8 && !isPersonName))) {
+                        contractorName = candidate;
+                    }
+                }
+                
+                // The contractor is the LAST company name in the row (after applicant)
+                // Look for company names with patterns like: "Company Name / /" or "Company Name / Phone"
+                // We want the LAST occurrence (contractor column is after applicant column)
+                
+                // Pattern 1: "00 Company Name / /" (the "00 " prefix specifically indicates contractor)
+                const contractorPattern00 = /00\s+([A-Z][A-Za-z0-9\s&.,'-]+?)\s*\/\s*\//gi;
+                const matches00 = Array.from(afterValuation.matchAll(contractorPattern00));
+                if (matches00.length > 0) {
+                    // Use the last match (contractor is after applicant)
+                    const lastMatch = matches00[matches00.length - 1];
+                    let candidate = lastMatch[1].trim();
+                    candidate = candidate.replace(/^00\s+/, '').trim();
+                    
+                    // Validate it's a real company name
+                    const isPersonName = candidate.match(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/);
+                    const isPDFArtifact = candidate.match(/(?:City of|Report|Page|\d+\s+of\s+\d+|County Assessor)/i);
+                    const hasBusinessSuffix = candidate.match(/\b(?:Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co|LLP|LP|Services|Contractors|Contracting|Construction|Builders|Group)\b/i);
+                    
+                    if (candidate.length >= 3 && 
+                        !isPDFArtifact &&
+                        (hasBusinessSuffix || (candidate.length >= 8 && !isPersonName))) {
+                        contractorName = candidate;
+                    }
+                }
+                
+                // Pattern 2: Look for company names followed by " / /" or " / Phone"
+                // We need to find the LAST occurrence (contractor is after applicant)
+                if (!contractorName) {
+                    const companyPattern = /([A-Z][A-Za-z0-9\s&.,'-]{5,}(?:\s+(?:Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co|LLP|LP))?)\s*\/\s*(?:\/|\d{3})/gi;
+                    const matches = Array.from(afterValuation.matchAll(companyPattern));
+                    
+                    if (matches.length > 0) {
+                        // Use the LAST match (contractor comes after applicant)
+                        const lastMatch = matches[matches.length - 1];
+                        let candidate = lastMatch[1].trim();
+                        
+                        // Validate it's a real company name
+                        const isPersonName = candidate.match(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/);
+                        const isPDFArtifact = candidate.match(/(?:City of|Report|Page|\d+\s+of\s+\d+|County Assessor)/i);
+                        const hasBusinessSuffix = candidate.match(/\b(?:Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co|LLP|LP|Services|Contractors|Contracting|Construction|Builders|Group)\b/i);
+                        
+                        if (candidate.length >= 3 && 
+                            !isPDFArtifact &&
+                            (hasBusinessSuffix || (candidate.length >= 8 && !isPersonName))) {
+                            contractorName = candidate;
+                        }
+                    }
+                }
+                
+                // Pattern 3: Look for company names WITHOUT slash pattern - just capitalized text
+                // This handles cases where contractor name doesn't have " / /" after it
+                // Extract the LAST capitalized word sequence (contractor is after applicant)
+                if (!contractorName) {
+                    // Match capitalized words/company names (at least 8 chars, may have business suffix)
+                    const companyPatternNoSlash = /\b([A-Z][A-Za-z0-9\s&.,'-]{8,}(?:\s+(?:Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co|LLP|LP|Services|Contractors|Contracting|Construction|Builders|Group|SYSTEMS|DESIGN|PROTECTION))?)\b/gi;
+                    const matches = Array.from(afterValuation.matchAll(companyPatternNoSlash));
+                    
+                    if (matches.length > 0) {
+                        // Use the LAST match (contractor comes after applicant)
+                        const lastMatch = matches[matches.length - 1];
+                        let candidate = lastMatch[1].trim();
+                        
+                        // Validate it's a real company name
+                        const isPersonName = candidate.match(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/);
+                        const isPDFArtifact = candidate.match(/(?:City of|Report|Page|\d+\s+of\s+\d+|County Assessor)/i);
+                        const isAddress = candidate.match(/\b(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Court|Ct|Way|Circle|Cir|Place|Pl|DR|ST|AV|PY|BL)\b/i);
+                        const isPhone = candidate.match(/^(?:Phone|PHONE|\d{3}[\s.-]?\d{3}[\s.-]?\d{4})/i);
+                        const hasBusinessSuffix = candidate.match(/\b(?:Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co|LLP|LP|Services|Contractors|Contracting|Construction|Builders|Group|SYSTEMS|DESIGN|PROTECTION)\b/i);
+                        
+                        // Make sure it's not just part of a longer phrase
+                        // Check if it ends the text or is followed by whitespace/newline/end
+                        const matchEnd = (lastMatch.index || 0) + lastMatch[0].length;
+                        const afterMatch = afterValuation.substring(matchEnd, matchEnd + 10).trim();
+                        
+                        // Reject if it looks like an address or phone number
+                        if (isAddress || isPhone) {
+                            candidate = undefined;
+                        }
+                        
+                        if (candidate && candidate.length >= 8 && 
+                            !isPDFArtifact &&
+                            !isPersonName &&
+                            (hasBusinessSuffix || candidate.length >= 12) && // Require business suffix or longer name
+                            (afterMatch.length === 0 || afterMatch.match(/^[\s\n]/))) { // Should be end of text or followed by whitespace
+                            contractorName = candidate;
                         }
                     }
                 }
             }
             
-            // Additional cleanup
+            // Fallback: If no contractor found using column-based approach, try looking for "Contractor Name" label
+            if (!contractorName) {
+                const contractorLabelMatch = context.match(/Contractor\s+Name[:\s]*([^\n/]+?)(?:\s*\/|$|\n)/i);
+                if (contractorLabelMatch) {
+                    contractorName = contractorLabelMatch[1].trim();
+                }
+            }
+            
+            // Final cleanup
             if (contractorName) {
-                // Remove leading/trailing slashes, spaces, and "00 " prefix
-                contractorName = contractorName.replace(/^00\s+/, '').replace(/^\/+\s*|\s*\/+$/g, '').trim();
+                // Remove leading/trailing slashes, spaces
+                contractorName = contractorName.replace(/^\/+\s*|\s*\/+$/g, '').trim();
                 // If it's empty or too short, clear it
                 if (contractorName.length < 3 || contractorName.match(/^[\d\s\/-]+$/)) {
                     contractorName = undefined;
