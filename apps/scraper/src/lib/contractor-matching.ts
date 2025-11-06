@@ -41,13 +41,26 @@ export interface ContractorMatch {
 
 /**
  * Parse contractor information from scraped text
+ * @param text - The raw contractor text to parse
+ * @param city - Optional city name for city-specific normalization
  */
-export function parseContractorText(text: string): ParsedContractorInfo {
+export function parseContractorText(text: string, city?: string): ParsedContractorInfo {
   if (!text || !text.trim()) {
     return {};
   }
 
-  const normalized = text.trim();
+  let normalized = text.trim();
+  
+  // City-specific normalization (before generic normalization)
+  if (city && city.toUpperCase() === "SAN JOSE") {
+    // San Jose format: "COMPANY NAME  Person Name" (exactly 2 spaces between)
+    // Extract just the company name (everything before the double space)
+    const doubleSpaceIndex = normalized.indexOf("  ");
+    if (doubleSpaceIndex > 0) {
+      normalized = normalized.substring(0, doubleSpaceIndex).trim();
+    }
+  }
+  
   const result: ParsedContractorInfo = {};
 
   // Extract license number (common patterns: "License #123456", "Lic: 123456", "#123456")
@@ -601,7 +614,7 @@ export async function matchContractorFromText(
     return null;
   }
 
-  const parsed = parseContractorText(text);
+  const parsed = parseContractorText(text, permitCity);
   const match = await matchContractor(parsed, permitCity);
   
   // Log debug info

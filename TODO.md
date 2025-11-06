@@ -104,13 +104,13 @@
 | Palo Alto | ✅ | ✅ | ❌ (not available on portal, no monthly docs) |
 | Los Altos Hills | ✅ | ✅ | ✅ (tested) |
 | Sunnyvale | ✅ | ✅ | ❌ (not available) |
-| San Jose | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| San Jose | ✅ | ✅ | ✅ (tested) |
 | Campbell | ✅ | ✅ | ❌ (not extracted) |
 | Mountain View | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | Gilroy | ✅ | ✅ | ✅ (tested) |
 | Milpitas | ✅ | ✅ | ✅ (tested) |
 | Morgan Hill | ✅ | ✅ | ✅ (tested) |
-| Los Altos | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Los Altos | ✅ | ✅ | ✅ (tested) |
 
 **Legend:**
 - ✅ = Implemented and working
