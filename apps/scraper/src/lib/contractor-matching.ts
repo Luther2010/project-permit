@@ -135,13 +135,23 @@ function normalizePhone(phone: string): string {
 
 /**
  * Normalize company name for fuzzy matching
+ * Handles variations like:
+ * - "TESLA ENERGY OPERATIONS, INC." vs "TESLA ENERGY OPERATIONS INC"
+ * - "LLC." vs "LLC"
+ * - Trailing periods and commas
  */
 function normalizeCompanyName(name: string): string {
   if (!name) return '';
   
   let normalized = name.toUpperCase().trim();
   
+  // First, normalize punctuation: remove commas and periods (but preserve structure)
+  // Replace commas with spaces, then remove periods
+  normalized = normalized.replace(/,/g, ' ');
+  normalized = normalized.replace(/\./g, '');
+  
   // Remove common business suffixes (case-insensitive)
+  // Now we can match without worrying about punctuation
   const suffixes = [
     /\s+INC\.?$/i,
     /\s+LLC\.?$/i,
@@ -164,8 +174,8 @@ function normalizeCompanyName(name: string): string {
   // Remove extra whitespace
   normalized = normalized.replace(/\s+/g, ' ').trim();
   
-  // Remove special characters (keep letters, numbers, spaces)
-  normalized = normalized.replace(/[^A-Z0-9\s]/g, '');
+  // Don't remove special characters - keep them for matching
+  // This allows matching of names with special characters like "&", "-", etc.
   
   return normalized;
 }
@@ -259,20 +269,40 @@ export async function matchContractor(
     }
   }
 
-  // Strategy 2: Match by name (exact match)
+  // Strategy 2: Match by name (starts with match, must be unique)
   if (parsed.name) {
     const normalizedName = normalizeCompanyName(parsed.name);
     
-    // Build query - use city index if available, fallback to county
-    let whereClause: any = {
-      name: normalizedName, // Exact match
+    // Helper function to find contractors where DB name starts with normalized scraped name
+    // Only returns match if exactly one contractor is found
+    const findUniqueStartsWithMatch = async (whereClause: any): Promise<{ id: string } | null> => {
+      // Fetch all contractors matching the location criteria
+      const contractors = await prisma.contractor.findMany({
+        where: whereClause,
+        select: { id: true, name: true },
+      });
+      
+      // Filter: DB name starts with normalized scraped name (case-insensitive)
+      const matches = contractors.filter(c => {
+        if (!c.name) return false;
+        const dbNameNormalized = normalizeCompanyName(c.name);
+        return dbNameNormalized.startsWith(normalizedName);
+      });
+      
+      // Only return match if exactly one found
+      if (matches.length === 1) {
+        return { id: matches[0].id };
+      } else if (matches.length > 1) {
+        console.log(`[ContractorMatching] Multiple name matches found (${matches.length}), skipping: "${normalizedName}"`);
+        return null;
+      }
+      return null;
     };
     
+    // Try city match first (higher confidence if contractor is in same city)
     if (permitCity) {
-      whereClause.city = permitCity.toUpperCase();
-      const contractor = await prisma.contractor.findFirst({
-        where: whereClause,
-        select: { id: true },
+      const contractor = await findUniqueStartsWithMatch({
+        city: permitCity.toUpperCase(),
       });
       
       if (contractor) {
@@ -283,49 +313,26 @@ export async function matchContractor(
           matchMethod: 'name',
         };
       }
-      
-      // Try county if no city match
-      if (permitCounty) {
-        const contractor = await prisma.contractor.findFirst({
-          where: {
-            name: normalizedName,
-            county: permitCounty as County,
-          },
-          select: { id: true },
-        });
-        
-        if (contractor) {
-          console.log(`[ContractorMatching] Name match found in county "${permitCounty}": contractorId=${contractor.id}`);
-          return {
-            contractorId: contractor.id,
-            confidence: 0.80,
-            matchMethod: 'name',
-          };
-        }
-      }
-    } else {
-      // No city filter - search Bay Area counties
-      const contractor = await prisma.contractor.findFirst({
-        where: {
-          name: normalizedName,
-          county: {
-            in: BAY_AREA_COUNTIES as County[],
-          },
-        },
-        select: { id: true },
-      });
-      
-      if (contractor) {
-        console.log(`[ContractorMatching] Name match found in Bay Area: contractorId=${contractor.id}`);
-        return {
-          contractorId: contractor.id,
-          confidence: 0.75,
-          matchMethod: 'name',
-        };
-      }
     }
     
-    console.log(`[ContractorMatching] No exact name match found for: "${normalizedName}"`);
+    // Search across all Bay Area counties (contractors can work across county lines)
+    // Don't restrict to permit's county since contractors often work in neighboring counties
+    const contractor = await findUniqueStartsWithMatch({
+      county: {
+        in: BAY_AREA_COUNTIES as County[],
+      },
+    });
+    
+    if (contractor) {
+      console.log(`[ContractorMatching] Name match found in Bay Area: contractorId=${contractor.id}`);
+      return {
+        contractorId: contractor.id,
+        confidence: permitCity ? 0.75 : 0.70, // Slightly lower if not in same city
+        matchMethod: 'name',
+      };
+    }
+    
+    console.log(`[ContractorMatching] No unique name match found for: "${normalizedName}"`);
   }
 
   // Strategy 3: Match by phone number (exact match)
@@ -396,20 +403,44 @@ export async function matchContractor(
     console.log(`[ContractorMatching] No exact phone match found for: "${normalizedPhone}"`);
   }
 
-  // Strategy 4: Match by name + phone combination (if both available, exact match)
+  // Strategy 4: Match by name + phone combination (starts with match, must be unique)
   if (parsed.name && parsed.phone) {
     const normalizedName = normalizeCompanyName(parsed.name);
     const normalizedPhone = normalizePhone(parsed.phone);
     
-    if (permitCity) {
-      // First try exact city match
-      const contractor = await prisma.contractor.findFirst({
+    // Helper function to find contractors where DB name starts with normalized scraped name AND phone matches
+    // Only returns match if exactly one contractor is found
+    const findUniqueNamePhoneMatch = async (whereClause: any): Promise<{ id: string } | null> => {
+      // Fetch all contractors matching the location and phone criteria
+      const contractors = await prisma.contractor.findMany({
         where: {
-          name: normalizedName,
+          ...whereClause,
           phone: normalizedPhone,
-          city: permitCity.toUpperCase(),
         },
-        select: { id: true },
+        select: { id: true, name: true },
+      });
+      
+      // Filter: DB name starts with normalized scraped name (case-insensitive)
+      const matches = contractors.filter(c => {
+        if (!c.name) return false;
+        const dbNameNormalized = normalizeCompanyName(c.name);
+        return dbNameNormalized.startsWith(normalizedName);
+      });
+      
+      // Only return match if exactly one found
+      if (matches.length === 1) {
+        return { id: matches[0].id };
+      } else if (matches.length > 1) {
+        console.log(`[ContractorMatching] Multiple name+phone matches found (${matches.length}), skipping: "${normalizedName}"`);
+        return null;
+      }
+      return null;
+    };
+    
+    // Try city match first (higher confidence if contractor is in same city)
+    if (permitCity) {
+      const contractor = await findUniqueNamePhoneMatch({
+        city: permitCity.toUpperCase(),
       });
       
       if (contractor) {
@@ -420,51 +451,26 @@ export async function matchContractor(
           matchMethod: 'name_phone',
         };
       }
-      
-      // Try county if no city match
-      if (permitCounty) {
-        const contractor = await prisma.contractor.findFirst({
-          where: {
-            name: normalizedName,
-            phone: normalizedPhone,
-            county: permitCounty as County,
-          },
-          select: { id: true },
-        });
-        
-        if (contractor) {
-          console.log(`[ContractorMatching] Name+Phone match found in county "${permitCounty}": contractorId=${contractor.id}`);
-          return {
-            contractorId: contractor.id,
-            confidence: 0.85,
-            matchMethod: 'name_phone',
-          };
-        }
-      }
-    } else {
-      // No city filter - search Bay Area counties
-      const contractor = await prisma.contractor.findFirst({
-        where: {
-          name: normalizedName,
-          phone: normalizedPhone,
-          county: {
-            in: BAY_AREA_COUNTIES as County[],
-          },
-        },
-        select: { id: true },
-      });
-      
-      if (contractor) {
-        console.log(`[ContractorMatching] Name+Phone match found in Bay Area: contractorId=${contractor.id}`);
-        return {
-          contractorId: contractor.id,
-          confidence: 0.80,
-          matchMethod: 'name_phone',
-        };
-      }
     }
     
-    console.log(`[ContractorMatching] No exact name+phone match found`);
+    // Search across all Bay Area counties (contractors can work across county lines)
+    // Don't restrict to permit's county since contractors often work in neighboring counties
+    const contractor = await findUniqueNamePhoneMatch({
+      county: {
+        in: BAY_AREA_COUNTIES as County[],
+      },
+    });
+    
+    if (contractor) {
+      console.log(`[ContractorMatching] Name+Phone match found in Bay Area: contractorId=${contractor.id}`);
+      return {
+        contractorId: contractor.id,
+        confidence: permitCity ? 0.85 : 0.80, // Slightly lower if not in same city
+        matchMethod: 'name_phone',
+      };
+    }
+    
+    console.log(`[ContractorMatching] No unique name+phone match found`);
   }
 
   // No match found

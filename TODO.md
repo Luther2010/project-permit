@@ -90,7 +90,7 @@
 | City | PermitType Classification | PropertyType Classification | Contractor Matching |
 |------|---------------------------|----------------------------|---------------------|
 | Los Gatos | ✅ | ✅ | ✅ (tested) |
-| Saratoga | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Saratoga | ✅ | ✅ | ✅ (tested) |
 | Santa Clara | ✅ | ✅ | ✅ (tested) |
 | Cupertino | ✅ | ✅ | ⚠️ (portal: not available, monthly docs: confirmed to have) |
 | Palo Alto | ✅ | ✅ | ❌ (not available on portal, no monthly docs) |
