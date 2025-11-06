@@ -252,11 +252,7 @@ async function main() {
 
         const data = {
             licenseNo,
-            name:
-                r["FullBusinessName"]?.trim() ||
-                r["BusinessName"]?.trim() ||
-                null ||
-                null,
+            name: r["BusinessName"]?.trim() || null,
             mailingAddress: r["MailingAddress"]?.trim() || null,
             city: r["City"]?.trim() || null,
             county: county,

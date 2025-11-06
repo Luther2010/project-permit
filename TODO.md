@@ -100,7 +100,7 @@
 | Campbell | ✅ | ✅ | ❌ (not extracted) |
 | Mountain View | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | Gilroy | ✅ | ✅ | ⚠️ (implemented, needs testing) |
-| Milpitas | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Milpitas | ✅ | ✅ | ✅ (tested) |
 | Morgan Hill | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | Los Altos | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 

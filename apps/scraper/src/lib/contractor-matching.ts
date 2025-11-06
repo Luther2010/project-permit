@@ -269,13 +269,45 @@ export async function matchContractor(
     }
   }
 
-  // Strategy 2: Match by name (starts with match, must be unique)
+  // Strategy 2: Match by name (exact match first, then starts with match)
   if (parsed.name) {
     const normalizedName = normalizeCompanyName(parsed.name);
+    const originalName = parsed.name.toUpperCase().trim();
     
-    // Helper function to find contractors where DB name starts with normalized scraped name
-    // Only returns match if exactly one contractor is found
-    const findUniqueStartsWithMatch = async (whereClause: any): Promise<{ id: string } | null> => {
+    // Helper function to find contractors matching the name
+    // Step 1: Try exact match (original name, case-insensitive, no normalization)
+    // Step 2: Fall back to normalized "starts with" match
+    const findUniqueNameMatch = async (whereClause: any): Promise<{ id: string } | null> => {
+      // Step 1: Try exact match of original name (case-insensitive, no normalization)
+      // Query DB directly using Prisma native syntax - try exact case and uppercase variant
+      let exactMatchContractors = await prisma.contractor.findMany({
+        where: {
+          ...whereClause,
+          OR: [
+            { name: parsed.name }, // Exact case
+            { name: originalName }, // Uppercase version
+          ],
+        },
+        select: { id: true, name: true },
+      });
+      
+      // Filter for exact case-insensitive match
+      exactMatchContractors = exactMatchContractors.filter(c => {
+        if (!c.name) return false;
+        return c.name.toUpperCase().trim() === originalName;
+      });
+      
+      if (exactMatchContractors.length === 1) {
+        console.log(`[ContractorMatching] Exact match found (original name): "${originalName}"`);
+        return { id: exactMatchContractors[0].id };
+      } else if (exactMatchContractors.length > 1) {
+        const matchedNames = exactMatchContractors.map(m => m.name || 'Unknown').join(', ');
+        console.log(`[ContractorMatching] Multiple exact matches found (${exactMatchContractors.length}), skipping: "${originalName}"`);
+        console.log(`[ContractorMatching] Matched contractors: ${matchedNames}`);
+        return null;
+      }
+      
+      // Step 2: No exact match, try normalized "starts with" match
       // Fetch all contractors matching the location criteria
       const contractors = await prisma.contractor.findMany({
         where: whereClause,
@@ -293,7 +325,9 @@ export async function matchContractor(
       if (matches.length === 1) {
         return { id: matches[0].id };
       } else if (matches.length > 1) {
-        console.log(`[ContractorMatching] Multiple name matches found (${matches.length}), skipping: "${normalizedName}"`);
+        const matchedNames = matches.map(m => m.name || 'Unknown').join(', ');
+        console.log(`[ContractorMatching] Multiple "starts with" matches found (${matches.length}), skipping: "${normalizedName}"`);
+        console.log(`[ContractorMatching] Matched contractors: ${matchedNames}`);
         return null;
       }
       return null;
@@ -301,7 +335,7 @@ export async function matchContractor(
     
     // Try city match first (higher confidence if contractor is in same city)
     if (permitCity) {
-      const contractor = await findUniqueStartsWithMatch({
+      const contractor = await findUniqueNameMatch({
         city: permitCity.toUpperCase(),
       });
       
@@ -317,7 +351,7 @@ export async function matchContractor(
     
     // Search across all Bay Area counties (contractors can work across county lines)
     // Don't restrict to permit's county since contractors often work in neighboring counties
-    const contractor = await findUniqueStartsWithMatch({
+    const contractor = await findUniqueNameMatch({
       county: {
         in: BAY_AREA_COUNTIES as County[],
       },

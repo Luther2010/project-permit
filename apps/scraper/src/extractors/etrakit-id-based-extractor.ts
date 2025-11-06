@@ -619,7 +619,9 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
 
     /**
      * Extract data from the Contacts tab (for contractor information)
-     * Default implementation searches tables for contractor-related labels
+     * Default implementation searches tables for contractor information
+     * Prioritizes entries with role "CONTRACTOR" (case-insensitive)
+     * Falls back to looking for contractor-related labels if no role-based structure found
      * Subclasses can override for city-specific structure
      */
     protected async extractContactsTab(): Promise<Partial<PermitData>> {
@@ -627,36 +629,60 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
             // Look for contractor information in the Contacts tab
             const tables = (globalThis as any).document.querySelectorAll('table');
             let contractor = null;
-            let applicant = null;
             
+            // First, try to find role-based structure (e.g., Milpitas: first column is role, second is name)
             for (const table of tables) {
                 const rows = table.querySelectorAll('tr');
                 for (const row of rows) {
                     const cells = row.querySelectorAll('td');
                     if (cells.length >= 2) {
-                        const label = cells[0]?.textContent?.trim();
-                        const value = cells[1]?.textContent?.trim();
+                        const firstCell = cells[0]?.textContent?.trim();
+                        const secondCell = cells[1]?.textContent?.trim();
                         
-                        if (label && value) {
-                            const labelUpper = label.toUpperCase();
-                            // Look for contractor-related labels
-                            if ((labelUpper.includes('CONTRACTOR') || labelUpper.includes('LICENSE') || labelUpper.includes('PROFESSIONAL')) && !contractor) {
-                                contractor = value;
+                        if (firstCell && secondCell) {
+                            const firstCellUpper = firstCell.toUpperCase().trim();
+                            // Only extract if first column is exactly "CONTRACTOR"
+                            // Explicitly skip OWNER and APPLICANT
+                            if (firstCellUpper === 'CONTRACTOR' && !contractor) {
+                                contractor = secondCell;
+                                break; // Found contractor, stop searching
                             }
-                            // Also look for applicant
-                            if (labelUpper.includes('APPLICANT') && !applicant) {
-                                applicant = value;
+                        }
+                    }
+                }
+                if (contractor) break; // Found contractor, stop searching tables
+            }
+            
+            // If no role-based structure found, fall back to label-based search
+            if (!contractor) {
+                for (const table of tables) {
+                    const rows = table.querySelectorAll('tr');
+                    for (const row of rows) {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length >= 2) {
+                            const label = cells[0]?.textContent?.trim();
+                            const value = cells[1]?.textContent?.trim();
+                            
+                            if (label && value) {
+                                const labelUpper = label.toUpperCase();
+                                // Look for contractor-related labels (but not if it's OWNER or APPLICANT)
+                                if ((labelUpper.includes('CONTRACTOR') || labelUpper.includes('LICENSE') || labelUpper.includes('PROFESSIONAL')) 
+                                    && !labelUpper.includes('OWNER') 
+                                    && !labelUpper.includes('APPLICANT') 
+                                    && !contractor) {
+                                    contractor = value;
+                                }
                             }
                         }
                     }
                 }
             }
             
-            return { contractor, applicant };
+            return { contractor };
         });
         
         return {
-            licensedProfessionalText: contractorInfo.contractor || contractorInfo.applicant || undefined,
+            licensedProfessionalText: contractorInfo.contractor || undefined, // Only use contractor, not applicant
         };
     }
 
