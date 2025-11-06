@@ -7,8 +7,8 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
     protected getConfig(): EtrakitIdBasedConfig {
         return {
             basePrefixes: [
-                "ADR",
                 "BLD",
+                "ADR",
                 "E",
                 "LC",
                 "ONBLD",
@@ -32,6 +32,12 @@ export class LosAltosExtractor extends EtrakitIdBasedExtractor {
             descriptionFieldSuffix: undefined, // Uses lblPermitDesc for description
             siteInfoTabIdPrefix: "ctl08",
             hasContactsTab: false, // Los Altos doesn't have Contacts tab
+            // Table column mapping for contractor extraction from search results table
+            // Columns: 0=Permit #, 1=Address, 2=Contractor
+            tableColumnMapping: {
+                permitNumber: 0,
+                contractor: 2, // Contractor is in the 3rd column (index 2)
+            },
             paginationConfig: {
                 maxPages: 50,
                 nextPageSelector: "input.PagerButton.NextPage, input[id*=\"btnPageNext\"]",

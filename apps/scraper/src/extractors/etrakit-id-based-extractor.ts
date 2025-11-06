@@ -557,7 +557,10 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
      * Also extracts contractor info if available in the table
      */
     protected async getPermitRows(): Promise<any[]> {
-        return await this.page!.evaluate(() => {
+        const config = this.getConfig();
+        const contractorColumnIndex = config.tableColumnMapping?.contractor;
+        
+        return await this.page!.evaluate((contractorColumn: number | undefined) => {
             // Get both rgRow and rgAltRow (eTRAKiT uses alternating row classes)
             const rows = (globalThis as any).document.querySelectorAll('tr.rgRow, tr.rgAltRow');
             return Array.from(rows).map((row: any) => {
@@ -569,56 +572,64 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
                 const permitNumber = permitNumberCell ? permitNumberCell.textContent?.trim() : null;
                 
                 // Look for contractor information in other columns
-                // Common column names/patterns: Contractor, Contractor Name, License, Professional
                 let contractor: string | null = null;
                 
-                // Try to find a header row to identify which column has contractor info
-                const table = row.closest('table');
-                let headerRow: any = null;
-                if (table) {
-                    // Look for header row (usually has th elements or specific classes)
-                    headerRow = table.querySelector('thead tr, tr.rgHeaderRow, tr.rgHeader');
-                }
-                
-                // If we have headers, use them to find contractor column
-                if (headerRow) {
-                    const headerCells = headerRow.querySelectorAll('th, td');
-                    headerCells.forEach((headerCell: any, index: number) => {
-                        if (index < cells.length && !contractor) {
-                            const headerText = headerCell.textContent?.trim().toUpperCase() || '';
-                            // Check if this column header mentions contractor
-                            if (headerText.includes('CONTRACTOR') || 
-                                headerText.includes('LICENSE') || 
-                                headerText.includes('PROFESSIONAL') ||
-                                headerText.includes('APPLICANT')) {
-                                const cellText = cells[index]?.textContent?.trim();
-                                if (cellText && cellText.length > 0) {
-                                    contractor = cellText;
+                // If we have an explicit contractor column mapping, use it
+                if (contractorColumn !== undefined && cells.length > contractorColumn) {
+                    const cellText = cells[contractorColumn]?.textContent?.trim();
+                    if (cellText && cellText.length > 0) {
+                        contractor = cellText;
+                    }
+                } else {
+                    // Otherwise, use heuristics to find contractor column
+                    // Try to find a header row to identify which column has contractor info
+                    const table = row.closest('table');
+                    let headerRow: any = null;
+                    if (table) {
+                        // Look for header row (usually has th elements or specific classes)
+                        headerRow = table.querySelector('thead tr, tr.rgHeaderRow, tr.rgHeader');
+                    }
+                    
+                    // If we have headers, use them to find contractor column
+                    if (headerRow) {
+                        const headerCells = headerRow.querySelectorAll('th, td');
+                        headerCells.forEach((headerCell: any, index: number) => {
+                            if (index < cells.length && !contractor) {
+                                const headerText = headerCell.textContent?.trim().toUpperCase() || '';
+                                // Check if this column header mentions contractor
+                                if (headerText.includes('CONTRACTOR') || 
+                                    headerText.includes('LICENSE') || 
+                                    headerText.includes('PROFESSIONAL') ||
+                                    headerText.includes('APPLICANT')) {
+                                    const cellText = cells[index]?.textContent?.trim();
+                                    if (cellText && cellText.length > 0) {
+                                        contractor = cellText;
+                                    }
                                 }
                             }
-                        }
-                    });
-                }
-                
-                // If we didn't find contractor via headers, try common column positions
-                // Many eTRAKiT tables have: Permit #, Description/Type, Status, Contractor (often 3rd or 4th column)
-                if (!contractor && cells.length >= 3) {
-                    // Try columns 2, 3, 4 as potential contractor columns
-                    for (let i = 2; i < Math.min(cells.length, 5); i++) {
-                        const cellText = cells[i]?.textContent?.trim();
-                        if (cellText && cellText.length > 3) {
-                            // Heuristic: if the text looks like a company/person name (not a date, status, or number)
-                            // and it's longer than 3 chars, it might be a contractor
-                            if (!cellText.match(/^\d+$/) && // Not just numbers
-                                !cellText.match(/^\d{1,2}\/\d{1,2}\/\d{4}/) && // Not a date
-                                !cellText.match(/^(ISSUED|APPROVED|IN REVIEW|FINALED|APPLIED|PENDING)/i) && // Not a status
-                                cellText.length > 5) { // Reasonable length for a name
-                                // This could be contractor - but let's be more selective
-                                // Look for common business suffixes or patterns
-                                if (cellText.match(/\b(Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co|Contractor|Contractors)\b/i) ||
-                                    cellText.match(/^[A-Z][a-z]+/)) { // Starts with capital letter
-                                    contractor = cellText;
-                                    break;
+                        });
+                    }
+                    
+                    // If we didn't find contractor via headers, try common column positions
+                    // Many eTRAKiT tables have: Permit #, Description/Type, Status, Contractor (often 3rd or 4th column)
+                    if (!contractor && cells.length >= 3) {
+                        // Try columns 2, 3, 4 as potential contractor columns
+                        for (let i = 2; i < Math.min(cells.length, 5); i++) {
+                            const cellText = cells[i]?.textContent?.trim();
+                            if (cellText && cellText.length > 3) {
+                                // Heuristic: if the text looks like a company/person name (not a date, status, or number)
+                                // and it's longer than 3 chars, it might be a contractor
+                                if (!cellText.match(/^\d+$/) && // Not just numbers
+                                    !cellText.match(/^\d{1,2}\/\d{1,2}\/\d{4}/) && // Not a date
+                                    !cellText.match(/^(ISSUED|APPROVED|IN REVIEW|FINALED|APPLIED|PENDING)/i) && // Not a status
+                                    cellText.length > 5) { // Reasonable length for a name
+                                    // This could be contractor - but let's be more selective
+                                    // Look for common business suffixes or patterns
+                                    if (cellText.match(/\b(Inc|LLC|Corp|Corporation|Ltd|Limited|Company|Co|Contractor|Contractors)\b/i) ||
+                                        cellText.match(/^[A-Z][a-z]+/)) { // Starts with capital letter
+                                        contractor = cellText;
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -632,7 +643,7 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
                     rowIndex: Array.from(row.parentElement.children).indexOf(row),
                 };
             }).filter((row: any) => row !== null && row.permitNumber);
-        });
+        }, contractorColumnIndex);
     }
 
     /**

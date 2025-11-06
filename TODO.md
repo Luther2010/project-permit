@@ -42,6 +42,10 @@
    - **Contractor Database**: Import all contractors from the master license data sheet (not just Bay Area counties)
      - Current import only includes Bay Area counties, but permits show contractors from other areas (e.g., Los Angeles, Glendale)
      - Need to expand import to include all California contractors to improve match rates
+   - **Contractor Name Field Consistency**: Some companies use BusinessName, some use BUS-NAME-2, some use FullBusinessName in the master license data
+     - Need to standardize which field to use for contractor names during import
+     - May need to implement a fallback strategy (e.g., use BusinessName if available, otherwise BUS-NAME-2, otherwise FullBusinessName)
+     - This affects contractor matching accuracy since name variations can prevent matches
    - **Monthly Document Contractor Extraction**: Some cities' portals don't have contractor info, but they release monthly documents (PDFs/reports) that contain contractor information
      - Cupertino: Portal doesn't show contractor info, but monthly documents DO have contractor info
      - Need to implement monthly document extraction for Cupertino (similar to Mountain View's monthly PDF extraction approach)
