@@ -105,7 +105,7 @@
 | Mountain View | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | Gilroy | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | Milpitas | ✅ | ✅ | ✅ (tested) |
-| Morgan Hill | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Morgan Hill | ✅ | ✅ | ✅ (tested) |
 | Los Altos | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 
 **Legend:**

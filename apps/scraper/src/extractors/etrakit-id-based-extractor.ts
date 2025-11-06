@@ -109,6 +109,25 @@ export interface EtrakitIdBasedConfig {
          */
         waitAfterPageClick?: number;
     };
+    
+    /**
+     * Optional login credentials for cities that require authentication
+     * If provided, login will be performed before searching
+     */
+    login?: {
+        /**
+         * Login type to select (e.g., "Public", "Contractor")
+         */
+        loginType: string;
+        /**
+         * Username for login
+         */
+        username: string;
+        /**
+         * Password for login
+         */
+        password: string;
+    };
 }
 
 export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
@@ -231,6 +250,93 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
             timeout: 60000,
         });
         console.log(`[${this.getName()}] Page loaded`);
+    }
+
+    /**
+     * Perform login if credentials are provided in config
+     * This is called after navigating to the search page
+     */
+    protected async performLogin(): Promise<void> {
+        const config = this.getConfig();
+        
+        if (!config.login) {
+            // No login required
+            return;
+        }
+
+        if (!this.page) {
+            throw new Error("Page not initialized");
+        }
+
+        console.log(`[${this.getName()}] Performing login...`);
+
+        try {
+            // Wait for login form to be available
+            await this.page.waitForSelector('#ucLogin_ddlSelLogin', { timeout: 10000 });
+            
+            // Step 1: Select login type (e.g., "Public")
+            const loginTypeSet = await this.setDropdownValue('#ucLogin_ddlSelLogin', config.login.loginType);
+            if (!loginTypeSet) {
+                throw new Error(`Could not set login type to "${config.login.loginType}"`);
+            }
+            console.log(`[${this.getName()}] Selected login type: ${config.login.loginType}`);
+            
+            // Wait for postback after changing login type
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            
+            // Step 2: Fill in username
+            const usernameSet = await this.setInputValue('#ctl00_ucLogin_txtLoginId', config.login.username);
+            if (!usernameSet) {
+                throw new Error(`Could not set username`);
+            }
+            console.log(`[${this.getName()}] Entered username`);
+            
+            // Step 3: Fill in password
+            // The actual password field is #ctl00_ucLogin_txtPassword (type="password", may be hidden)
+            // The visible text field #ctl00_ucLogin_RadTextBox2 is just for display
+            // We need to use the actual password field directly
+            const passwordSet = await this.setInputValue('#ctl00_ucLogin_txtPassword', config.login.password);
+            if (!passwordSet) {
+                throw new Error(`Could not set password in password field`);
+            }
+            console.log(`[${this.getName()}] Entered password`);
+            
+            // Step 4: Click login button
+            const loginButton = await this.page.$('#ucLogin_btnLogin');
+            if (!loginButton) {
+                throw new Error(`Could not find login button`);
+            }
+            
+            await loginButton.click();
+            console.log(`[${this.getName()}] Clicked login button`);
+            
+            // Wait for login to complete - look for search form or disappearance of login form
+            try {
+                await this.page.waitForFunction(
+                    () => {
+                        const loginForm = (globalThis as any).document.querySelector('#ucLogin_ddlSelLogin');
+                        const searchForm = (globalThis as any).document.querySelector('#cplMain_ddSearchBy, #ctl00_cplMain_ddSearchBy');
+                        return !loginForm || searchForm; // Login form gone or search form visible
+                    },
+                    { timeout: 15000 }
+                );
+                console.log(`[${this.getName()}] Login successful`);
+            } catch (e) {
+                // Check if we're already logged in or if login failed
+                const searchForm = await this.page.$('#cplMain_ddSearchBy, #ctl00_cplMain_ddSearchBy');
+                if (searchForm) {
+                    console.log(`[${this.getName()}] Login appears successful (search form visible)`);
+                } else {
+                    throw new Error(`Login may have failed - search form not found`);
+                }
+            }
+            
+            // Additional wait for page to stabilize
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            
+        } catch (e: any) {
+            throw new Error(`Login failed: ${e?.message || e}`);
+        }
     }
 
     /**
@@ -420,7 +526,7 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
                 const rows = (globalThis as any).document.querySelectorAll('tr.rgRow, tr.rgAltRow');
                 const visibleCount = rows ? rows.length : 0;
                 
-                // If we got a count from rows, use it
+                 // If we got a count from rows, use it
                 if (visibleCount > 0) {
                     return visibleCount;
                 }
@@ -1367,6 +1473,9 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
 
             // Navigate to search page
             await this.navigateToSearchPage();
+
+            // Perform login if credentials are provided
+            await this.performLogin();
 
             const allPermits: PermitData[] = [];
             let newPermitsCount = 0; // Track only newly added permits for limit

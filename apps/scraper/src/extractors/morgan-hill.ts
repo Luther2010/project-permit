@@ -32,11 +32,16 @@ export class MorganHillExtractor extends EtrakitIdBasedExtractor {
             extractTitle: false, // No title, only description
             descriptionFieldSuffix: undefined, // Uses lblPermitDesc for description
             siteInfoTabIdPrefix: "ctl08",
-            hasContactsTab: false, // Morgan Hill doesn't have Contacts tab
+            hasContactsTab: true, // Morgan Hill has Contacts tab when logged in
             paginationConfig: {
                 maxPages: 50,
                 nextPageSelector: "input.PagerButton.NextPage, input[id*=\"btnPageNext\"]",
                 waitAfterPageClick: 3000,
+            },
+            login: {
+                loginType: "Public",
+                username: "Luther2010",
+                password: "B!Y33zg!HGAViE6",
             },
         };
     }
