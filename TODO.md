@@ -103,7 +103,7 @@
 | Cupertino | ✅ | ✅ | ⚠️ (portal: not available, monthly docs: confirmed to have) |
 | Palo Alto | ✅ | ✅ | ❌ (not available on portal, no monthly docs) |
 | Los Altos Hills | ✅ | ✅ | ✅ (tested) |
-| Sunnyvale | ✅ | ✅ | ⚠️ (implemented, needs testing) |
+| Sunnyvale | ✅ | ✅ | ❌ (not available) |
 | San Jose | ✅ | ✅ | ⚠️ (implemented, needs testing) |
 | Campbell | ✅ | ✅ | ❌ (not extracted) |
 | Mountain View | ✅ | ✅ | ⚠️ (implemented, needs testing) |
