@@ -23,10 +23,10 @@
 
 4. **Configure Project Settings**:
    - **Framework Preset**: Next.js (auto-detected)
-   - **Root Directory**: `apps/web`
-   - **Build Command**: `pnpm install && pnpm prisma generate && pnpm build` (or leave default)
-   - **Output Directory**: `.next` (default)
-   - **Install Command**: `pnpm install` (or leave default)
+   - **Root Directory**: `apps/web` ⚠️ **IMPORTANT: Set this in Vercel dashboard, not in vercel.json**
+   - **Build Command**: Will use `vercel.json` config (or you can leave default)
+   - **Output Directory**: Will use `vercel.json` config (or `.next` default)
+   - **Install Command**: Will use `vercel.json` config (or default)
 
 5. **Set Environment Variables**:
    Click "Environment Variables" and add:
