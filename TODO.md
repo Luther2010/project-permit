@@ -30,6 +30,8 @@
    - Setup checkout flow for freemium to premium upgrade
    - Connect upgrade CTA in freemium banner
    - Handle subscription webhooks and payment processing
+   - **Sign up flow**: Implement user registration and account creation
+   - **Payment flow**: Complete payment processing and subscription management
 
 2. **Classification Improvements**
    - **PermitType**: Enhance classification accuracy and coverage
@@ -92,6 +94,37 @@
 
 ### UI/UX Enhancements
 - [ ] Learn more / Upgrade flow CTA for freemium banner
+- [ ] **Contact us flow**: Implement contact form
+  - Create contact form page/component
+  - Form fields (name, email, message, etc.)
+  - Form submission handling
+  - Email notification to admin/team
+  - **Security considerations**:
+    - Input validation and sanitization
+    - CSRF protection
+    - Rate limiting to prevent spam/abuse
+    - SQL injection prevention (if storing in DB)
+    - XSS prevention (sanitize user input before display)
+    - Email validation and verification
+
+### SEO & Security
+- [ ] **SEO**: Implement search engine optimization
+  - Meta tags, Open Graph tags
+  - Structured data (JSON-LD)
+  - Sitemap generation
+  - Robots.txt configuration
+- [ ] **Bot Protection**: Implement measures to prevent bot access
+  - Rate limiting
+  - CAPTCHA or similar verification
+  - IP-based blocking for suspicious activity
+
+### Deployment & Data Management
+- [ ] **Deploy to production**: Setup production environment and deployment pipeline
+- [ ] **Local script execution with production sync**: Enable running scripts locally and syncing with production DB
+  - Run scraping/enrichment scripts locally against local DB
+  - Generate diff between local and production DB changes
+  - Review diff before syncing to production
+  - Implement sync mechanism to apply approved changes to production DB
 
 ## 📊 Classification Status by City
 
