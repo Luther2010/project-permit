@@ -47,3 +47,6 @@ next-env.d.ts
 prisma/dev.db*
 
 /src/generated/prisma
+
+# migration exports
+sqlite-export.json

@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -170,10 +170,10 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // NextAuth accounts (supports multiple providers: Google, LinkedIn, etc.)
-  accounts      Account[]
+  accounts Account[]
 
   // Subscription info
-  subscription  Subscription?
+  subscription Subscription?
 
   @@index([email])
 }
@@ -193,7 +193,7 @@ model Account {
   id_token          String?
   session_state     String?
 
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
@@ -203,57 +203,57 @@ model Account {
 
 // Subscription model - tracks user's plan (freemium vs premium)
 model Subscription {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  plan            SubscriptionPlan @default(FREEMIUM)
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan SubscriptionPlan @default(FREEMIUM)
+
   // Subscription period - user has premium access until this date
   // null = freemium (permanent)
   // future date = premium access until that date
   // past date = expired (back to freemium)
-  validUntil      DateTime?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  validUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Permit model - stores scraped permit information
 model Permit {
-  id              String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Basic info
-  permitNumber    String   @unique
-  title           String?
-  description     String?
-  
+  permitNumber String  @unique
+  title        String?
+  description  String?
+
   // Location
-  address         String?
-  city            City?
-  state           String?
-  zipCode         String?
-  
+  address String?
+  city    City?
+  state   String?
+  zipCode String?
+
   // Details
-  propertyType    PropertyType?
-  permitType      PermitType?
-  status          PermitStatus?
-  value           Float?
-  
+  propertyType PropertyType?
+  permitType   PermitType?
+  status       PermitStatus?
+  value        Float?
+
   // Dates
-  appliedDate      DateTime?
-  appliedDateString String?  // Store original date format (e.g., "10/27/2025")
-  expirationDate   DateTime?
-  
+  appliedDate       DateTime?
+  appliedDateString String? // Store original date format (e.g., "10/27/2025")
+  expirationDate    DateTime?
+
   // Scraping metadata
-  sourceUrl       String?
-  scrapedAt       DateTime @default(now())
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  sourceUrl String?
+  scrapedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  contractors     PermitContractor[]
+  contractors PermitContractor[]
 
   @@index([permitNumber])
   @@index([city])
@@ -263,44 +263,43 @@ model Permit {
 
 // Contractor model - stores licensing, bonding, and compliance data from CSLB CSV
 model Contractor {
-  id               String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Core identification
-  licenseNo        String   @unique
-  name             String?  // prefer FullBusinessName or BusinessName
+  licenseNo String  @unique
+  name      String? // prefer FullBusinessName or BusinessName
 
   // Contact and address
-  mailingAddress   String?
-  city             String?
-  county           County?
-  state            String?
-  zipCode          String?
-  phone            String?
+  mailingAddress String?
+  city           String?
+  county         County?
+  state          String?
+  zipCode        String?
+  phone          String?
 
   // Business info
-  businessType     ContractorBusinessType?
-  classifications  ContractorClassification[]
+  businessType    ContractorBusinessType?
+  classifications ContractorClassification[]
 
   // Key dates
-  issueDate        DateTime?
-  
+  issueDate DateTime?
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  permits PermitContractor[]
 
   @@index([licenseNo])
   @@index([city])
   @@index([county])
-
-  // Relations
-  permits          PermitContractor[]
 }
 
 // Join table for many classifications per contractor (SQLite-friendly)
 model ContractorClassification {
-  id             String              @id @default(cuid())
+  id             String             @id @default(cuid())
   contractorId   String
-  contractor     Contractor          @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  contractor     Contractor         @relation(fields: [contractorId], references: [id], onDelete: Cascade)
   classification CSLBClassification
 
   @@unique([contractorId, classification])
@@ -309,15 +308,14 @@ model ContractorClassification {
 
 // Join table: many-to-many between Permit and Contractor
 model PermitContractor {
-  id            String      @id @default(cuid())
-  permitId      String
-  contractorId  String
-  role          String?     // Optional: general, prime, sub, etc.
+  id           String  @id @default(cuid())
+  permitId     String
+  contractorId String
+  role         String? // Optional: general, prime, sub, etc.
 
-  permit        Permit      @relation(fields: [permitId], references: [id], onDelete: Cascade)
-  contractor    Contractor  @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  permit     Permit     @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  contractor Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
 
   @@unique([permitId, contractorId])
   @@index([contractorId])
 }
-

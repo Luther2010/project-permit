@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "dotenv -e .env -- tsx scripts/seed.ts",
-    "scrape": "dotenv -e .env -- tsx scripts/scrape.ts"
+    "scrape": "dotenv -e .env -- tsx scripts/scrape.ts",
+    "export-sqlite": "dotenv -e .env -- tsx scripts/export-sqlite-to-json.ts",
+    "import-postgres": "dotenv -e .env -- tsx scripts/import-json-to-postgres.ts",
+    "postinstall": "prisma generate",
+    "vercel-build": "prisma generate && prisma migrate deploy && next build"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
