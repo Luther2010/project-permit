@@ -100,8 +100,8 @@
 | Los Gatos | ✅ | ✅ | ✅ (tested) |
 | Saratoga | ✅ | ✅ | ✅ (tested) |
 | Santa Clara | ✅ | ✅ | ✅ (tested) |
-| Cupertino | ✅ | ✅ | ⚠️ (portal: not available, monthly docs: confirmed to have) |
-| Palo Alto | ✅ | ✅ | ❌ (not available on portal, no monthly docs) |
+| Cupertino | ✅ | ✅ | ✅ (tested - contractor license search) |
+| Palo Alto | ✅ | ✅ | ✅ (tested - contractor license search) |
 | Los Altos Hills | ✅ | ✅ | ✅ (tested) |
 | Sunnyvale | ✅ | ✅ | ❌ (not available) |
 | San Jose | ✅ | ✅ | ✅ (tested) |

@@ -153,10 +153,6 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
                 console.log(
                     `${this.getLoggerPrefix()} Could not find date fields`
                 );
-                await this.page.screenshot({
-                    path: `${this.getScreenshotPrefix()}-page.png`,
-                    fullPage: true,
-                });
             }
 
             // Try to find and click the search button
@@ -302,13 +298,6 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
                     break;
                 }
 
-                // Take screenshot of first page
-                if (currentPage === 1) {
-                    await this.page.screenshot({
-                        path: `${this.getScreenshotPrefix()}-results.png`,
-                        fullPage: true,
-                    });
-                }
 
                 // Check for next page button
                 hasMorePages = await this.page.evaluate(() => {
@@ -479,13 +468,6 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
                     break;
                 }
 
-                // Take screenshot of first page
-                if (currentPage === 1) {
-                    await this.page!.screenshot({
-                        path: `${this.getScreenshotPrefix()}-results.png`,
-                        fullPage: true,
-                    });
-                }
 
                 // Check for next page button
                 hasMorePages = await this.page!.evaluate(() => {
@@ -1091,13 +1073,6 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
             }, contractorLicense);
 
             if (!licenseFieldFilled) {
-                console.log(
-                    `${this.getLoggerPrefix()} Could not find contractor license field, taking screenshot...`
-                );
-                await this.page.screenshot({
-                    path: `${this.getScreenshotPrefix()}-contractor-search-page.png`,
-                    fullPage: true,
-                });
                 throw new Error("Could not find contractor license search field");
             }
 
@@ -1144,24 +1119,12 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
             // Extract permits (handles both single result detail page and multiple results table)
             const permits = await this.extractPermitsFromPage(limit);
             
-            // Debug: if no permits found, take a screenshot to see what page we're on
+            // Debug: if no permits found, log page info
             if (permits.length === 0) {
-                console.log(
-                    `${this.getLoggerPrefix()} No permits found, taking screenshot for debugging...`
-                );
-                await this.page.screenshot({
-                    path: `${this.getScreenshotPrefix()}-contractor-${contractorLicense}-no-results.png`,
-                    fullPage: true,
-                });
-                
-                // Also check what page we're actually on
                 const currentUrl = await this.page.url();
                 const pageTitle = await this.page.title();
                 console.log(
-                    `${this.getLoggerPrefix()} Current URL: ${currentUrl}`
-                );
-                console.log(
-                    `${this.getLoggerPrefix()} Page title: ${pageTitle}`
+                    `${this.getLoggerPrefix()} No permits found. Current URL: ${currentUrl}, Page title: ${pageTitle}`
                 );
             }
 
