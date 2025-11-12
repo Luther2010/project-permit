@@ -469,9 +469,6 @@ export async function scrapeCity(
             
             const result = await extractor.scrape(limit, startDate, endDate);
             
-            // For ID-based scrapers, the extractor handles date filtering internally
-            // No need to filter again here as the extractor already filters by appliedDate
-            
             if (result.success && result.permits.length > 0) {
                 await savePermits(result.permits);
                 console.log(
