@@ -21,6 +21,20 @@ import { matchContractorFromText } from "./lib/contractor-matching";
 import { City } from "@prisma/client";
 
 /**
+ * Cities that support contractor enrichment via license-based search
+ * These cities use Accela portals where contractor info is only visible
+ * when searching by contractor license number
+ */
+export const CITIES_WITH_CONTRACTOR_ENRICHMENT = ["Palo Alto", "Cupertino"];
+
+/**
+ * Check if a city supports contractor enrichment
+ */
+export function supportsContractorEnrichment(cityName: string): boolean {
+    return CITIES_WITH_CONTRACTOR_ENRICHMENT.includes(cityName);
+}
+
+/**
  * Map city name to City enum
  */
 function mapCity(cityName: string): City | undefined {
@@ -42,7 +56,7 @@ function mapCity(cityName: string): City | undefined {
  * @param contractorEndDate - End date for contractor query (defaults to today)
  * @param limit - Optional limit on number of contractors to process
  */
-async function enrichPermitsForCity(
+export async function enrichPermitsForCity(
     cityName: string,
     permitStartDate: Date,
     permitEndDate: Date,

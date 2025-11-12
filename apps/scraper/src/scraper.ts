@@ -374,7 +374,8 @@ export async function scrapeCity(
     cityName: string,
     limit?: number,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
+    contractorLimit?: number
 ): Promise<void> {
     // Initialize debug logging for contractor matching
     initDebugLogging();
@@ -492,6 +493,30 @@ export async function scrapeCity(
                 console.log(
                     `✅ ${cityName} scrape complete: ${result.permits.length} permits`
                 );
+                
+                // Automatically enrich with contractor information for cities that support it
+                // if date range is provided
+                if (startDate && endDate) {
+                    const { supportsContractorEnrichment } = await import("./enrich-contractors.js");
+                    if (supportsContractorEnrichment(cityName)) {
+                        console.log(`\n🔗 Starting contractor enrichment for ${cityName}...`);
+                        try {
+                            const { enrichPermitsForCity } = await import("./enrich-contractors.js");
+                            await enrichPermitsForCity(
+                                cityName,
+                                startDate,
+                                endDate,
+                                undefined, // contractorStartDate - use default (last 12 months)
+                                undefined, // contractorEndDate - use default (last 12 months)
+                                contractorLimit  // limit - use contractor limit if provided
+                            );
+                            console.log(`✅ Contractor enrichment complete for ${cityName}\n`);
+                        } catch (error) {
+                            console.error(`⚠️  Contractor enrichment failed for ${cityName}:`, error);
+                            // Don't fail the entire scrape if enrichment fails
+                        }
+                    }
+                }
             } else {
                 console.log(
                     `⚠️  ${cityName} scrape failed: ${result.error || "No permits found"}`
@@ -514,7 +539,8 @@ export async function scrapeCity(
 export async function scrapeAllCities(
     limit?: number,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
+    contractorLimit?: number
 ): Promise<void> {
     console.log("🚀 Starting permit scraping for all cities...");
 
@@ -527,7 +553,7 @@ export async function scrapeAllCities(
 
     for (const cityConfig of enabledCities) {
         try {
-            await scrapeCity(cityConfig.city, limit, startDate, endDate);
+            await scrapeCity(cityConfig.city, limit, startDate, endDate, contractorLimit);
         } catch (error) {
             console.error(`❌ Failed to scrape ${cityConfig.city}:`, error);
         }
