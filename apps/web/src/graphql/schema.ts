@@ -98,7 +98,6 @@ export const typeDefs = `
     pageSize: Int!
     hasNextPage: Boolean!
     hasPreviousPage: Boolean!
-    isPremium: Boolean!
   }
 
   enum SortOrder {
@@ -113,6 +112,13 @@ export const typeDefs = `
     VALUE
     APPLIED_DATE
     STATUS
+  }
+
+  type User {
+    id: String!
+    email: String!
+    name: String
+    isPremium: Boolean!
   }
 
   type Query {
@@ -136,6 +142,7 @@ export const typeDefs = `
     ): PermitConnection!
     permit(id: String!): Permit
     permitByNumber(permitNumber: String!): Permit
+    me: User
   }
 
   type ContractorClassification {

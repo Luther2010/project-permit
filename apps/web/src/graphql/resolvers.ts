@@ -2,8 +2,79 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 
+// Helper function to check if user is premium
+async function checkIsPremium(session: any): Promise<boolean> {
+    if (!session?.user?.id) {
+        return false;
+    }
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            include: { subscription: true },
+        });
+
+        if (user?.subscription) {
+            const now = new Date();
+            const subscription = user.subscription as unknown as {
+                plan: string;
+                validUntil: Date | null;
+            };
+            const validUntil = subscription.validUntil;
+
+            // User has premium access if:
+            // Plan is PREMIUM AND validUntil is in the future (or null for lifetime)
+            return Boolean(
+                subscription.plan === "PREMIUM" &&
+                    (validUntil === null || validUntil > now)
+            );
+        }
+    } catch (error) {
+        console.log("Error checking subscription:", error);
+    }
+
+    return false;
+}
+
 export const resolvers = {
     Query: {
+        me: async (
+            _: unknown,
+            __: unknown,
+            context: {
+                session?: {
+                    user: {
+                        id: string;
+                        name?: string | null;
+                        email?: string | null;
+                        image?: string | null;
+                    };
+                } | null;
+            }
+        ) => {
+            let session = context?.session;
+            if (!session) {
+                try {
+                    session = await getServerSession(authOptions);
+                } catch (error) {
+                    console.log("Could not get session in resolver:", error);
+                    return null;
+                }
+            }
+
+            if (!session?.user?.id) {
+                return null;
+            }
+
+            const isPremium = await checkIsPremium(session);
+
+            return {
+                id: session.user.id,
+                email: session.user.email || "",
+                name: session.user.name,
+                isPremium,
+            };
+        },
         permits: async (
             _: unknown,
             args: {
@@ -106,36 +177,7 @@ export const resolvers = {
                 }
             }
 
-            let isPremium = false;
-
-            if (session?.user?.id) {
-                try {
-                    const user = await prisma.user.findUnique({
-                        where: { id: session.user.id },
-                        include: { subscription: true },
-                    });
-
-                    if (user?.subscription) {
-                        const now = new Date();
-                        const subscription = user.subscription as unknown as {
-                            plan: string;
-                            validUntil: Date | null;
-                        };
-                        const validUntil = subscription.validUntil;
-
-                        // User has premium access if:
-                        // 1. Plan is PREMIUM AND validUntil is in the future (or null for lifetime)
-                        // 2. OR validUntil is in the future (regardless of plan - handles trials)
-                        isPremium = Boolean(
-                            (subscription.plan === "PREMIUM" &&
-                                (validUntil === null || validUntil > now)) ||
-                                (validUntil && validUntil > now)
-                        );
-                    }
-                } catch (error) {
-                    console.log("Error checking subscription:", error);
-                }
-            }
+            const isPremium = await checkIsPremium(session);
 
             // Pagination settings
             const page = args.page && args.page > 0 ? args.page : 1;
@@ -208,7 +250,6 @@ export const resolvers = {
                 pageSize: pageSize, // Return original pageSize, not effectiveLimit
                 hasNextPage,
                 hasPreviousPage,
-                isPremium,
             };
         },
 

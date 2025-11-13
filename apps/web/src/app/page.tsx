@@ -20,6 +20,12 @@ interface PermitConnection {
     pageSize: number;
     hasNextPage: boolean;
     hasPreviousPage: boolean;
+}
+
+interface User {
+    id: string;
+    email: string;
+    name: string | null;
     isPremium: boolean;
 }
 
@@ -35,6 +41,28 @@ type SortOrder = "ASC" | "DESC";
 interface SortState {
     field: SortField | null;
     order: SortOrder;
+}
+
+// Fetch user info including premium status
+async function getMe(): Promise<User | null> {
+    const query = `
+        query GetMe {
+            me {
+                id
+                email
+                name
+                isPremium
+            }
+        }
+    `;
+
+    try {
+        const data = await graphqlFetch(query, {});
+        return data.me || null;
+    } catch (error) {
+        console.error("Error fetching user info:", error);
+        return null;
+    }
 }
 
 // Optimized query for table view - minimal data only
@@ -139,7 +167,6 @@ async function getPermits(
                 pageSize
                 hasNextPage
                 hasPreviousPage
-                isPremium
             }
         }
     `;
@@ -154,7 +181,6 @@ async function getPermits(
                 pageSize: pageSize,
                 hasNextPage: false,
                 hasPreviousPage: false,
-                isPremium: false,
             }
         );
     } catch (error) {
@@ -166,7 +192,6 @@ async function getPermits(
             pageSize: pageSize,
             hasNextPage: false,
             hasPreviousPage: false,
-            isPremium: false,
         };
     }
 }
@@ -176,14 +201,10 @@ export default function Home() {
     const [permits, setPermits] = useState<Permit[]>([]);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
-    const [pagination, setPagination] = useState<{
-        totalCount: number;
-        page: number;
-        pageSize: number;
-        hasNextPage: boolean;
-        hasPreviousPage: boolean;
-        isPremium: boolean;
-    } | null>(null);
+    const [pagination, setPagination] = useState<PermitConnection | null>(null);
+    const [user, setUser] = useState<User | null>(null);
+    
+    const isPremium = user?.isPremium ?? false;
     const [filters, setFilters] = useState<FilterState>({
         propertyTypes: [] as PropertyType[],
         permitTypes: [] as PermitType[],
@@ -254,12 +275,12 @@ export default function Home() {
         const end = start + PAGE_SIZE;
         setPermits(all.slice(start, end));
         setPagination({
+            permits: [],
             totalCount: effectiveTotal,
             page,
             pageSize: PAGE_SIZE,
             hasNextPage: end < effectiveTotal,
             hasPreviousPage: page > 1,
-            isPremium: false,
         });
     };
 
@@ -275,7 +296,7 @@ export default function Home() {
             sort.order
         );
 
-        if (!firstResult.isPremium) {
+        if (!isPremium) {
             // For freemium: lock the subset to the canonical default order (issued desc)
             // Cache all 3 permits once; then sort and page locally
             if (!freemiumAllPermits || page === 1) {
@@ -306,12 +327,12 @@ export default function Home() {
             setFreemiumAllPermits(null);
             setPermits(firstResult.permits);
             setPagination({
+                permits: [],
                 totalCount: firstResult.totalCount,
                 page: firstResult.page,
                 pageSize: firstResult.pageSize,
                 hasNextPage: firstResult.hasNextPage,
                 hasPreviousPage: firstResult.hasPreviousPage,
-                isPremium: firstResult.isPremium,
             });
         }
         setLoading(false);
@@ -340,7 +361,7 @@ export default function Home() {
 
     const handlePageChange = async (page: number) => {
         // If freemium and we have a cached subset, page locally
-        if (pagination && !pagination.isPremium && freemiumAllPermits) {
+        if (pagination && !isPremium && freemiumAllPermits) {
             const sorted = sortPermitsLocal(
                 freemiumAllPermits,
                 sort.field ?? "APPLIED_DATE",
@@ -352,11 +373,24 @@ export default function Home() {
         await fetchPermits(page);
     };
 
+    // Fetch user info on mount
+    React.useEffect(() => {
+        const fetchUser = async () => {
+            const userData = await getMe();
+            if (userData) {
+                setUser(userData);
+            }
+        };
+        if (session) {
+            fetchUser();
+        }
+    }, [session]);
+
     // Refetch when sort changes
     React.useEffect(() => {
         if (!hasSearched) return;
         // For freemium: sort locally
-        if (pagination && !pagination.isPremium && freemiumAllPermits) {
+        if (pagination && !isPremium && freemiumAllPermits) {
             const sorted = sortPermitsLocal(
                 freemiumAllPermits,
                 sort.field ?? "APPLIED_DATE",
@@ -386,6 +420,7 @@ export default function Home() {
                         isAuthenticated={!!session}
                         userName={session?.user?.name}
                         userEmail={session?.user?.email}
+                        isPremium={isPremium}
                     />
                 </div>
 
@@ -413,9 +448,9 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
-                        {pagination && !pagination.isPremium && (
+                        {pagination && !isPremium && (
                             <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <div className="flex">
+                                <div className="flex items-start">
                                     <div className="flex-shrink-0">
                                         <svg
                                             className="h-5 w-5 text-blue-400"
@@ -441,6 +476,14 @@ export default function Home() {
                                                 Upgrade to Premium for unlimited
                                                 access to all permit data.
                                             </p>
+                                        </div>
+                                        <div className="mt-3">
+                                            <a
+                                                href="/upgrade"
+                                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
+                                                Upgrade to Premium
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
