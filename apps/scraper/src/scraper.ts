@@ -87,6 +87,83 @@ function mapPermitStatus(status?: string): PermitStatus {
 }
 
 /**
+ * Normalize date string to consistent MM/DD/YYYY format with leading zeros
+ * Parses date components directly to avoid timezone shifts
+ */
+function normalizeDateString(dateString: string | null | undefined): string | undefined {
+    if (!dateString) return undefined;
+    
+    try {
+        const trimmed = dateString.trim();
+        
+        // Try to extract date parts directly from common formats
+        // Handle formats like "1/3/2025", "01/03/2025", "2025-01-03", etc.
+        const parts = trimmed.split(/[\/\-]/);
+        if (parts.length === 3) {
+            let month: number, day: number, year: number;
+            
+            // Check if first part is year (YYYY format like "2025-01-03")
+            if (parts[0].length === 4) {
+                year = parseInt(parts[0], 10);
+                month = parseInt(parts[1], 10);
+                day = parseInt(parts[2], 10);
+            } else {
+                // Assume MM/DD/YYYY or M/D/YYYY format (like "1/3/2025" or "01/03/2025")
+                month = parseInt(parts[0], 10);
+                day = parseInt(parts[1], 10);
+                year = parseInt(parts[2], 10);
+            }
+            
+            // Validate the parsed values
+            if (!isNaN(month) && !isNaN(day) && !isNaN(year) && 
+                month >= 1 && month <= 12 && day >= 1 && day <= 31 &&
+                year >= 1900 && year <= 2100) {
+                // Format as MM/DD/YYYY with leading zeros
+                return `${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}/${year}`;
+            }
+        }
+        
+        // If direct parsing fails, try Date constructor as fallback
+        // But extract components using local timezone methods to avoid shifts
+        const dateObj = new Date(trimmed);
+        if (!isNaN(dateObj.getTime())) {
+            // Use local date methods to avoid timezone conversion issues
+            const month = dateObj.getMonth() + 1;
+            const day = dateObj.getDate();
+            const year = dateObj.getFullYear();
+            
+            // Validate the date makes sense (not shifted)
+            // Check if the original string components match what we extracted
+            const originalParts = trimmed.split(/[\/\-]/);
+            if (originalParts.length === 3) {
+                let originalMonth: number, originalDay: number, originalYear: number;
+                
+                if (originalParts[0].length === 4) {
+                    originalYear = parseInt(originalParts[0], 10);
+                    originalMonth = parseInt(originalParts[1], 10);
+                    originalDay = parseInt(originalParts[2], 10);
+                } else {
+                    originalMonth = parseInt(originalParts[0], 10);
+                    originalDay = parseInt(originalParts[1], 10);
+                    originalYear = parseInt(originalParts[2], 10);
+                }
+                
+                // Only use Date constructor result if it matches the original components
+                // This prevents timezone shifts
+                if (!isNaN(originalMonth) && !isNaN(originalDay) && !isNaN(originalYear) &&
+                    originalMonth === month && originalDay === day && originalYear === year) {
+                    return `${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}/${year}`;
+                }
+            }
+        }
+        
+        return undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
  * Save scraped permits to the database
  */
 async function savePermits(permits: any[]): Promise<void> {
@@ -159,10 +236,8 @@ async function savePermits(permits: any[]): Promise<void> {
             const validAppliedDate = validateDate(permit.appliedDate);
             const validExpirationDate = validateDate(permit.expirationDate);
 
-            // Ensure appliedDateString is a string, not a number
-            const validAppliedDateString = permit.appliedDateString
-                ? String(permit.appliedDateString).trim()
-                : undefined;
+            // Normalize appliedDateString to consistent MM/DD/YYYY format
+            const validAppliedDateString = normalizeDateString(permit.appliedDateString);
 
             const savedPermit = await prisma.permit.upsert({
                 where: { permitNumber: permit.permitNumber },
