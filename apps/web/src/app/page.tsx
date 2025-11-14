@@ -10,6 +10,7 @@ import { PermitFilters, type FilterState } from "./components/permit-filters";
 import { PermitTable } from "./components/permit-table";
 import { Pagination } from "./components/pagination";
 import type { PropertyType, PermitType, City } from "@prisma/client";
+import { getMe, type User } from "@/lib/user";
 
 const PAGE_SIZE = 10;
 
@@ -20,13 +21,6 @@ interface PermitConnection {
     pageSize: number;
     hasNextPage: boolean;
     hasPreviousPage: boolean;
-}
-
-interface User {
-    id: string;
-    email: string;
-    name: string | null;
-    isPremium: boolean;
 }
 
 type SortField =
@@ -41,28 +35,6 @@ type SortOrder = "ASC" | "DESC";
 interface SortState {
     field: SortField | null;
     order: SortOrder;
-}
-
-// Fetch user info including premium status
-async function getMe(): Promise<User | null> {
-    const query = `
-        query GetMe {
-            me {
-                id
-                email
-                name
-                isPremium
-            }
-        }
-    `;
-
-    try {
-        const data = await graphqlFetch(query, {});
-        return data.me || null;
-    } catch (error) {
-        console.error("Error fetching user info:", error);
-        return null;
-    }
 }
 
 // Optimized query for table view - minimal data only
