@@ -27,8 +27,16 @@
      - This affects contractor matching accuracy since name variations can prevent matches
 
 3. **Email Integration**
-   - Setup email sending functionality
+   - **Email sending end-to-end MVP**: Send daily permits email to specific address for specific date ✅
+   - **Polish email design and content**: Improve email template styling, layout, and readability
    - Implement notification system for permit updates/alerts
+   - **Improve email deliverability**: Prevent emails from landing in spam folders
+     - Verify domain in AWS SES (not just email address)
+     - Set up SPF, DKIM, DMARC DNS records
+     - Add unsubscribe link to emails (CAN-SPAM compliance)
+     - Add physical address to email footer (CAN-SPAM requirement)
+     - Use proper from name/address format
+     - Monitor bounce/complaint rates in AWS SES
 
 4. **PermitType-Contractor Classification Mapping**
    - Organize PermitType structure to enable smart contractor matching
@@ -135,5 +143,6 @@
 - [x] **Local script execution with production sync**: Enable running scripts locally and syncing with production DB
 - [x] **Shovels Data Source**: Research Shovels service/platform as a potential data source for contractor information
 - [x] **Contractor-Based Permit Search**: Implement contractor license-based search for cities that support it (Saratoga, Cupertino, Palo Alto)
+- [x] **Email sending end-to-end MVP**: Send daily permits email to specific address for specific date
 
 *Last updated: 2025-11-13*
