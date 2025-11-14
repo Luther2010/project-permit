@@ -1,13 +1,32 @@
 /**
- * Handles the upgrade action
- * TODO: Hook up to Stripe checkout in next PR
+ * Handles the upgrade action - redirects to Stripe Checkout
  */
 export async function handleUpgrade(): Promise<void> {
-    // TODO: Hook up to Stripe checkout in next PR
-    // For now, this is a placeholder
-    console.log("Upgrade clicked - will integrate Stripe checkout");
+    try {
+        // Call the checkout API to create a Stripe Checkout session
+        const response = await fetch("/api/checkout", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
 
-    // Placeholder: In the next PR, this will redirect to Stripe checkout
-    // window.location.href = '/api/checkout';
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || "Failed to create checkout session");
+        }
+
+        const data = await response.json();
+        
+        // Redirect to Stripe Checkout
+        if (data.url) {
+            window.location.href = data.url;
+        } else {
+            throw new Error("No checkout URL returned");
+        }
+    } catch (error: any) {
+        console.error("Error initiating checkout:", error);
+        alert(`Error: ${error.message || "Failed to start checkout. Please try again."}`);
+    }
 }
 
