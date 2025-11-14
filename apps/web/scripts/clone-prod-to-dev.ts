@@ -119,8 +119,9 @@ async function cloneData() {
         if (contractorsCloned % 1000 === 0) {
           console.log(`   Cloned ${contractorsCloned}/${prodContractors.length} contractors...`);
         }
-      } catch (error: any) {
-        console.error(`   ❌ Error cloning contractor ${contractor.licenseNo}:`, error.message);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`   ❌ Error cloning contractor ${contractor.licenseNo}:`, message);
       }
     }
     console.log(`✅ Cloned ${contractorsCloned}/${prodContractors.length} contractors\n`);
@@ -177,8 +178,9 @@ async function cloneData() {
         if (permitsCloned % 100 === 0) {
           console.log(`   Cloned ${permitsCloned}/${prodPermits.length} permits...`);
         }
-      } catch (error: any) {
-        console.error(`   ❌ Error cloning permit ${permit.permitNumber}:`, error.message);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`   ❌ Error cloning permit ${permit.permitNumber}:`, message);
       }
     }
     console.log(`✅ Cloned ${permitsCloned}/${prodPermits.length} permits\n`);
@@ -225,8 +227,9 @@ async function cloneData() {
           },
         });
         linksCloned++;
-      } catch (error: any) {
-        console.error(`   ❌ Error cloning link:`, error.message);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`   ❌ Error cloning link:`, message);
       }
     }
     console.log(`✅ Cloned ${linksCloned}/${prodLinks.length} permit-contractor links\n`);
@@ -316,8 +319,9 @@ async function cloneData() {
         }
 
         usersCloned++;
-      } catch (error: any) {
-        console.error(`   ❌ Error cloning user ${user.email}:`, error.message);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`   ❌ Error cloning user ${user.email}:`, message);
       }
     }
     console.log(`✅ Cloned ${usersCloned}/${prodUsers.length} users\n`);
@@ -329,7 +333,7 @@ async function cloneData() {
     console.log(`   - Permit-Contractor Links: ${linksCloned}`);
     console.log(`   - Users: ${usersCloned}`);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Clone failed:", error);
     throw error;
   } finally {

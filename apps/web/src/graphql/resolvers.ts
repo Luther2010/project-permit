@@ -3,7 +3,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 
 // Helper function to check if user is premium
-async function checkIsPremium(session: any): Promise<boolean> {
+async function checkIsPremium(session: {
+    user?: {
+        id: string;
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+    };
+} | null | undefined): Promise<boolean> {
     if (!session?.user?.id) {
         return false;
     }

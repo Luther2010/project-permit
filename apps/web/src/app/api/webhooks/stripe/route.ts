@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/db";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-12-18.acacia",
+  apiVersion: "2025-10-29.clover",
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -26,10 +26,11 @@ export async function POST(request: NextRequest) {
 
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-  } catch (err: any) {
-    console.error("Webhook signature verification failed:", err.message);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Webhook signature verification failed:", message);
     return NextResponse.json(
-      { error: `Webhook Error: ${err.message}` },
+      { error: `Webhook Error: ${message}` },
       { status: 400 }
     );
   }
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error processing webhook:", error);
     return NextResponse.json(
       { error: "Webhook processing failed" },

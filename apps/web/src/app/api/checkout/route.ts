@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import Stripe from "stripe";
 import { prisma } from "@/lib/db";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-12-18.acacia",
+  apiVersion: "2025-10-29.clover",
 });
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Get authenticated user
     const session = await getServerSession(authOptions);
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       url: checkoutSession.url,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating checkout session:", error);
     return NextResponse.json(
       { error: "Failed to create checkout session" },

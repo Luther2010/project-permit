@@ -405,7 +405,7 @@ async function main() {
     } else {
       console.log("\n✅ Sync complete!");
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Sync failed:", error);
     throw error;
   } finally {

@@ -24,7 +24,9 @@ NEXT_PUBLIC_BASE_URL="http://localhost:3000"
 ### 1. Create Stripe Account
 1. Go to https://stripe.com and create an account
 2. Navigate to **Developers > API keys**
-3. Copy your **Publishable key** and **Secret key** (use test mode keys for development)
+3. Copy your **Publishable key** and **Secret key**
+   - **For development**: Use test mode keys (toggle "Test mode" on in Stripe Dashboard)
+   - **For production**: Use live mode keys (toggle "Test mode" off in Stripe Dashboard)
 
 ### 2. Set Up Webhook Endpoint
 
@@ -36,15 +38,31 @@ NEXT_PUBLIC_BASE_URL="http://localhost:3000"
    stripe listen --forward-to localhost:3000/api/webhooks/stripe
    ```
 4. Copy the webhook signing secret (starts with `whsec_`) and add to `.env` as `STRIPE_WEBHOOK_SECRET`
+5. **Important**: Use test mode API keys in your local `.env` file
 
-#### For Production:
-1. Go to **Developers > Webhooks** in Stripe Dashboard
-2. Click **Add endpoint**
-3. Enter your webhook URL: `https://yourdomain.com/api/webhooks/stripe`
-4. Select events to listen for:
+#### For Production (Testing with Test Mode):
+1. **Keep Test Mode ON** in Stripe Dashboard (for testing without real charges)
+2. Go to **Developers > Webhooks** in Stripe Dashboard
+3. Click **Add endpoint**
+4. Enter your webhook URL: `https://yourdomain.com/api/webhooks/stripe`
+5. Select events to listen for:
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
-5. Copy the **Signing secret** and add to your production environment variables
+6. Copy the **Signing secret** and add to your production environment variables
+7. **For testing**: Use test mode API keys (`sk_test_...` and `pk_test_...`) in your Vercel environment variables
+8. Test with Stripe test cards (e.g., `4242 4242 4242 4242`) - no real charges will be made
+
+#### For Production (Live Mode - Real Payments):
+1. **Switch to Live Mode** in Stripe Dashboard (toggle "Test mode" off)
+2. Go to **Developers > Webhooks** in Stripe Dashboard
+3. Click **Add endpoint** (or edit existing test mode endpoint)
+4. Enter your webhook URL: `https://yourdomain.com/api/webhooks/stripe`
+5. Select events to listen for:
+   - `checkout.session.completed`
+   - `checkout.session.async_payment_succeeded`
+6. Copy the **Signing secret** and add to your production environment variables
+7. **Important**: Switch to live mode API keys (`sk_live_...` and `pk_live_...`) in your Vercel environment variables
+8. **Note**: You'll need separate webhook endpoints for test mode and live mode, or update the existing one when switching
 
 ### 3. Test the Flow
 

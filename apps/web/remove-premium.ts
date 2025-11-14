@@ -47,8 +47,8 @@ async function removePremium() {
     });
 
     console.log(`\n✅ Removed premium from ${result.count} subscription(s).`);
-  } catch (error: any) {
-    console.error("Error:", error.message);
+  } catch (error: unknown) {
+    console.error("Error:", error instanceof Error ? error.message : String(error));
     process.exit(1);
   } finally {
     await prisma.$disconnect();

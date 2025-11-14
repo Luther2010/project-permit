@@ -2,27 +2,16 @@
 
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 
 function UpgradeSuccessContent() {
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const sessionId = searchParams.get("session_id");
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        // Verify payment was successful
-        // In a production app, you might want to verify with your backend
-        // For now, we'll just show success if session_id is present
-        if (sessionId) {
-            setLoading(false);
-        } else {
-            setError("No session ID found");
-            setLoading(false);
-        }
-    }, [sessionId]);
+    
+    // Determine error state directly from sessionId (no effect needed)
+    const error = sessionId ? null : "No session ID found";
 
     if (!session) {
         return (
@@ -41,14 +30,6 @@ function UpgradeSuccessContent() {
                         Go to Home
                     </Link>
                 </div>
-            </div>
-        );
-    }
-
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="text-gray-500">Verifying payment...</div>
             </div>
         );
     }
@@ -84,20 +65,12 @@ function UpgradeSuccessContent() {
                     Thank you for upgrading to Premium. Your subscription is now active.
                     You can now access unlimited permits and all premium features.
                 </p>
-                <div className="space-y-4">
-                    <Link
-                        href="/"
-                        className="block w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    >
-                        Start Browsing Permits
-                    </Link>
-                    <Link
-                        href="/upgrade"
-                        className="block w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                    >
-                        Back to Upgrade Page
-                    </Link>
-                </div>
+                <Link
+                    href="/"
+                    className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                    Start Browsing Permits
+                </Link>
                 {sessionId && (
                     <p className="text-xs text-gray-500 mt-6">
                         Session ID: {sessionId.substring(0, 20)}...

@@ -52,7 +52,7 @@ export default function UpgradePage() {
                 <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
                     <div className="text-green-500 text-6xl mb-4">✓</div>
                     <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                        You're Already Premium!
+                        You&apos;re Already Premium!
                     </h1>
                     <p className="text-gray-600 mb-6">
                         You already have premium access with unlimited permit access

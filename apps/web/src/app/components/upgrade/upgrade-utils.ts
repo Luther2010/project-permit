@@ -24,9 +24,10 @@ export async function handleUpgrade(): Promise<void> {
         } else {
             throw new Error("No checkout URL returned");
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error initiating checkout:", error);
-        alert(`Error: ${error.message || "Failed to start checkout. Please try again."}`);
+        const message = error instanceof Error ? error.message : "Failed to start checkout. Please try again.";
+        alert(`Error: ${message}`);
     }
 }
 
