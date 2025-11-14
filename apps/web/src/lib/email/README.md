@@ -36,7 +36,7 @@ SES_FROM_EMAIL=noreply@yourdomain.com
 
 ## Usage
 
-### Send Daily Permits Email Script
+### Manual Script
 
 Send an email for permits on a specific date using the command-line script:
 
@@ -61,6 +61,60 @@ The script will:
 
 **Note:** If no permits are found for the date, the email will not be sent.
 
+### Automated Daily Cron Job
+
+The system automatically sends daily emails at 8 AM (configured via Vercel Cron Jobs).
+
+**How it works:**
+- Runs daily at 8:00 AM UTC (configured in `vercel.json`)
+- Queries permits applied on the previous day
+- Sends emails to all premium users with active subscriptions
+- Only sends if there are permits for that day
+- Skips sending if no permits or no premium users
+
+**Cron Endpoint:**
+- `GET /api/cron/send-daily-permits`
+- **Automatically secured**: Vercel adds `x-vercel-cron` header to legitimate cron requests
+- **Manual testing**: Use `CRON_SECRET` for local/manual testing
+
+**Security:**
+- Vercel Cron Jobs are automatically authorized (Vercel adds `x-vercel-cron` header)
+- Manual requests require `CRON_SECRET` (for testing)
+- Random users cannot access the endpoint (no header, no secret = rejected)
+
+**Environment Variables for Cron:**
+```env
+CRON_SECRET=your_random_secret_here  # Optional: for manual testing only
+```
+
+**Manual Testing:**
+```bash
+# Using query parameter
+curl "https://permitpulse.us/api/cron/send-daily-permits?secret=your_secret"
+
+# Using Authorization header
+curl -H "Authorization: Bearer your_secret" https://permitpulse.us/api/cron/send-daily-permits
+
+# Using custom header
+curl -H "x-cron-secret: your_secret" https://permitpulse.us/api/cron/send-daily-permits
+```
+
+**Vercel Cron Configuration:**
+The cron job is configured in `vercel.json`:
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/send-daily-permits",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}
+```
+
+Schedule format: `minute hour day month weekday`
+- `0 8 * * *` = 8:00 AM UTC every day
+
 ## Files
 
 - `ses-client.ts`: AWS SES client setup and email sending function
@@ -71,13 +125,12 @@ The script will:
 
 1. Make sure your sender email is verified in AWS SES
 2. For sandbox mode, the recipient email must also be verified
-3. Use the test endpoint with a verified email address
+3. Use the manual script with a verified email address
 4. Check AWS SES console for sending statistics
 
 ## Next Steps
 
-- [ ] Set up daily cron job to send emails automatically
+- [x] Set up daily cron job to send emails automatically
 - [ ] Add email preferences (opt-in/opt-out)
 - [ ] Add bounce/complaint handling
 - [ ] Add email analytics tracking
-
