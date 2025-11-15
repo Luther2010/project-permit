@@ -15,6 +15,7 @@ import {
 } from "../components/upgrade/upgrade-data";
 import { handleUpgrade } from "../components/upgrade/upgrade-utils";
 import { getMe, type User } from "@/lib/user";
+import { ManageSubscriptionButton } from "../components/upgrade/manage-subscription-button";
 
 export default function UpgradePage() {
     const { data: session, status } = useSession();
@@ -58,12 +59,15 @@ export default function UpgradePage() {
                         You already have premium access with unlimited permit access
                         and all premium features.
                     </p>
-                    <Link
-                        href="/"
-                        className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    >
-                        Start Browsing Permits
-                    </Link>
+                    <div className="space-y-3">
+                        <ManageSubscriptionButton />
+                        <Link
+                            href="/"
+                            className="inline-block w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                        >
+                            Start Browsing Permits
+                        </Link>
+                    </div>
                 </div>
             </div>
         );

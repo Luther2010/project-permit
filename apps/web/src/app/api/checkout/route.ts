@@ -33,39 +33,57 @@ export async function POST() {
     }
 
     // Check if user already has active premium subscription
-    if (user.subscription) {
-      const now = new Date();
-      const isPremium =
-        user.subscription.plan === "PREMIUM" &&
-        (user.subscription.validUntil === null ||
-          user.subscription.validUntil > now);
-
-      if (isPremium) {
-        return NextResponse.json(
-          { error: "User already has premium access" },
-          { status: 400 }
-        );
-      }
+    // Webhooks correctly set plan to PREMIUM/FREEMIUM, so we only need to check plan
+    if (user.subscription?.plan === "PREMIUM") {
+      return NextResponse.json(
+        { error: "User already has premium access" },
+        { status: 400 }
+      );
     }
 
-    // Get price from environment or use default
-    const price = parseFloat(process.env.PREMIUM_PRICE || "99.99");
-    const priceInCents = Math.round(price * 100);
+    // Get Stripe Price ID from environment (required for subscriptions)
+    const stripePriceId = process.env.STRIPE_PRICE_ID;
+    if (!stripePriceId) {
+      console.error("STRIPE_PRICE_ID environment variable is not set");
+      return NextResponse.json(
+        { error: "Subscription configuration error" },
+        { status: 500 }
+      );
+    }
 
-    // Create Stripe Checkout Session
+    // Create or retrieve Stripe Customer
+    let customerId = user.subscription?.stripeCustomerId;
+    if (!customerId) {
+      // Create a new Stripe customer
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: {
+          userId: user.id,
+        },
+      });
+      customerId = customer.id;
+
+      // Store customer ID in database
+      await prisma.subscription.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          stripeCustomerId: customerId,
+        },
+        update: {
+          stripeCustomerId: customerId,
+        },
+      });
+    }
+
+    // Create Stripe Checkout Session for subscription
     const checkoutSession = await stripe.checkout.sessions.create({
-      mode: "payment",
+      mode: "subscription",
+      customer: customerId,
       payment_method_types: ["card"],
       line_items: [
         {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "Premium Plan - Project Permit",
-              description: "Unlimited permit access, daily email updates, and priority support",
-            },
-            unit_amount: priceInCents,
-          },
+          price: stripePriceId,
           quantity: 1,
         },
       ],
@@ -75,6 +93,12 @@ export async function POST() {
       metadata: {
         userId: user.id,
         userEmail: user.email,
+      },
+      subscription_data: {
+        metadata: {
+          userId: user.id,
+          userEmail: user.email,
+        },
       },
     });
 

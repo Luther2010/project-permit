@@ -22,19 +22,10 @@ async function checkIsPremium(session: {
         });
 
         if (user?.subscription) {
-            const now = new Date();
-            const subscription = user.subscription as unknown as {
-                plan: string;
-                validUntil: Date | null;
-            };
-            const validUntil = subscription.validUntil;
-
-            // User has premium access if:
-            // Plan is PREMIUM AND validUntil is in the future (or null for lifetime)
-            return Boolean(
-                subscription.plan === "PREMIUM" &&
-                    (validUntil === null || validUntil > now)
-            );
+            // Webhooks correctly set plan to PREMIUM/FREEMIUM based on subscription status
+            // All subscriptions have validUntil = null (Stripe manages expiration)
+            // So we only need to check the plan
+            return user.subscription.plan === "PREMIUM";
         }
     } catch (error) {
         console.log("Error checking subscription:", error);

@@ -210,13 +210,20 @@ model Subscription {
   plan SubscriptionPlan @default(FREEMIUM)
 
   // Subscription period - user has premium access until this date
-  // null = freemium (permanent)
+  // null = freemium (permanent) or active subscription (Stripe manages expiration)
   // future date = premium access until that date
   // past date = expired (back to freemium)
   validUntil DateTime?
 
+  // Stripe subscription management
+  stripeSubscriptionId String? @unique // Stripe subscription ID for recurring billing
+  stripeCustomerId     String? // Stripe customer ID (optional, for Customer Portal)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([stripeSubscriptionId])
+  @@index([stripeCustomerId])
 }
 
 // Permit model - stores scraped permit information

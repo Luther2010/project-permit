@@ -71,7 +71,7 @@ export function PricingCard({
                             Upgrade to Premium
                         </button>
                         <p className="text-center text-sm text-gray-500 mt-4">
-                            Secure payment powered by Stripe
+                            Billed monthly, cancel anytime • Secure payment powered by Stripe
                         </p>
                     </div>
                 </div>
