@@ -117,6 +117,13 @@ export async function POST(request: NextRequest) {
         });
 
         console.log(`Premium subscription created for user ${finalUserId}, subscription: ${subscription.id}`);
+        
+        // Verify which database we're writing to (for debugging)
+        if (process.env.NODE_ENV === 'production') {
+          const dbUrl = process.env.DATABASE_URL || 'not set';
+          const maskedUrl = dbUrl.replace(/:[^:@]+@/, ':****@');
+          console.log(`[DB DEBUG] Writing to database: ${maskedUrl}`);
+        }
         break;
       }
 
