@@ -74,13 +74,6 @@ export async function POST() {
           stripeCustomerId: customerId,
         },
       });
-      
-      // Verify which database we're writing to (for debugging)
-      if (process.env.NODE_ENV === 'production') {
-        const dbUrl = process.env.DATABASE_URL || 'not set';
-        const maskedUrl = dbUrl.replace(/:[^:@]+@/, ':****@');
-        console.log(`[DB DEBUG] Writing customer ID to database: ${maskedUrl}`);
-      }
     }
 
     // Create Stripe Checkout Session for subscription

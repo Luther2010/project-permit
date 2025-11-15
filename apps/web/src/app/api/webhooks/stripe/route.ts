@@ -80,33 +80,22 @@ export async function POST(request: NextRequest) {
 
       case "customer.subscription.created": {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log(`[WEBHOOK] customer.subscription.created received, subscription ID: ${subscription.id}`);
-        console.log(`[WEBHOOK] Subscription metadata:`, JSON.stringify(subscription.metadata));
-        
         const userId = subscription.metadata?.userId;
 
         if (!userId) {
-          console.error("[WEBHOOK] No user ID found in subscription metadata");
-          console.error("[WEBHOOK] Subscription customer:", subscription.customer);
+          console.error("No user ID found in subscription metadata");
           break;
         }
-        
-        console.log(`[WEBHOOK] Found userId in metadata: ${userId}`);
 
         // Get customer to find user if needed
         const customer = await stripe.customers.retrieve(subscription.customer as string);
         const customerMetadata = customer.deleted ? {} : customer.metadata || {};
-        console.log(`[WEBHOOK] Customer metadata:`, JSON.stringify(customerMetadata));
 
         const finalUserId = userId || (customerMetadata.userId as string | undefined);
         if (!finalUserId) {
-          console.error("[WEBHOOK] No user ID found in subscription or customer metadata");
-          console.error("[WEBHOOK] Subscription metadata userId:", userId);
-          console.error("[WEBHOOK] Customer metadata userId:", customerMetadata.userId);
+          console.error("No user ID found in subscription or customer metadata");
           break;
         }
-        
-        console.log(`[WEBHOOK] Using finalUserId: ${finalUserId}`);
 
         // Update subscription with Stripe subscription ID
         await prisma.subscription.upsert({
@@ -127,14 +116,7 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        console.log(`[WEBHOOK] Premium subscription created for user ${finalUserId}, subscription: ${subscription.id}`);
-        
-        // Verify which database we're writing to (for debugging)
-        if (process.env.NODE_ENV === 'production') {
-          const dbUrl = process.env.DATABASE_URL || 'not set';
-          const maskedUrl = dbUrl.replace(/:[^:@]+@/, ':****@');
-          console.log(`[DB DEBUG] Writing to database: ${maskedUrl}`);
-        }
+        console.log(`Premium subscription created for user ${finalUserId}, subscription: ${subscription.id}`);
         break;
       }
 
@@ -359,10 +341,7 @@ export async function POST(request: NextRequest) {
         // - invoice_payment.paid
         // They're logged at debug level to reduce noise
         if (process.env.NODE_ENV === "development") {
-          console.log(`[Webhook] Unhandled event type: ${event.type} (this is normal)`);
-        } else if (process.env.NODE_ENV === "production") {
-          // In production, log all events to help debug subscription issues
-          console.log(`[WEBHOOK] Received event: ${event.type}`);
+          console.log(`Unhandled event type: ${event.type} (this is normal)`);
         }
     }
 
