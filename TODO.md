@@ -93,7 +93,7 @@
 | Cupertino | ⚠️ | ⚠️ | ✅ (tested - contractor license search) |
 | Palo Alto | ⚠️ | ⚠️ | ✅ (tested - contractor license search) |
 | Los Altos Hills | ⚠️ | ⚠️ | ✅ (tested) |
-| Sunnyvale | ⚠️ | ⚠️ | ❌ (not available) |
+| Sunnyvale | ⚠️ | ✅ | ❌ (not available) |
 | San Jose | ⚠️ | ✅ | ✅ (tested) |
 | Campbell | ⚠️ | ⚠️ | ❌ (not extracted) |
 | Mountain View | ⚠️ | ⚠️ | ✅ (tested) |
