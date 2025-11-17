@@ -14,13 +14,7 @@ datasource db {
 enum PropertyType {
   RESIDENTIAL
   COMMERCIAL
-  INDUSTRIAL
-  OFFICE
-  AGRICULTURAL
-  RECREATIONAL
-  VACANT_LAND
-  MISCELLANEOUS
-  EXEMPT
+  UNKNOWN
 }
 
 enum PermitType {
@@ -242,7 +236,7 @@ model Permit {
   zipCode String?
 
   // Details
-  propertyType PropertyType?
+  propertyType PropertyType @default(UNKNOWN)
   permitType   PermitType?
   status       PermitStatus?
   value        Float?

@@ -31,7 +31,7 @@ export interface Permit {
     city: string | null;
     state: string | null;
     zipCode: string | null;
-    propertyType: PropertyType | null;
+    propertyType: PropertyType;
     permitType: PermitType | null;
     status: PermitStatus | null;
     value: number | null;

@@ -23,7 +23,7 @@ export interface PermitData {
 }
 
 export interface ClassificationResult {
-  propertyType: PropertyType | null;
+  propertyType: PropertyType;
   permitType: PermitType | null;
   confidence: number; // 0.0 - 1.0
   reasoning: string[]; // For debugging/transparency
@@ -95,7 +95,7 @@ export class PermitClassificationService {
  * Determines if permit is for RESIDENTIAL, COMMERCIAL, etc.
  */
 class PropertyTypeClassifier {
-  async classify(permit: PermitData): Promise<{ type: PropertyType | null; confidence: number; reasoning: string[] }> {
+  async classify(permit: PermitData): Promise<{ type: PropertyType; confidence: number; reasoning: string[] }> {
     const reasoning: string[] = [];
     let confidence = 0;
 
@@ -116,7 +116,7 @@ class PropertyTypeClassifier {
       return { type: PropertyType.RESIDENTIAL, confidence: 0.8, reasoning };
     }
     
-    if (text.includes('commercial') || text.includes('tenant') || text.includes('office')) {
+    if (text.includes('commercial') || text.includes('tenant') || text.includes('office') || text.includes('industrial')) {
       reasoning.push('Found commercial keywords');
       return { type: PropertyType.COMMERCIAL, confidence: 0.8, reasoning };
     }
@@ -140,7 +140,7 @@ class PropertyTypeClassifier {
     }
 
     reasoning.push('No clear classification found');
-    return { type: null, confidence: 0, reasoning };
+    return { type: PropertyType.UNKNOWN, confidence: 0, reasoning };
   }
 
   private mapExplicitType(explicitType: string): PropertyType | null {
@@ -149,14 +149,8 @@ class PropertyTypeClassifier {
     if (type.includes('residential') || type.includes('single family')) {
       return PropertyType.RESIDENTIAL;
     }
-    if (type.includes('commercial') || type.includes('tenant')) {
+    if (type.includes('commercial') || type.includes('tenant') || type.includes('office') || type.includes('industrial')) {
       return PropertyType.COMMERCIAL;
-    }
-    if (type.includes('office')) {
-      return PropertyType.OFFICE;
-    }
-    if (type.includes('industrial')) {
-      return PropertyType.INDUSTRIAL;
     }
     
     return null;

@@ -2,13 +2,7 @@ export const typeDefs = `
   enum PropertyType {
     RESIDENTIAL
     COMMERCIAL
-    INDUSTRIAL
-    OFFICE
-    AGRICULTURAL
-    RECREATIONAL
-    VACANT_LAND
-    MISCELLANEOUS
-    EXEMPT
+    UNKNOWN
   }
 
   enum PermitType {
