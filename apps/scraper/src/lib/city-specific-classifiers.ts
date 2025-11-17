@@ -8,6 +8,7 @@
 import { PropertyType, PermitType } from "@prisma/client";
 import { PermitData } from "./permit-classification";
 import { SanJoseClassifier } from "./city-specific-classifiers/san-jose";
+import { GilroyClassifier } from "./city-specific-classifiers/gilroy";
 
 /**
  * Result from a city-specific classifier
@@ -45,6 +46,7 @@ export interface CitySpecificClassifier {
 
 const cityClassifiers: CitySpecificClassifier[] = [
   new SanJoseClassifier(),
+  new GilroyClassifier(),
 ];
 
 /**

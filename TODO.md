@@ -97,7 +97,7 @@
 | San Jose | ⚠️ | ✅ | ✅ (tested) |
 | Campbell | ⚠️ | ⚠️ | ❌ (not extracted) |
 | Mountain View | ⚠️ | ⚠️ | ✅ (tested) |
-| Gilroy | ⚠️ | ⚠️ | ✅ (tested) |
+| Gilroy | ⚠️ | ✅ | ✅ (tested) |
 | Milpitas | ⚠️ | ⚠️ | ✅ (tested) |
 | Morgan Hill | ⚠️ | ⚠️ | ✅ (tested) |
 | Los Altos | ⚠️ | ⚠️ | ✅ (tested) |
