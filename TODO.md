@@ -87,20 +87,20 @@
 
 | City | PermitType Classification | PropertyType Classification | Contractor Matching |
 |------|---------------------------|----------------------------|---------------------|
-| Los Gatos | ✅ | ✅ | ✅ (tested) |
-| Saratoga | ✅ | ✅ | ✅ (tested) |
-| Santa Clara | ✅ | ✅ | ✅ (tested) |
-| Cupertino | ✅ | ✅ | ✅ (tested - contractor license search) |
-| Palo Alto | ✅ | ✅ | ✅ (tested - contractor license search) |
-| Los Altos Hills | ✅ | ✅ | ✅ (tested) |
-| Sunnyvale | ✅ | ✅ | ❌ (not available) |
-| San Jose | ✅ | ✅ | ✅ (tested) |
-| Campbell | ✅ | ✅ | ❌ (not extracted) |
-| Mountain View | ✅ | ✅ | ✅ (tested) |
-| Gilroy | ✅ | ✅ | ✅ (tested) |
-| Milpitas | ✅ | ✅ | ✅ (tested) |
-| Morgan Hill | ✅ | ✅ | ✅ (tested) |
-| Los Altos | ✅ | ✅ | ✅ (tested) |
+| Los Gatos | ⚠️ | ⚠️ | ✅ (tested) |
+| Saratoga | ⚠️ | ⚠️ | ✅ (tested) |
+| Santa Clara | ⚠️ | ⚠️ | ✅ (tested) |
+| Cupertino | ⚠️ | ⚠️ | ✅ (tested - contractor license search) |
+| Palo Alto | ⚠️ | ⚠️ | ✅ (tested - contractor license search) |
+| Los Altos Hills | ⚠️ | ⚠️ | ✅ (tested) |
+| Sunnyvale | ⚠️ | ⚠️ | ❌ (not available) |
+| San Jose | ⚠️ | ✅ | ✅ (tested) |
+| Campbell | ⚠️ | ⚠️ | ❌ (not extracted) |
+| Mountain View | ⚠️ | ⚠️ | ✅ (tested) |
+| Gilroy | ⚠️ | ⚠️ | ✅ (tested) |
+| Milpitas | ⚠️ | ⚠️ | ✅ (tested) |
+| Morgan Hill | ⚠️ | ⚠️ | ✅ (tested) |
+| Los Altos | ⚠️ | ⚠️ | ✅ (tested) |
 
 **Legend:**
 - ✅ = Implemented and working

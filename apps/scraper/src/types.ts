@@ -33,6 +33,8 @@ export interface PermitData {
   expirationDate?: Date;
   sourceUrl?: string;
   licensedProfessionalText?: string;
+  // Raw property type from scraper (e.g., SUBTYPEDESCRIPTION for San Jose)
+  rawPropertyType?: string;
 }
 
 export interface ScrapeResult {

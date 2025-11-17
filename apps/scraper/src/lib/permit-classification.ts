@@ -7,6 +7,7 @@
 
 import { PropertyType, PermitType } from "@prisma/client";
 import { matchContractorFromText } from "./contractor-matching";
+import { getCityClassifier } from "./city-specific-classifiers";
 
 export interface PermitData {
   permitNumber: string;
@@ -45,10 +46,73 @@ export class PermitClassificationService {
 
   /**
    * Classify a permit into PropertyType and PermitType
+   * 
+   * Strategy:
+   * 1. If cityClassifier exists, run it first
+   * 2. If both propertyType and permitType are determined → done
+   * 3. If only propertyType is determined → use generic for permitType only
+   * 4. If only permitType is determined → use generic for propertyType only
+   * 5. If neither is determined → use generic for both
+   * 6. If no cityClassifier exists → use generic for both
    */
   async classify(permit: PermitData): Promise<ClassificationResult> {
-    const propertyTypeResult = await this.propertyTypeClassifier.classify(permit);
-    const permitTypeResult = await this.permitTypeClassifier.classify(permit);
+    const cityClassifier = getCityClassifier(permit);
+    
+    let propertyTypeResult: { type: PropertyType; confidence: number; reasoning: string[] } | null = null;
+    let permitTypeResult: { type: PermitType | null; confidence: number; reasoning: string[] } | null = null;
+
+    // Try city-specific classifier if it exists
+    if (cityClassifier) {
+      const cityPropertyResult = await cityClassifier.classifyPropertyType(permit);
+      const cityPermitResult = await cityClassifier.classifyPermitType(permit);
+
+      // Check what the city classifier determined
+      const hasPropertyType = cityPropertyResult?.propertyType !== null && cityPropertyResult?.propertyType !== undefined;
+      const hasPermitType = cityPermitResult?.permitType !== null && cityPermitResult?.permitType !== undefined;
+
+      if (hasPropertyType) {
+        propertyTypeResult = {
+          type: cityPropertyResult!.propertyType!,
+          confidence: cityPropertyResult!.confidence,
+          reasoning: cityPropertyResult!.reasoning,
+        };
+      }
+
+      if (hasPermitType) {
+        permitTypeResult = {
+          type: cityPermitResult!.permitType!,
+          confidence: cityPermitResult!.confidence,
+          reasoning: cityPermitResult!.reasoning,
+        };
+      }
+
+      // If both are determined, we're done
+      if (hasPropertyType && hasPermitType) {
+        // Both determined by city classifier, skip generic
+      } else if (hasPropertyType && !hasPermitType) {
+        // Only propertyType determined, use generic for permitType
+        permitTypeResult = await this.permitTypeClassifier.classify(permit);
+      } else if (!hasPropertyType && hasPermitType) {
+        // Only permitType determined, use generic for propertyType
+        propertyTypeResult = await this.propertyTypeClassifier.classify(permit);
+      } else {
+        // Neither determined, use generic for both
+        propertyTypeResult = await this.propertyTypeClassifier.classify(permit);
+        permitTypeResult = await this.permitTypeClassifier.classify(permit);
+      }
+    } else {
+      // No city-specific classifier, use generic for both
+      propertyTypeResult = await this.propertyTypeClassifier.classify(permit);
+      permitTypeResult = await this.permitTypeClassifier.classify(permit);
+    }
+
+    // Ensure both results are set (should always be the case after the logic above)
+    if (!propertyTypeResult) {
+      propertyTypeResult = await this.propertyTypeClassifier.classify(permit);
+    }
+    if (!permitTypeResult) {
+      permitTypeResult = await this.permitTypeClassifier.classify(permit);
+    }
 
     // Match contractor from scraped licensedProfessionalText
     let contractorId: string | null = null;
@@ -91,51 +155,51 @@ export class PermitClassificationService {
 }
 
 /**
- * Property Type Classifier
- * Determines if permit is for RESIDENTIAL, COMMERCIAL, etc.
+ * Generic Property Type Classifier
+ * Used as fallback when city-specific classifier doesn't exist or can't classify
  */
 class PropertyTypeClassifier {
   async classify(permit: PermitData): Promise<{ type: PropertyType; confidence: number; reasoning: string[] }> {
     const reasoning: string[] = [];
     let confidence = 0;
 
-    // 1. Check explicit type from scraper
+    // 1. Check explicit type from scraper (medium confidence - 0.5-0.8)
     if (permit.rawExplicitType) {
       const mapped = this.mapExplicitType(permit.rawExplicitType);
       if (mapped) {
         reasoning.push(`Explicit type: ${permit.rawExplicitType} → ${mapped}`);
-        return { type: mapped, confidence: 0.9, reasoning };
+        return { type: mapped, confidence: 0.7, reasoning };
       }
     }
 
-    // 2. Analyze description/title keywords
+    // 2. Analyze description/title keywords (medium confidence - 0.5-0.8)
     const text = `${permit.title || ''} ${permit.description || ''}`.toLowerCase();
     
     if (text.includes('residential') || text.includes('single family') || text.includes('home')) {
       reasoning.push('Found residential keywords');
-      return { type: PropertyType.RESIDENTIAL, confidence: 0.8, reasoning };
+      return { type: PropertyType.RESIDENTIAL, confidence: 0.7, reasoning };
     }
     
     if (text.includes('commercial') || text.includes('tenant') || text.includes('office') || text.includes('industrial')) {
       reasoning.push('Found commercial keywords');
-      return { type: PropertyType.COMMERCIAL, confidence: 0.8, reasoning };
+      return { type: PropertyType.COMMERCIAL, confidence: 0.7, reasoning };
     }
 
-    // 3. Address-based inference (future: integrate with zoning data)
+    // 3. Address-based inference (low confidence - 0.3-0.5)
     if (permit.address) {
       const addressType = this.inferFromAddress(permit.address);
       if (addressType) {
         reasoning.push(`Address inference: ${addressType}`);
-        return { type: addressType, confidence: 0.6, reasoning };
+        return { type: addressType, confidence: 0.4, reasoning };
       }
     }
 
-    // 4. Value-based inference
+    // 4. Value-based inference (low confidence - 0.3-0.5)
     if (permit.value) {
       const valueType = this.inferFromValue(permit.value);
       if (valueType) {
         reasoning.push(`Value inference: $${permit.value} → ${valueType}`);
-        return { type: valueType, confidence: 0.5, reasoning };
+        return { type: valueType, confidence: 0.3, reasoning };
       }
     }
 

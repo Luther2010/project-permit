@@ -187,7 +187,7 @@ async function savePermits(permits: any[]): Promise<void> {
                 address: permit.address,
                 city: permit.city,
                 value: permit.value,
-                rawExplicitType: permit.permitType, // Pass the raw type from scraper
+                rawExplicitType: permit.rawPropertyType || permit.permitType, // Use rawPropertyType if available (e.g., SUBTYPEDESCRIPTION), otherwise fall back to permitType
                 rawPermitType: permit.permitType,
                 licensedProfessionalText: permit.licensedProfessionalText, // Pass contractor info for matching
             };

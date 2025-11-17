@@ -297,14 +297,15 @@ export class SanJoseExtractor extends BaseDailyExtractor {
                                    record.FOLDERDESC?.trim() || 
                                    undefined;
 
-                // Extract permit type from FOLDERDESC or SUBTYPEDESCRIPTION
-                const permitType = record.FOLDERDESC?.trim() || 
-                                   record.SUBTYPEDESCRIPTION?.trim() || 
-                                   undefined;
+                // Extract permit type from FOLDERDESC (not SUBTYPEDESCRIPTION, which is property type)
+                const permitType = record.FOLDERDESC?.trim() || undefined;
+
+                // SUBTYPEDESCRIPTION is the property type (e.g., "Single-Family", "Apartment")
+                const propertyTypeDescription = record.SUBTYPEDESCRIPTION?.trim() || undefined;
 
                 const permit: PermitData = {
                     permitNumber,
-                    title: permitType,
+                    title: permitType, // Use permit type for title
                     description,
                     address,
                     city: "San Jose", // Ensure city is set to "San Jose"
@@ -318,6 +319,7 @@ export class SanJoseExtractor extends BaseDailyExtractor {
                     expirationDate,
                     sourceUrl: this.url,
                     licensedProfessionalText: record.CONTRACTOR?.trim() || undefined,
+                    rawPropertyType: propertyTypeDescription, // SUBTYPEDESCRIPTION for property type classification
                 };
 
                 if (this.validatePermitData(permit)) {
