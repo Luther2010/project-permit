@@ -1,8 +1,8 @@
 # Project Permit - TODO List
 
-## 🎯 Main Priorities
+## 🚨 P0 - Critical Priorities
 
-1. **Stripe Integration**
+### 1. **Subscription Management** (Stripe Integration)
    - **Subscription management**: Implement user-facing subscription management features
      - View subscription status and details page
      - Cancel subscription functionality
@@ -10,7 +10,32 @@
      - View billing history
      - Manage payment methods
 
-2. **Classification Improvements**
+### 2. **Email Deliverability**
+   - **Improve email deliverability**: Prevent emails from landing in spam folders
+     - Verify domain in AWS SES (not just email address)
+     - Set up SPF, DKIM, DMARC DNS records
+     - Add unsubscribe link to emails (CAN-SPAM compliance)
+     - Add physical address to email footer (CAN-SPAM requirement)
+     - Use proper from name/address format
+     - Monitor bounce/complaint rates in AWS SES
+
+### 3. **Contact Us Flow**
+   - Implement contact form
+     - Create contact form page/component
+     - Form fields (name, email, message, etc.)
+     - Form submission handling
+     - Email notification to admin/team
+     - **Security considerations**:
+       - Input validation and sanitization
+       - CSRF protection
+       - Rate limiting to prevent spam/abuse
+       - SQL injection prevention (if storing in DB)
+       - XSS prevention (sanitize user input before display)
+       - Email validation and verification
+
+## 📋 P1 - Important Tasks
+
+### Classification Improvements
    - **PermitType**: Enhance classification accuracy and coverage
    - **PropertyType**: Improve classification accuracy and coverage
    - **Contractor**: Implement deterministic contractor linking from scraped `licensedProfessionalText` data
@@ -26,22 +51,26 @@
      - May need to implement a fallback strategy (e.g., use BusinessName if available, otherwise BUS-NAME-2, otherwise FullBusinessName)
      - This affects contractor matching accuracy since name variations can prevent matches
 
-3. **Email Integration**
+### Email Integration (Non-Deliverability)
    - **Email sending end-to-end MVP**: Send daily permits email to specific address for specific date ✅
    - **Polish email design and content**: Improve email template styling, layout, and readability
    - Implement notification system for permit updates/alerts
-   - **Improve email deliverability**: Prevent emails from landing in spam folders
-     - Verify domain in AWS SES (not just email address)
-     - Set up SPF, DKIM, DMARC DNS records
-     - Add unsubscribe link to emails (CAN-SPAM compliance)
-     - Add physical address to email footer (CAN-SPAM requirement)
-     - Use proper from name/address format
-     - Monitor bounce/complaint rates in AWS SES
 
-4. **PermitType-Contractor Classification Mapping**
+### PermitType-Contractor Classification Mapping
    - Organize PermitType structure to enable smart contractor matching
    - Map permit types (e.g., ADU) to relevant contractor classifications (e.g., ELECTRICAL)
    - Create relationship system where contractors with ELECTRICAL classification can be matched to ADU permits
+
+### SEO & Security
+   - **SEO**: Implement search engine optimization
+     - Meta tags, Open Graph tags
+     - Structured data (JSON-LD)
+     - Sitemap generation
+     - Robots.txt configuration
+   - **Bot Protection**: Implement measures to prevent bot access
+     - Rate limiting
+     - CAPTCHA or similar verification
+     - IP-based blocking for suspicious activity
 
 ## 🔄 Other Pending Tasks
 
@@ -58,30 +87,6 @@
   - Show permit trends, counts by type, status breakdowns
   - Enable city-level insights and data visualization
 
-### UI/UX Enhancements
-- [ ] **Contact us flow**: Implement contact form
-  - Create contact form page/component
-  - Form fields (name, email, message, etc.)
-  - Form submission handling
-  - Email notification to admin/team
-  - **Security considerations**:
-    - Input validation and sanitization
-    - CSRF protection
-    - Rate limiting to prevent spam/abuse
-    - SQL injection prevention (if storing in DB)
-    - XSS prevention (sanitize user input before display)
-    - Email validation and verification
-
-### SEO & Security
-- [ ] **SEO**: Implement search engine optimization
-  - Meta tags, Open Graph tags
-  - Structured data (JSON-LD)
-  - Sitemap generation
-  - Robots.txt configuration
-- [ ] **Bot Protection**: Implement measures to prevent bot access
-  - Rate limiting
-  - CAPTCHA or similar verification
-  - IP-based blocking for suspicious activity
 
 ## 📊 Classification Status by City
 
