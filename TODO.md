@@ -33,6 +33,19 @@
        - XSS prevention (sanitize user input before display)
        - Email validation and verification
 
+### 4. **Features Voting Page**
+   - **Create features voting page**: Allow users to view ongoing features and vote on them
+     - Create page/route for features voting
+     - Display list of ongoing/pending features
+     - Implement voting functionality (upvote/downvote)
+     - Store votes in database (link to user accounts)
+     - Display vote counts and user's vote status
+     - **Security considerations**:
+       - Prevent duplicate votes (one vote per user per feature)
+       - Rate limiting on voting actions
+       - Authentication required for voting
+       - Input validation
+
 ## 📋 P1 - Important Tasks
 
 ### Classification Improvements
