@@ -61,16 +61,38 @@ export default function ContactPage() {
         }
 
         setStatus({ type: "loading", message: "Sending message..." });
-        
-        // TODO: Implement API endpoint in next PR
-        // For now, just simulate a delay and show success
-        setTimeout(() => {
+
+        try {
+            const response = await fetch("/api/contact", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setStatus({
+                    type: "error",
+                    message: data.error || "Failed to send message.",
+                });
+                return;
+            }
+
             setStatus({
                 type: "success",
-                message: "Thank you for contacting us! We'll get back to you soon.",
+                message: data.message || "Thank you for contacting us! We'll get back to you soon.",
             });
             setFormData({ name: "", email: "", message: "" });
-        }, 1000);
+        } catch (error) {
+            console.error("Contact form submission error:", error);
+            setStatus({
+                type: "error",
+                message: "An unexpected error occurred. Please try again later.",
+            });
+        }
     };
 
     return (
