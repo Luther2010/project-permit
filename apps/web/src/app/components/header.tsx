@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { AuthButtons } from "./auth-buttons";
 import { getMe, type User } from "@/lib/user";
 import { useEffect, useState } from "react";
+import { headerNavStyles } from "./header-styles";
 
 export function Header() {
     const { data: session } = useSession();
@@ -60,10 +61,7 @@ export function Header() {
                             userEmail={session?.user?.email}
                             isPremium={isPremium}
                         />
-                        <Link
-                            href="/contact"
-                            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-                        >
+                        <Link href="/contact" className={headerNavStyles}>
                             Contact Us
                         </Link>
                     </div>

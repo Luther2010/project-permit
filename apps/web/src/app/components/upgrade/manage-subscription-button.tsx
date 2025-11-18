@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { headerNavStyles } from "../header-styles";
 
 export function ManageSubscriptionButton() {
     const [loading, setLoading] = useState(false);
@@ -32,18 +33,18 @@ export function ManageSubscriptionButton() {
     };
 
     return (
-        <div>
+        <>
             <button
                 onClick={handleManageSubscription}
                 disabled={loading}
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`${headerNavStyles} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
                 {loading ? "Loading..." : "Manage Subscription"}
             </button>
             {error && (
                 <p className="mt-2 text-sm text-red-600 text-center">{error}</p>
             )}
-        </div>
+        </>
     );
 }
 

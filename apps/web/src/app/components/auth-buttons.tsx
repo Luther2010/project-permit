@@ -3,6 +3,7 @@
 import { signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { ManageSubscriptionButton } from "./upgrade/manage-subscription-button";
+import { headerNavStyles } from "./header-styles";
 
 interface AuthButtonsProps {
     isAuthenticated: boolean;
@@ -19,7 +20,7 @@ export function AuthButtons({
 }: AuthButtonsProps) {
     if (isAuthenticated) {
         return (
-            <div className="flex items-center gap-4">
+            <>
                 <div className="text-sm text-gray-700">
                     <span className="font-medium">{userName}</span>
                     <br />
@@ -27,28 +28,25 @@ export function AuthButtons({
                 </div>
                 <button
                     onClick={() => signOut({ callbackUrl: "/" })}
-                    className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                    className={headerNavStyles}
                 >
                     Sign Out
                 </button>
                 {isPremium ? (
                     <ManageSubscriptionButton />
                 ) : (
-                    <Link
-                        href="/upgrade"
-                        className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-                    >
+                    <Link href="/upgrade" className={headerNavStyles}>
                         Upgrade
                     </Link>
                 )}
-            </div>
+            </>
         );
     }
 
     return (
         <button
             onClick={() => signIn("google", { callbackUrl: "/" })}
-            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            className={headerNavStyles}
         >
             Sign in
         </button>
