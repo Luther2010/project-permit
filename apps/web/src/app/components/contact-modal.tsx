@@ -252,7 +252,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
 
                 <div className="pt-4 border-t border-gray-200">
                     <p className="text-xs text-gray-600 text-center">
-                        We typically respond within 24-48 hours. For urgent matters,
+                        We&apos;re a nimble team and can get back to you within a short timeframe. For urgent matters,
                         please include &quot;URGENT&quot; in your message.
                     </p>
                 </div>

@@ -47,7 +47,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
             {/* Modal container */}
             <div className="flex min-h-full items-center justify-center p-4">
-                <div className="relative transform overflow-hidden rounded-lg bg-white shadow-xl transition-all w-full max-w-md">
+                <div className="relative transform overflow-hidden rounded-lg bg-white shadow-xl transition-all w-full max-w-lg">
                     {/* Close button */}
                     <button
                         onClick={onClose}

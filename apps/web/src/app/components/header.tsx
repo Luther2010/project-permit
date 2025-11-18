@@ -8,11 +8,13 @@ import { getMe, type User } from "@/lib/user";
 import { useEffect, useState } from "react";
 import { headerNavStyles } from "./header-styles";
 import { ContactModal } from "./contact-modal";
+import { FeaturesVotingModal } from "./features-voting-modal";
 
 export function Header() {
     const { data: session } = useSession();
     const [user, setUser] = useState<User | null>(null);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false);
 
     useEffect(() => {
         async function fetchUser() {
@@ -50,7 +52,7 @@ export function Header() {
                         </Link>
                     </div>
 
-                    {/* Right side: Sign in/out, Manage Subscriptions, Contact Us */}
+                    {/* Right side: Sign in/out, Manage Subscriptions, Features, Contact Us */}
                     <div className="flex items-center gap-4">
                         <AuthButtons
                             isAuthenticated={!!session}
@@ -58,6 +60,12 @@ export function Header() {
                             userEmail={session?.user?.email}
                             isPremium={isPremium}
                         />
+                        <button
+                            onClick={() => setIsFeaturesModalOpen(true)}
+                            className={headerNavStyles}
+                        >
+                            Features
+                        </button>
                         <button
                             onClick={() => setIsContactModalOpen(true)}
                             className={headerNavStyles}
@@ -70,6 +78,10 @@ export function Header() {
             <ContactModal
                 isOpen={isContactModalOpen}
                 onClose={() => setIsContactModalOpen(false)}
+            />
+            <FeaturesVotingModal
+                isOpen={isFeaturesModalOpen}
+                onClose={() => setIsFeaturesModalOpen(false)}
             />
         </header>
     );
