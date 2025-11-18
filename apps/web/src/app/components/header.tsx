@@ -6,10 +6,12 @@ import { AuthButtons } from "./auth-buttons";
 import { getMe, type User } from "@/lib/user";
 import { useEffect, useState } from "react";
 import { headerNavStyles } from "./header-styles";
+import { ContactModal } from "./contact-modal";
 
 export function Header() {
     const { data: session } = useSession();
     const [user, setUser] = useState<User | null>(null);
+    const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
     useEffect(() => {
         async function fetchUser() {
@@ -61,12 +63,19 @@ export function Header() {
                             userEmail={session?.user?.email}
                             isPremium={isPremium}
                         />
-                        <Link href="/contact" className={headerNavStyles}>
+                        <button
+                            onClick={() => setIsContactModalOpen(true)}
+                            className={headerNavStyles}
+                        >
                             Contact Us
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </div>
+            <ContactModal
+                isOpen={isContactModalOpen}
+                onClose={() => setIsContactModalOpen(false)}
+            />
         </header>
     );
 }
