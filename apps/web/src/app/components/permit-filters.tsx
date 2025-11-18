@@ -83,35 +83,14 @@ export function PermitFilters({
             {/* Filters */}
             <div className="px-4 pb-4 pt-4 space-y-4">
                 <div className="space-y-4">
-                    <PropertyTypeFilter
-                        selectedTypes={filters.propertyTypes}
-                        onChange={(types) => handleChange("propertyTypes", types)}
-                    />
-
-                    <PermitTypeFilter
-                        selectedTypes={filters.permitTypes}
-                        onChange={(types) => handleChange("permitTypes", types)}
+                    <CityFilter
+                        selectedCities={filters.cities}
+                        onChange={(cities) => handleChange("cities", cities)}
                     />
 
                     <StatusFilter
                         selectedStatuses={filters.statuses}
                         onChange={(statuses) => handleChange("statuses", statuses)}
-                    />
-
-                    <CityFilter
-                        selectedCities={filters.cities}
-                        onChange={(cities) => handleChange("cities", cities)}
-                    />
-                    <HasContractorFilter
-                        value={filters.hasContractor}
-                        onChange={(value) => handleChange("hasContractor", value)}
-                    />
-
-                    <ValueRangeFilter
-                        minValue={filters.minValue}
-                        maxValue={filters.maxValue}
-                        onMinChange={(value) => handleChange("minValue", value)}
-                        onMaxChange={(value) => handleChange("maxValue", value)}
                     />
 
                     <IssueDateRangeFilter
@@ -126,6 +105,28 @@ export function PermitFilters({
                         maxDate={filters.maxLastUpdateDate}
                         onMinChange={(value) => handleChange("minLastUpdateDate", value)}
                         onMaxChange={(value) => handleChange("maxLastUpdateDate", value)}
+                    />
+
+                    <ValueRangeFilter
+                        minValue={filters.minValue}
+                        maxValue={filters.maxValue}
+                        onMinChange={(value) => handleChange("minValue", value)}
+                        onMaxChange={(value) => handleChange("maxValue", value)}
+                    />
+
+                    <HasContractorFilter
+                        value={filters.hasContractor}
+                        onChange={(value) => handleChange("hasContractor", value)}
+                    />
+
+                    <PropertyTypeFilter
+                        selectedTypes={filters.propertyTypes}
+                        onChange={(types) => handleChange("propertyTypes", types)}
+                    />
+
+                    <PermitTypeFilter
+                        selectedTypes={filters.permitTypes}
+                        onChange={(types) => handleChange("permitTypes", types)}
                     />
                 </div>
 
