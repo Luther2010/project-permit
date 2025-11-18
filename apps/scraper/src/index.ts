@@ -39,7 +39,6 @@ async function main() {
     let startDate: Date | undefined;
     let endDate: Date | undefined;
     let limit: number | undefined;
-    let contractorLimit: number | undefined;
 
     // Parse arguments: city name, date flags, and optional --limit flag
     for (let i = 0; i < args.length; i++) {
@@ -55,19 +54,6 @@ async function main() {
                 i++; // Skip the next argument as it's the limit value
             } else {
                 console.error(`❌ --limit flag requires a value`);
-                process.exit(1);
-            }
-        } else if (arg === "--contractor-limit" || arg === "--cl") {
-            const limitValue = args[i + 1];
-            if (limitValue) {
-                contractorLimit = parseInt(limitValue, 10);
-                if (isNaN(contractorLimit) || contractorLimit < 1) {
-                    console.error(`❌ Invalid contractor limit value: ${limitValue}. Must be a positive number`);
-                    process.exit(1);
-                }
-                i++; // Skip the next argument as it's the limit value
-            } else {
-                console.error(`❌ --contractor-limit flag requires a value`);
                 process.exit(1);
             }
         } else if (arg === "--start-date" || arg === "--start") {
@@ -106,9 +92,9 @@ async function main() {
     try {
         if (cityName) {
             console.log(
-                `Scraping permits for: ${cityName}${startDate && endDate ? ` (range: ${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]})` : startDate ? ` (from: ${startDate.toISOString().split("T")[0]})` : ""}${limit ? ` (limit: ${limit})` : ""}${contractorLimit ? ` (contractor limit: ${contractorLimit})` : ""}`
+                `Scraping permits for: ${cityName}${startDate && endDate ? ` (range: ${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]})` : startDate ? ` (from: ${startDate.toISOString().split("T")[0]})` : ""}${limit ? ` (limit: ${limit})` : ""}`
             );
-            await scrapeCity(cityName, limit, startDate, endDate, contractorLimit);
+            await scrapeCity(cityName, limit, startDate, endDate);
         } else {
             const rangeMessage = startDate && endDate 
                 ? ` (range: ${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]})`
@@ -116,9 +102,9 @@ async function main() {
                     ? ` (from: ${startDate.toISOString().split("T")[0]})`
                     : "";
             console.log(
-                `Scraping permits for all enabled cities${rangeMessage}${limit ? ` (limit: ${limit})` : ""}${contractorLimit ? ` (contractor limit: ${contractorLimit})` : ""}`
+                `Scraping permits for all enabled cities${rangeMessage}${limit ? ` (limit: ${limit})` : ""}`
             );
-            await scrapeAllCities(limit, startDate, endDate, contractorLimit);
+            await scrapeAllCities(limit, startDate, endDate);
         }
 
         process.exit(0);
