@@ -48,6 +48,11 @@
 
 ## 📋 P1 - Important Tasks
 
+### Scraper Bug Fixes
+   - **Campbell scraper pagination issue**: Investigate why Campbell scraper returns exactly 100 permits for 01/01-01/15 date range while UI shows more permits exist. Likely missing pagination handling in CampbellExtractor.
+   - **Mountain View scraper count discrepancy**: Investigate why Mountain View has exactly 101 permits - check if there's an off-by-one error or pagination issue.
+   - **ID-based scraper date range fix**: ✅ Fixed in current PR - ID-based scrapers now skip to next prefix when permit applied date exceeds end date.
+
 ### Classification Improvements
    - **PermitType**: Enhance classification accuracy and coverage
    - **PropertyType**: Improve classification accuracy and coverage

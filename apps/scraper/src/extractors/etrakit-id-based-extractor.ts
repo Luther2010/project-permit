@@ -1546,6 +1546,35 @@ export abstract class EtrakitIdBasedExtractor extends BaseExtractor {
                         : undefined;
                     const batchPermits = await this.navigatePagesAndExtract(extractionLimit);
                     
+                    // Check if any permit's applied date exceeds the end date
+                    // If so, skip to the next prefix (permits are typically ordered by date)
+                    if (endDate && batchPermits.length > 0) {
+                        let foundExceedingDate = false;
+                        for (const permit of batchPermits) {
+                            if (permit.appliedDate && permit.appliedDate > endDate) {
+                                console.log(`[${this.getName()}] Found permit ${permit.permitNumber} with applied date ${permit.appliedDate.toISOString().split("T")[0]} exceeding end date ${endDate.toISOString().split("T")[0]}, moving to next prefix`);
+                                foundExceedingDate = true;
+                                break;
+                            }
+                        }
+                        if (foundExceedingDate) {
+                            // Stop processing this prefix and move to the next one
+                            hasMoreBatches = false;
+                            // Still add permits that are within the date range
+                            const permitsInRange = batchPermits.filter(p => 
+                                !p.appliedDate || p.appliedDate <= endDate
+                            );
+                            allPermits.push(...permitsInRange);
+                            // Count new permits in range
+                            for (const permit of permitsInRange) {
+                                if (!this.existingPermitNumbers.has(permit.permitNumber)) {
+                                    newPermitsCount++;
+                                }
+                            }
+                            continue; // Move to next prefix
+                        }
+                    }
+                    
                     // Count only new permits (not already in DB) toward the limit
                     for (const permit of batchPermits) {
                         if (!this.existingPermitNumbers.has(permit.permitNumber)) {
