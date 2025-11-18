@@ -129,6 +129,9 @@ export const typeDefs = `
       maxValue: Float
       minAppliedDate: String
       maxAppliedDate: String
+      minLastUpdateDate: String
+      maxLastUpdateDate: String
+      timezone: String
       page: Int
       pageSize: Int
       sortBy: PermitSortField

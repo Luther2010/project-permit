@@ -43,7 +43,8 @@ async function getPermits(
     page: number = 1,
     pageSize: number = PAGE_SIZE,
     sortBy?: SortField,
-    sortOrder?: SortOrder
+    sortOrder?: SortOrder,
+    timezone?: string | null
 ): Promise<PermitConnection> {
     const variables: Record<string, unknown> = {};
 
@@ -80,6 +81,12 @@ async function getPermits(
     if (filters.maxAppliedDate) {
         variables.maxAppliedDate = filters.maxAppliedDate;
     }
+    if (filters.minLastUpdateDate) {
+        variables.minLastUpdateDate = filters.minLastUpdateDate;
+    }
+    if (filters.maxLastUpdateDate) {
+        variables.maxLastUpdateDate = filters.maxLastUpdateDate;
+    }
 
     variables.page = page;
     variables.pageSize = pageSize;
@@ -88,6 +95,9 @@ async function getPermits(
     }
     if (sortOrder) {
         variables.sortOrder = sortOrder;
+    }
+    if (timezone) {
+        variables.timezone = timezone;
     }
 
     // Optimized query - only fetch fields needed for table display
@@ -102,6 +112,9 @@ async function getPermits(
             $maxValue: Float
             $minAppliedDate: String
             $maxAppliedDate: String
+            $minLastUpdateDate: String
+            $maxLastUpdateDate: String
+            $timezone: String
             $page: Int
             $pageSize: Int
             $sortBy: PermitSortField
@@ -117,6 +130,9 @@ async function getPermits(
                 maxValue: $maxValue
                 minAppliedDate: $minAppliedDate
                 maxAppliedDate: $maxAppliedDate
+                minLastUpdateDate: $minLastUpdateDate
+                maxLastUpdateDate: $maxLastUpdateDate
+                timezone: $timezone
                 page: $page
                 pageSize: $pageSize
                 sortBy: $sortBy
@@ -174,8 +190,21 @@ export default function Home() {
     const [hasSearched, setHasSearched] = useState(false);
     const [pagination, setPagination] = useState<PermitConnection | null>(null);
     const [user, setUser] = useState<User | null>(null);
+    const [userTimezone, setUserTimezone] = useState<string | null>(null);
     
     const isPremium = user?.isPremium ?? false;
+    
+    // Detect user's timezone on mount
+    React.useEffect(() => {
+        try {
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            setUserTimezone(timezone);
+        } catch (error) {
+            console.error("Failed to detect timezone:", error);
+            // Fallback to UTC if detection fails
+            setUserTimezone("UTC");
+        }
+    }, []);
     const [filters, setFilters] = useState<FilterState>({
         propertyTypes: [] as PropertyType[],
         permitTypes: [] as PermitType[],
@@ -186,6 +215,8 @@ export default function Home() {
         maxValue: "",
         minAppliedDate: "",
         maxAppliedDate: "",
+        minLastUpdateDate: "",
+        maxLastUpdateDate: "",
     });
 
     const [sort, setSort] = useState<SortState>({
@@ -264,7 +295,8 @@ export default function Home() {
             page,
             PAGE_SIZE,
             sort.field || undefined,
-            sort.order
+            sort.order,
+            userTimezone
         );
 
         if (!isPremium) {
@@ -276,7 +308,8 @@ export default function Home() {
                     1,
                     3,
                     "APPLIED_DATE",
-                    "DESC"
+                    "DESC",
+                    userTimezone
                 );
                 setFreemiumAllPermits(canonicalResult.permits);
                 const sorted = sortPermitsLocal(

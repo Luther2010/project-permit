@@ -88,6 +88,9 @@ export const resolvers = {
                 maxValue?: number;
                 minAppliedDate?: string;
                 maxAppliedDate?: string;
+                minLastUpdateDate?: string;
+                maxLastUpdateDate?: string;
+                timezone?: string;
                 page?: number;
                 pageSize?: number;
                 sortBy?: string;
@@ -161,6 +164,67 @@ export const resolvers = {
                     // Set to end of day
                     maxDate.setHours(23, 59, 59, 999);
                     (where.appliedDate as Record<string, unknown>).lte = maxDate;
+                }
+            }
+            if (args.minLastUpdateDate || args.maxLastUpdateDate) {
+                where.updatedAt = {} as Record<string, unknown>;
+                // Use user's timezone if provided, otherwise default to UTC
+                const timezone = args.timezone || "UTC";
+                
+                // Helper function to convert a date string (YYYY-MM-DD) to UTC Date
+                // representing start/end of day in the specified timezone
+                const getDateInTimezone = (
+                    dateStr: string,
+                    isEndOfDay: boolean
+                ): Date => {
+                    const [year, month, day] = dateStr.split("-").map(Number);
+                    const hour = isEndOfDay ? 23 : 0;
+                    const minute = isEndOfDay ? 59 : 0;
+                    const second = isEndOfDay ? 59 : 0;
+                    const ms = isEndOfDay ? 999 : 0;
+                    
+                    // Calculate timezone offset for this specific date
+                    // Use a representative time (noon) to avoid DST edge cases at midnight
+                    const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+                    // Format in target timezone and UTC, then compare to get offset
+                    const tzFormatted = testDate.toLocaleString("en-US", {
+                        timeZone: timezone,
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: false,
+                    });
+                    const utcFormatted = testDate.toLocaleString("en-US", {
+                        timeZone: "UTC",
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: false,
+                    });
+                    
+                    // Parse both to get the actual time difference
+                    const tzDate = new Date(tzFormatted);
+                    const utcDate = new Date(utcFormatted);
+                    const offsetMs = utcDate.getTime() - tzDate.getTime();
+                    
+                    // Create UTC date for the start/end of day, then adjust by offset
+                    const utcResult = new Date(Date.UTC(year, month - 1, day, hour, minute, second, ms));
+                    return new Date(utcResult.getTime() - offsetMs);
+                };
+                
+                if (args.minLastUpdateDate) {
+                    const minDateUTC = getDateInTimezone(args.minLastUpdateDate, false);
+                    (where.updatedAt as Record<string, unknown>).gte = minDateUTC;
+                }
+                if (args.maxLastUpdateDate) {
+                    const maxDateUTC = getDateInTimezone(args.maxLastUpdateDate, true);
+                    (where.updatedAt as Record<string, unknown>).lte = maxDateUTC;
                 }
             }
 
