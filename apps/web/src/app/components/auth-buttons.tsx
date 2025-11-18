@@ -25,22 +25,22 @@ export function AuthButtons({
                     <br />
                     <span className="text-gray-500">{userEmail}</span>
                 </div>
+                <button
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                    className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                    Sign Out
+                </button>
                 {isPremium ? (
                     <ManageSubscriptionButton />
                 ) : (
                     <Link
                         href="/upgrade"
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
                     >
                         Upgrade
                     </Link>
                 )}
-                <button
-                    onClick={() => signOut({ callbackUrl: "/" })}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                >
-                    Sign Out
-                </button>
             </div>
         );
     }
@@ -48,9 +48,9 @@ export function AuthButtons({
     return (
         <button
             onClick={() => signIn("google", { callbackUrl: "/" })}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
         >
-            Sign in with Google
+            Sign in
         </button>
     );
 }

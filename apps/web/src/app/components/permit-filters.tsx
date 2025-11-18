@@ -67,7 +67,7 @@ export function PermitFilters({
         filters.maxAppliedDate;
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             {/* Filters Header */}
             <div className="p-4 border-b border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-900">Filter Permits</h2>
@@ -75,7 +75,7 @@ export function PermitFilters({
 
             {/* Filters */}
             <div className="px-4 pb-4 pt-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
                     <PropertyTypeFilter
                         selectedTypes={filters.propertyTypes}
                         onChange={(types) => handleChange("propertyTypes", types)}
@@ -116,22 +116,21 @@ export function PermitFilters({
                 </div>
 
                 {/* Reset and Search Buttons */}
-                <div className="flex gap-3 pt-2">
+                <div className="space-y-2 pt-2">
+                    <button
+                        onClick={onSearch}
+                        className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                    >
+                        Search
+                    </button>
                     {hasActiveFilters && (
                         <button
                             onClick={handleReset}
-                            className="text-sm text-gray-600 hover:text-gray-900 underline"
+                            className="w-full text-sm text-gray-600 hover:text-gray-900 underline"
                         >
                             Reset all filters
                         </button>
                     )}
-                    <div className="flex-1" />
-                    <button
-                        onClick={onSearch}
-                        className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                    >
-                        Search
-                    </button>
                 </div>
             </div>
 

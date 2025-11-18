@@ -2,11 +2,10 @@
 
 import { graphqlFetch } from "@/lib/graphql-client";
 import type { Permit } from "@/types/permit";
-import { AuthButtons } from "./components/auth-buttons";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import * as React from "react";
-import Link from "next/link";
+import { Header } from "./components/header";
 import { PermitFilters, type FilterState } from "./components/permit-filters";
 import { PermitTable } from "./components/permit-table";
 import { Pagination } from "./components/pagination";
@@ -378,128 +377,115 @@ export default function Home() {
     }, [sort.field, sort.order]);
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-8 flex items-start justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">
-                            Permits
-                        </h1>
-                        <p className="mt-2 text-gray-600">
-                            Browse building permits and project information
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/contact"
-                            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-                        >
-                            Contact Us
-                        </Link>
-                        <AuthButtons
-                            isAuthenticated={!!session}
-                            userName={session?.user?.name}
-                            userEmail={session?.user?.email}
-                            isPremium={isPremium}
+        <div className="min-h-screen bg-blue-50">
+            <Header />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="flex gap-6">
+                    {/* Left Sidebar - Filters */}
+                    <aside className="w-80 flex-shrink-0">
+                        <PermitFilters
+                            filters={filters}
+                            onFiltersChange={setFilters}
+                            onSearch={handleSearch}
                         />
-                    </div>
-                </div>
+                    </aside>
 
-                <PermitFilters
-                    filters={filters}
-                    onFiltersChange={setFilters}
-                    onSearch={handleSearch}
-                />
+                    {/* Main Content Area */}
+                    <main className="flex-1 min-w-0">
 
-                {loading ? (
-                    <div className="text-center py-12">
-                        <p className="text-gray-500">Loading permits...</p>
-                    </div>
-                ) : !hasSearched ? (
-                    <div className="text-center py-12">
-                        <p className="text-gray-500">
-                            Use the filters above to find permits
-                        </p>
-                    </div>
-                ) : permits.length === 0 ? (
-                    <div className="text-center py-12">
-                        <p className="text-gray-500">
-                            No permits found matching your filters
-                        </p>
-                    </div>
-                ) : (
-                    <>
-                        {pagination && !isPremium && (
-                            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <div className="flex items-start">
-                                    <div className="flex-shrink-0">
-                                        <svg
-                                            className="h-5 w-5 text-blue-400"
-                                            viewBox="0 0 20 20"
-                                            fill="currentColor"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
-                                    </div>
-                                    <div className="ml-3 flex-1">
-                                        <h3 className="text-sm font-medium text-blue-800">
-                                            Freemium Account
-                                        </h3>
-                                        <div className="mt-2 text-sm text-blue-700">
-                                            <p>
-                                                You&apos;re viewing a limited
-                                                set of results (max 3 permits).
-                                                Upgrade to Premium for unlimited
-                                                access to all permit data.
-                                            </p>
-                                        </div>
-                                        <div className="mt-3">
-                                            <a
-                                                href="/upgrade"
-                                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                                            >
-                                                Upgrade to Premium
-                                            </a>
-                                        </div>
-                                    </div>
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            {loading ? (
+                                <div className="text-center py-12">
+                                    <p className="text-gray-500">Loading permits...</p>
                                 </div>
-                            </div>
-                        )}
-                        <div className="mb-4 text-sm text-gray-600">
-                            {pagination && (
+                            ) : !hasSearched ? (
+                                <div className="text-center py-12">
+                                    <p className="text-gray-500">
+                                        Use the filters to find permits
+                                    </p>
+                                </div>
+                            ) : permits.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <p className="text-gray-500">
+                                        No permits found matching your filters
+                                    </p>
+                                </div>
+                            ) : (
                                 <>
-                                    Showing {permits.length} permit
-                                    {permits.length !== 1 ? "s" : ""} of{" "}
-                                    {pagination.totalCount}
+                                    {pagination && !isPremium && (
+                                        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                            <div className="flex items-start">
+                                                <div className="flex-shrink-0">
+                                                    <svg
+                                                        className="h-5 w-5 text-blue-400"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
+                                                        aria-hidden="true"
+                                                    >
+                                                        <path
+                                                            fillRule="evenodd"
+                                                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
+                                                            clipRule="evenodd"
+                                                        />
+                                                    </svg>
+                                                </div>
+                                                <div className="ml-3 flex-1">
+                                                    <h3 className="text-sm font-medium text-blue-800">
+                                                        Freemium Account
+                                                    </h3>
+                                                    <div className="mt-2 text-sm text-blue-700">
+                                                        <p>
+                                                            You&apos;re viewing a limited
+                                                            set of results (max 3 permits).
+                                                            Upgrade to Premium for unlimited
+                                                            access to all permit data.
+                                                        </p>
+                                                    </div>
+                                                    <div className="mt-3">
+                                                        <a
+                                                            href="/upgrade"
+                                                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                                        >
+                                                            Upgrade to Premium
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="mb-4 text-sm text-gray-600">
+                                        {pagination && (
+                                            <>
+                                                Showing {permits.length} permit
+                                                {permits.length !== 1 ? "s" : ""} of{" "}
+                                                {pagination.totalCount}
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="overflow-hidden">
+                                        <PermitTable
+                                            permits={permits}
+                                            sortField={sort.field}
+                                            sortOrder={sort.order}
+                                            onSort={handleSort}
+                                        />
+                                        {pagination && (
+                                            <Pagination
+                                                currentPage={pagination.page}
+                                                pageSize={pagination.pageSize}
+                                                totalCount={pagination.totalCount}
+                                                hasNextPage={pagination.hasNextPage}
+                                                hasPreviousPage={pagination.hasPreviousPage}
+                                                onPageChange={handlePageChange}
+                                            />
+                                        )}
+                                    </div>
                                 </>
                             )}
                         </div>
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                            <PermitTable
-                                permits={permits}
-                                sortField={sort.field}
-                                sortOrder={sort.order}
-                                onSort={handleSort}
-                            />
-                            {pagination && (
-                                <Pagination
-                                    currentPage={pagination.page}
-                                    pageSize={pagination.pageSize}
-                                    totalCount={pagination.totalCount}
-                                    hasNextPage={pagination.hasNextPage}
-                                    hasPreviousPage={pagination.hasPreviousPage}
-                                    onPageChange={handlePageChange}
-                                />
-                            )}
-                        </div>
-                    </>
-                )}
-            </main>
+                    </main>
+                </div>
+            </div>
         </div>
     );
 }

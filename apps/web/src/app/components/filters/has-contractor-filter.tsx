@@ -12,7 +12,7 @@ export function HasContractorFilter({ value, onChange }: HasContractorFilterProp
                 Has Contractor
             </label>
             <select
-                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
                 value={value === null ? "any" : value ? "yes" : "no"}
                 onChange={(e) => {
                     const v = e.target.value;
