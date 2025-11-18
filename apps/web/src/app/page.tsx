@@ -6,6 +6,7 @@ import { AuthButtons } from "./components/auth-buttons";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import * as React from "react";
+import Link from "next/link";
 import { PermitFilters, type FilterState } from "./components/permit-filters";
 import { PermitTable } from "./components/permit-table";
 import { Pagination } from "./components/pagination";
@@ -388,12 +389,20 @@ export default function Home() {
                             Browse building permits and project information
                         </p>
                     </div>
-                    <AuthButtons
-                        isAuthenticated={!!session}
-                        userName={session?.user?.name}
-                        userEmail={session?.user?.email}
-                        isPremium={isPremium}
-                    />
+                    <div className="flex items-center gap-4">
+                        <Link
+                            href="/contact"
+                            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                        >
+                            Contact Us
+                        </Link>
+                        <AuthButtons
+                            isAuthenticated={!!session}
+                            userName={session?.user?.name}
+                            userEmail={session?.user?.email}
+                            isPremium={isPremium}
+                        />
+                    </div>
                 </div>
 
                 <PermitFilters
