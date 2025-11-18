@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { useSession } from "next-auth/react";
 import { Modal } from "./base-modal";
 
 interface ContactModalProps {
@@ -9,11 +10,12 @@ interface ContactModalProps {
 }
 
 export function ContactModal({ isOpen, onClose }: ContactModalProps) {
+    const { data: session } = useSession();
     const [formData, setFormData] = useState({
         name: "",
-        email: "",
         message: "",
     });
+    const [manualEmail, setManualEmail] = useState("");
     const [status, setStatus] = useState<{
         type: "idle" | "loading" | "success" | "error";
         message: string | null;
@@ -22,11 +24,20 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
         message: null,
     });
 
+    // Derive email: use session email if logged in, otherwise use manual input
+    const sessionEmail = session?.user?.email || "";
+    const isEmailDisabled = !!session?.user?.email;
+    const email = isEmailDisabled ? sessionEmail : manualEmail;
+
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        if (name === "email") {
+            setManualEmail(value);
+        } else {
+            setFormData((prev) => ({ ...prev, [name]: value }));
+        }
     };
 
     const validateForm = (): string | null => {
@@ -36,13 +47,13 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
         if (formData.name.length > 100) {
             return "Name is too long (max 100 characters).";
         }
-        if (!formData.email.trim()) {
+        if (!email.trim()) {
             return "Email is required.";
         }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             return "Invalid email format.";
         }
-        if (formData.email.length > 254) {
+        if (email.length > 254) {
             return "Email is too long (max 254 characters).";
         }
         if (!formData.message.trim()) {
@@ -73,7 +84,10 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({
+                    ...formData,
+                    email,
+                }),
             });
 
             const data = await response.json();
@@ -92,7 +106,8 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                     data.message ||
                     "Thank you for contacting us! We'll get back to you soon.",
             });
-            setFormData({ name: "", email: "", message: "" });
+            setFormData({ name: "", message: "" });
+            setManualEmail("");
             
             // Close modal after 2 seconds on success
             setTimeout(() => {
@@ -111,7 +126,8 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
     const handleClose = () => {
         onClose();
         // Reset form when closing
-        setFormData({ name: "", email: "", message: "" });
+        setFormData({ name: "", message: "" });
+        setManualEmail("");
         setStatus({ type: "idle", message: null });
     };
 
@@ -211,12 +227,22 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                                 type="email"
                                 autoComplete="email"
                                 required
-                                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                                disabled={isEmailDisabled}
+                                className={`relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm ${
+                                    isEmailDisabled
+                                        ? "bg-gray-100 cursor-not-allowed"
+                                        : "bg-white"
+                                }`}
                                 placeholder="Email address"
-                                value={formData.email}
+                                value={email}
                                 onChange={handleChange}
                                 maxLength={254}
                             />
+                            {isEmailDisabled && (
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Using your account email
+                                </p>
+                            )}
                         </div>
 
                         <div>
