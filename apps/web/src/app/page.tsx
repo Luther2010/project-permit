@@ -414,7 +414,7 @@ export default function Home() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="flex gap-6">
                     {/* Left Sidebar - Filters */}
-                    <aside className="w-80 flex-shrink-0">
+                    <aside className="w-80 flex-shrink-0 h-[calc(100vh-8rem)]">
                         <PermitFilters
                             filters={filters}
                             onFiltersChange={setFilters}
