@@ -1,15 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { PropertyType } from "@prisma/client";
 import { formatEnumLabel } from "./utils";
-
-// Generate property types array from Prisma enum
-const PROPERTY_TYPES = (Object.values(PropertyType) as PropertyType[])
-    .filter((value) => typeof value === "string")
-    .map((value) => ({
-        value,
-        label: formatEnumLabel(value),
-    }));
 
 interface PropertyTypeFilterProps {
     selectedTypes: PropertyType[];
@@ -20,6 +13,17 @@ export function PropertyTypeFilter({
     selectedTypes,
     onChange,
 }: PropertyTypeFilterProps) {
+    // Generate property types array from Prisma enum at render time
+    // This ensures we use whatever the schema defines, computed consistently on client
+    const PROPERTY_TYPES = useMemo(() => {
+        return (Object.values(PropertyType) as PropertyType[])
+            .filter((value) => typeof value === "string")
+            .map((value) => ({
+                value,
+                label: formatEnumLabel(value),
+            }));
+    }, []);
+
     const handleToggle = (value: PropertyType, checked: boolean) => {
         const newSelection = checked
             ? [...selectedTypes, value]
