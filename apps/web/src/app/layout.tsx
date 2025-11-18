@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Permit Tracker",
+    title: "Permit Pulse",
     description: "Track and manage building permits",
 };
 
