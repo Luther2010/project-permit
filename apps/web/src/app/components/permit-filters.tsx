@@ -6,6 +6,7 @@ import { StatusFilter } from "./filters/status-filter";
 import { CityFilter } from "./filters/city-filter";
 import { ValueRangeFilter } from "./filters/value-range-filter";
 import { IssueDateRangeFilter } from "./filters/issue-date-range-filter";
+import { LastUpdateDateRangeFilter } from "./filters/last-update-date-range-filter";
 import { HasContractorFilter } from "./filters/has-contractor-filter";
 import type { PropertyType, PermitType, PermitStatus, City } from "@prisma/client";
 import { getCityDisplayName } from "@/lib/cities";
@@ -20,6 +21,8 @@ export interface FilterState {
     maxValue: string;
     minAppliedDate: string;
     maxAppliedDate: string;
+    minLastUpdateDate: string;
+    maxLastUpdateDate: string;
 }
 
 interface PermitFiltersProps {
@@ -51,6 +54,8 @@ export function PermitFilters({
             maxValue: "",
             minAppliedDate: "",
             maxAppliedDate: "",
+            minLastUpdateDate: "",
+            maxLastUpdateDate: "",
         };
         onFiltersChange(resetFilters);
     };
@@ -64,7 +69,9 @@ export function PermitFilters({
         filters.minValue ||
         filters.maxValue ||
         filters.minAppliedDate ||
-        filters.maxAppliedDate;
+        filters.maxAppliedDate ||
+        filters.minLastUpdateDate ||
+        filters.maxLastUpdateDate;
 
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -112,6 +119,13 @@ export function PermitFilters({
                         maxDate={filters.maxAppliedDate}
                         onMinChange={(value) => handleChange("minAppliedDate", value)}
                         onMaxChange={(value) => handleChange("maxAppliedDate", value)}
+                    />
+
+                    <LastUpdateDateRangeFilter
+                        minDate={filters.minLastUpdateDate}
+                        maxDate={filters.maxLastUpdateDate}
+                        onMinChange={(value) => handleChange("minLastUpdateDate", value)}
+                        onMaxChange={(value) => handleChange("maxLastUpdateDate", value)}
                     />
                 </div>
 
@@ -174,6 +188,11 @@ export function PermitFilters({
                         {(filters.minAppliedDate || filters.maxAppliedDate) && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
                                 Applied Date: {filters.minAppliedDate || "any"} - {filters.maxAppliedDate || "any"}
+                            </span>
+                        )}
+                        {(filters.minLastUpdateDate || filters.maxLastUpdateDate) && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                Last Update: {filters.minLastUpdateDate || "any"} - {filters.maxLastUpdateDate || "any"}
                             </span>
                         )}
                     </div>
