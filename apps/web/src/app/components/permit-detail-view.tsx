@@ -120,6 +120,16 @@ export function PermitDetailView({
 
     return (
         <div className="space-y-3">
+            {displayPermit.title && (
+                <div>
+                    <span className="text-xs font-medium text-gray-500 uppercase">
+                        Title:
+                    </span>
+                    <p className="mt-1 text-sm font-medium text-gray-900">
+                        {displayPermit.title}
+                    </p>
+                </div>
+            )}
             {displayPermit.description && (
                 <div>
                     <span className="text-xs font-medium text-gray-500 uppercase">

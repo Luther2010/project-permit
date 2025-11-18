@@ -93,9 +93,6 @@ function PermitRow({
                     {permit.permitNumber}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
-                    {permit.title || "-"}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-700">
                     {formatPermitType(permit.permitType)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
@@ -141,7 +138,7 @@ function PermitRow({
             </tr>
             {isExpanded && (
                 <tr>
-                    <td colSpan={9} className="px-4 py-4 bg-gray-50">
+                    <td colSpan={8} className="px-4 py-4 bg-gray-50">
                         <PermitDetailView
                             permitId={permit.id}
                             basicPermit={permit}
@@ -263,9 +260,6 @@ export function PermitTable({
                     <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Permit Number
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Title
                         </th>
                         <SortableHeader
                             field="PERMIT_TYPE"

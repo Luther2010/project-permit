@@ -125,7 +125,6 @@ async function getPermits(
                 permits {
                     id
                     permitNumber
-                    title
                     city
                     propertyType
                     permitType
