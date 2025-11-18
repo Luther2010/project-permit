@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { AuthButtons } from "./auth-buttons";
 import { getMe, type User } from "@/lib/user";
@@ -36,9 +37,11 @@ export function Header() {
                     {/* Logo + Title */}
                     <div className="flex items-center gap-3">
                         <Link href="/" className="flex items-center gap-3">
-                            <img
+                            <Image
                                 src="/logo.png"
                                 alt="Permit Pulse"
+                                width={32}
+                                height={32}
                                 className="w-8 h-8"
                             />
                             <span className="text-xl font-bold text-gray-900">
