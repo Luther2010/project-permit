@@ -1019,8 +1019,8 @@ export class CampbellExtractor extends BaseDailyExtractor {
             // Fill search form and submit
             await this.fillSearchForm(this.page, searchStartDate, searchEndDate);
 
-            // Extract permit data from results table
-            const permits = await this.parsePermitData(null, limit);
+            // Extract permit data from all pages with pagination
+            const permits = await this.navigatePagesAndExtract(limit);
 
             return {
                 permits,
@@ -1040,6 +1040,94 @@ export class CampbellExtractor extends BaseDailyExtractor {
                 await this.browser.close();
             }
         }
+    }
+
+    /**
+     * Navigate through pagination and extract permits from all pages
+     */
+    protected async navigatePagesAndExtract(limit?: number): Promise<PermitData[]> {
+        if (!this.page) {
+            throw new Error("Page not initialized");
+        }
+
+        const allPermits: PermitData[] = [];
+        let currentPage = 1;
+        let hasMorePages = true;
+
+        while (hasMorePages) {
+            console.log(`[CampbellExtractor] Scraping page ${currentPage}...`);
+
+            // Wait for results table to be visible
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            await this.waitForAngular(this.page);
+            
+            try {
+                await this.page.waitForSelector('p-table .p-datatable-table tbody, p-table table tbody, .p-datatable-tbody', {
+                    timeout: 5000,
+                    visible: true
+                });
+            } catch (e) {
+                console.log(`[CampbellExtractor] No results table found on page ${currentPage}`);
+                break;
+            }
+
+            // Wait a bit more for table data to load
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+            await this.waitForAngular(this.page);
+
+            // Extract permits from current page
+            const pagePermits = await this.parsePermitData(null, limit ? limit - allPermits.length : undefined);
+            console.log(`[CampbellExtractor] Found ${pagePermits.length} permits on page ${currentPage}`);
+            
+            allPermits.push(...pagePermits);
+
+            // Stop if we've reached the limit
+            if (limit && allPermits.length >= limit) {
+                allPermits.splice(limit);
+                break;
+            }
+
+            // Check if there's a next page button
+            hasMorePages = await this.page.evaluate(() => {
+                // @ts-expect-error - page.evaluate runs in browser context
+                const nextButton = document.querySelector('button.p-paginator-next') as HTMLButtonElement | null;
+                if (!nextButton) {
+                    return false;
+                }
+                // Check if button is disabled
+                return !nextButton.disabled && !nextButton.classList.contains('p-disabled');
+            });
+
+            if (hasMorePages) {
+                // Click next page button
+                const clicked = await this.page.evaluate(() => {
+                    // @ts-expect-error - page.evaluate runs in browser context
+                    const nextButton = document.querySelector('button.p-paginator-next') as HTMLButtonElement | null;
+                    if (nextButton && !nextButton.disabled && !nextButton.classList.contains('p-disabled')) {
+                        nextButton.click();
+                        return true;
+                    }
+                    return false;
+                });
+
+                if (!clicked) {
+                    console.log(`[CampbellExtractor] Could not click next page button`);
+                    break;
+                }
+
+                // Wait for page to load
+                await this.page.waitForNavigation({ waitUntil: "networkidle0", timeout: 30000 }).catch(() => {
+                    // No navigation occurred, continue anyway
+                });
+                await this.waitForAngular(this.page);
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                
+                currentPage++;
+            }
+        }
+
+        console.log(`[CampbellExtractor] Total permits extracted: ${allPermits.length}`);
+        return allPermits;
     }
 
     protected async parsePermitData(rawData: any, limit?: number): Promise<PermitData[]> {
