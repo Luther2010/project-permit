@@ -46,6 +46,22 @@
        - Authentication required for voting
        - Input validation
 
+### 5. **Pricing Tab/Page**
+   - **Add pricing page**: Create a pricing page accessible without sign-in
+     - Display pricing information for freemium vs premium plans
+     - Show feature comparison table
+     - Include FAQ section
+     - Add call-to-action buttons for signup/upgrade
+
+### 6. **Username/Email Signup**
+   - **Add credentials-based authentication**: Implement username/email signup alongside Google sign-in
+     - Add Credentials provider to NextAuth configuration
+     - Create signup form component with username and email fields
+     - Implement password hashing (bcrypt) for secure storage
+     - Update auth-buttons component to show signup option
+     - Add validation for username, email, and password
+     - Handle duplicate email/username errors gracefully
+
 ## 📋 P1 - Important Tasks
 
 ### Classification Improvements
@@ -167,4 +183,4 @@
   - Mountain View scraper count discrepancy: Issue resolved
   - ID-based scraper date range fix: ID-based scrapers now skip to next prefix when permit applied date exceeds end date
 
-*Last updated: 2025-11-13*
+*Last updated: 2025-01-20*
