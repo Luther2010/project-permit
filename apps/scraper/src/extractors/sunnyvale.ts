@@ -15,4 +15,11 @@ export class SunnyvaleExtractor extends EnergovBaseExtractor {
         return this.baseUrl;
     }
 
+    /**
+     * Sunnyvale doesn't allow anonymous users to access the "More Info" tab
+     * Skip contractor license extraction to avoid errors and improve performance
+     */
+    protected shouldExtractContractorInfo(): boolean {
+        return false;
+    }
 }

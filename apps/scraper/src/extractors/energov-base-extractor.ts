@@ -18,6 +18,15 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
     protected abstract getBaseUrl(): string;
 
     /**
+     * Whether to extract contractor license info from the "More Info" tab
+     * Some cities (like Sunnyvale) don't allow anonymous users to access this tab
+     * Defaults to true for backward compatibility
+     */
+    protected shouldExtractContractorInfo(): boolean {
+        return true;
+    }
+
+    /**
      * Default scrape implementation for Energov-based extractors
      * Can be overridden by subclasses if needed
      */
@@ -290,11 +299,12 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 }
             }
 
-            // Extract Contractor License # from More Info tab
+            // Extract Contractor License # from More Info tab (if enabled)
             let contractorLicense: string | undefined;
-            try {
-                // Click on More Info tab
-                const moreInfoTabClicked = await detailPage.evaluate(() => {
+            if (this.shouldExtractContractorInfo()) {
+                try {
+                    // Click on More Info tab
+                    const moreInfoTabClicked = await detailPage.evaluate(() => {
                     // @ts-expect-error - page.evaluate runs in browser context
                     const moreInfoBtn = document.getElementById('button-TabButton-MoreInfo') as HTMLElement;
                     if (!moreInfoBtn) return false;
@@ -352,8 +362,9 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                         return undefined;
                     });
                 }
-            } catch (e) {
-                // Ignore errors extracting Contractor License
+                } catch (e) {
+                    // Ignore errors extracting Contractor License
+                }
             }
 
             return { value, contractorLicense };
