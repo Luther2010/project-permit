@@ -38,6 +38,7 @@ const yogaApp = createYoga({
 
         return {
             session,
+            request, // Include request for rate limiting in mutations
         };
     },
 });

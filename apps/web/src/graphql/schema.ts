@@ -142,6 +142,18 @@ export const typeDefs = `
     me: User
   }
 
+  type ContactFormResponse {
+    message: String!
+  }
+
+  type Mutation {
+    submitContactForm(
+      name: String!
+      email: String!
+      message: String!
+    ): ContactFormResponse!
+  }
+
   type ContractorClassification {
     classification: CSLBClassification!
   }

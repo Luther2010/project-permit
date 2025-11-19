@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useSession } from "next-auth/react";
 import { Modal } from "./base-modal";
+import { graphqlFetch } from "@/lib/graphql-client";
 
 interface ContactModalProps {
     isOpen: boolean;
@@ -79,36 +80,30 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
         setStatus({ type: "loading", message: "Sending message..." });
 
         try {
-            const response = await fetch("/api/contact", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    ...formData,
+            const data = await graphqlFetch(
+                `
+                mutation SubmitContactForm($name: String!, $email: String!, $message: String!) {
+                    submitContactForm(name: $name, email: $email, message: $message) {
+                        message
+                    }
+                }
+                `,
+                {
+                    name: formData.name,
                     email,
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setStatus({
-                    type: "error",
-                    message: data.error || "Failed to send message.",
-                });
-                return;
-            }
+                    message: formData.message,
+                }
+            );
 
             setStatus({
                 type: "success",
                 message:
-                    data.message ||
+                    data.submitContactForm?.message ||
                     "Thank you for contacting us! We'll get back to you soon.",
             });
             setFormData({ name: "", message: "" });
             setManualEmail("");
-            
+
             // Close modal after 2 seconds on success
             setTimeout(() => {
                 onClose();
@@ -116,9 +111,13 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
             }, 2000);
         } catch (error) {
             console.error("Contact form submission error:", error);
+            const errorMessage =
+                error instanceof Error
+                    ? error.message
+                    : "An unexpected error occurred. Please try again later.";
             setStatus({
                 type: "error",
-                message: "An unexpected error occurred. Please try again later.",
+                message: errorMessage,
             });
         }
     };

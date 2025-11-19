@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
+import { sendEmail } from "@/lib/email/ses-client";
+import { getClientIP, checkRateLimit, sanitizeInput } from "@/lib/rate-limit";
 
 // Helper function to check if user is premium
 async function checkIsPremium(session: {
@@ -343,6 +345,154 @@ export const resolvers = {
                     },
                 },
             });
+        },
+    },
+    Mutation: {
+        submitContactForm: async (
+            _: unknown,
+            args: { name: string; email: string; message: string },
+            context: {
+                session?: {
+                    user: {
+                        id: string;
+                        name?: string | null;
+                        email?: string | null;
+                        image?: string | null;
+                    };
+                } | null;
+                request?: Request;
+            }
+        ) => {
+            // Get client IP for rate limiting
+            const httpRequest = context.request;
+            if (!httpRequest) {
+                throw new Error("Request not available in context");
+            }
+
+            const ip = getClientIP(httpRequest);
+
+            // Check rate limit
+            const rateLimitResult = checkRateLimit(ip);
+            if (!rateLimitResult.allowed) {
+                const resetAt = rateLimitResult.resetAt;
+                const retryAfter = resetAt
+                    ? Math.ceil((resetAt.getTime() - Date.now()) / 1000)
+                    : 3600;
+
+                throw new Error(
+                    `Too many requests. Please try again after ${Math.ceil(
+                        retryAfter / 60
+                    )} minutes.`
+                );
+            }
+
+            // Validate and sanitize input
+            const sanitizedName = sanitizeInput(args.name, 100);
+            const sanitizedEmail = sanitizeInput(args.email, 254);
+            const sanitizedMessage = sanitizeInput(args.message, 5000);
+
+            // Validation
+            if (!sanitizedName) {
+                throw new Error("Name is required.");
+            }
+
+            if (!sanitizedEmail) {
+                throw new Error("Email is required.");
+            }
+
+            // Email format validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(sanitizedEmail)) {
+                throw new Error("Invalid email format.");
+            }
+
+            if (!sanitizedMessage) {
+                throw new Error("Message is required.");
+            }
+
+            if (sanitizedMessage.length < 10) {
+                throw new Error("Message is too short (min 10 characters).");
+            }
+
+            // Get admin email from environment
+            const adminEmail =
+                process.env.CONTACT_ADMIN_EMAIL || process.env.SES_FROM_EMAIL;
+            if (!adminEmail) {
+                console.error(
+                    "CONTACT_ADMIN_EMAIL or SES_FROM_EMAIL environment variable is not set"
+                );
+                throw new Error("Contact form is not configured");
+            }
+
+            // Prepare email content
+            const subject = `New Contact Form Submission from ${sanitizedName}`;
+            const timestamp = new Date().toLocaleString("en-US", {
+                timeZone: "America/Los_Angeles",
+                dateStyle: "long",
+                timeStyle: "short",
+            });
+
+            const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">
+            New Contact Form Submission
+        </h2>
+        
+        <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Name:</strong> ${sanitizedName}</p>
+            <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:${sanitizedEmail}">${sanitizedEmail}</a></p>
+            <p style="margin: 5px 0;"><strong>Submitted:</strong> ${timestamp}</p>
+        </div>
+        
+        <div style="margin: 20px 0;">
+            <h3 style="color: #374151; margin-bottom: 10px;">Message:</h3>
+            <div style="background-color: #ffffff; padding: 15px; border-left: 4px solid #2563eb; white-space: pre-wrap;">
+${sanitizedMessage.replace(/\n/g, "<br>")}
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280;">
+            <p>This email was sent from the PermitPulse contact form.</p>
+            <p>You can reply directly to this email to respond to ${sanitizedName}.</p>
+        </div>
+    </div>
+</body>
+</html>
+            `.trim();
+
+            const textBody = `
+New Contact Form Submission
+
+Name: ${sanitizedName}
+Email: ${sanitizedEmail}
+Submitted: ${timestamp}
+
+Message:
+${sanitizedMessage}
+
+---
+This email was sent from the PermitPulse contact form.
+You can reply directly to this email to respond to ${sanitizedName}.
+            `.trim();
+
+            // Send email
+            await sendEmail({
+                to: adminEmail,
+                subject,
+                htmlBody,
+                textBody,
+            });
+
+            // Return success response
+            return {
+                message: "Thank you for contacting us! We'll get back to you soon.",
+            };
         },
     },
 };
