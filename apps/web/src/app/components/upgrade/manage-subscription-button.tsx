@@ -22,7 +22,7 @@ export function ManageSubscriptionButton() {
             }
 
             const { url } = await response.json();
-            window.location.href = url;
+            window.open(url, "_blank");
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Unknown error";
             setError(message);
