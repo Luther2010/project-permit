@@ -48,11 +48,6 @@
 
 ## 📋 P1 - Important Tasks
 
-### Scraper Bug Fixes
-   - **Campbell scraper pagination issue**: Investigate why Campbell scraper returns exactly 100 permits for 01/01-01/15 date range while UI shows more permits exist. Likely missing pagination handling in CampbellExtractor.
-   - **Mountain View scraper count discrepancy**: Investigate why Mountain View has exactly 101 permits - check if there's an off-by-one error or pagination issue.
-   - **ID-based scraper date range fix**: ✅ Fixed in current PR - ID-based scrapers now skip to next prefix when permit applied date exceeds end date.
-
 ### Classification Improvements
    - **PermitType**: Enhance classification accuracy and coverage
    - **PropertyType**: Improve classification accuracy and coverage
@@ -167,5 +162,9 @@
 - [x] **Shovels Data Source**: Research Shovels service/platform as a potential data source for contractor information
 - [x] **Contractor-Based Permit Search**: Implement contractor license-based search for cities that support it (Saratoga, Cupertino, Palo Alto)
 - [x] **Email sending end-to-end MVP**: Send daily permits email to specific address for specific date
+- [x] **Scraper Bug Fixes**: Fixed all scraper issues
+  - Campbell scraper pagination issue: Added pagination support to navigate through all result pages instead of stopping at first page (100 permits)
+  - Mountain View scraper count discrepancy: Issue resolved
+  - ID-based scraper date range fix: ID-based scrapers now skip to next prefix when permit applied date exceeds end date
 
 *Last updated: 2025-11-13*
