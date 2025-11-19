@@ -115,6 +115,28 @@ export const typeDefs = `
     isPremium: Boolean!
   }
 
+  type ContactFormResponse {
+    message: String!
+  }
+
+  enum FeatureStatus {
+    ACTIVE
+    IMPLEMENTED
+  }
+
+  type FeatureOption {
+    id: String!
+    title: String!
+    description: String
+    status: FeatureStatus!
+    voteCount: Int!
+  }
+
+  type FeatureVoteResponse {
+    success: Boolean!
+    message: String!
+  }
+
   type Query {
     permits(
       query: String
@@ -140,10 +162,7 @@ export const typeDefs = `
     permit(id: String!): Permit
     permitByNumber(permitNumber: String!): Permit
     me: User
-  }
-
-  type ContactFormResponse {
-    message: String!
+    activeFeatures: [FeatureOption!]!
   }
 
   type Mutation {
@@ -152,6 +171,10 @@ export const typeDefs = `
       email: String!
       message: String!
     ): ContactFormResponse!
+    submitFeatureVotes(
+      email: String!
+      featureOptionIds: [String!]!
+    ): FeatureVoteResponse!
   }
 
   type ContractorClassification {

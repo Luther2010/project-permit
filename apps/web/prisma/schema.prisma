@@ -84,6 +84,11 @@ enum SubscriptionPlan {
   PREMIUM
 }
 
+enum FeatureStatus {
+  ACTIVE
+  IMPLEMENTED
+}
+
 // Business type per CSLB
 enum ContractorBusinessType {
   SOLE_OWNER
@@ -319,4 +324,30 @@ model PermitContractor {
 
   @@unique([permitId, contractorId])
   @@index([contractorId])
+}
+
+// Feature voting models
+model FeatureOption {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  status      FeatureStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  votes FeatureVote[]
+
+  @@index([status])
+}
+
+model FeatureVote {
+  id             String        @id @default(cuid())
+  email          String
+  featureOptionId String
+  featureOption  FeatureOption @relation(fields: [featureOptionId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+
+  @@unique([email, featureOptionId])
+  @@index([email])
+  @@index([featureOptionId])
 }

@@ -346,6 +346,27 @@ export const resolvers = {
                 },
             });
         },
+        activeFeatures: async () => {
+            const features = await prisma.featureOption.findMany({
+                where: { status: "ACTIVE" },
+                include: {
+                    _count: {
+                        select: { votes: true },
+                    },
+                },
+                orderBy: {
+                    createdAt: "asc",
+                },
+            });
+
+            return features.map((feature) => ({
+                id: feature.id,
+                title: feature.title,
+                description: feature.description,
+                status: feature.status,
+                voteCount: feature._count.votes,
+            }));
+        },
     },
     Mutation: {
         submitContactForm: async (
@@ -492,6 +513,89 @@ You can reply directly to this email to respond to ${sanitizedName}.
             // Return success response
             return {
                 message: "Thank you for contacting us! We'll get back to you soon.",
+            };
+        },
+        submitFeatureVotes: async (
+            _: unknown,
+            args: { email: string; featureOptionIds: string[] }
+        ) => {
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(args.email)) {
+                throw new Error("Invalid email format.");
+            }
+
+            // Validate that feature option IDs are provided
+            if (!args.featureOptionIds || args.featureOptionIds.length === 0) {
+                throw new Error("At least one feature option must be selected.");
+            }
+
+            // Check if user has voted within the last 7 days
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+            const recentVote = await prisma.featureVote.findFirst({
+                where: {
+                    email: args.email,
+                    createdAt: {
+                        gte: oneWeekAgo,
+                    },
+                },
+                orderBy: {
+                    createdAt: "desc",
+                },
+            });
+
+            if (recentVote) {
+                const daysRemaining = Math.ceil(
+                    (7 * 24 * 60 * 60 * 1000 -
+                        (Date.now() - recentVote.createdAt.getTime())) /
+                        (24 * 60 * 60 * 1000)
+                );
+                throw new Error(
+                    `You can only vote once per week. Please try again in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}.`
+                );
+            }
+
+            // Validate that all feature options exist and are ACTIVE
+            const featureOptions = await prisma.featureOption.findMany({
+                where: {
+                    id: { in: args.featureOptionIds },
+                    status: "ACTIVE",
+                },
+            });
+
+            if (featureOptions.length !== args.featureOptionIds.length) {
+                throw new Error(
+                    "One or more selected features are invalid or not active."
+                );
+            }
+
+            // Use a transaction to ensure all votes are created atomically
+            await prisma.$transaction(async (tx) => {
+                // Delete ALL existing votes for this email
+                // This ensures users can update their votes completely
+                await tx.featureVote.deleteMany({
+                    where: {
+                        email: args.email,
+                    },
+                });
+
+                // Create new votes for selected features
+                if (args.featureOptionIds.length > 0) {
+                    await tx.featureVote.createMany({
+                        data: args.featureOptionIds.map((featureOptionId) => ({
+                            email: args.email,
+                            featureOptionId,
+                        })),
+                        skipDuplicates: true, // In case of race conditions
+                    });
+                }
+            });
+
+            return {
+                success: true,
+                message: `Successfully submitted ${args.featureOptionIds.length} vote(s)!`,
             };
         },
     },

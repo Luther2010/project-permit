@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "dotenv -e .env -- tsx scripts/seed.ts",
+    "seed-features": "dotenv -e .env -- tsx scripts/seed-features.ts",
     "scrape": "dotenv -e .env -- tsx scripts/scrape.ts",
     "sync-dev-to-prod": "tsx scripts/sync-dev-to-prod.ts",
     "clone-prod-to-dev": "tsx scripts/clone-prod-to-dev.ts",
