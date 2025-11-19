@@ -31,8 +31,18 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
      * Can be overridden by subclasses if needed
      */
     async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
+        const extractorName = this.getName();
+        const dateRange = startDate && endDate
+            ? `${this.formatDate(startDate)} to ${this.formatDate(endDate)}`
+            : startDate
+                ? `from ${this.formatDate(startDate)}`
+                : "today";
+        
+        console.log(`[${extractorName}] Starting scrape for ${this.city} (${dateRange})${limit ? ` [limit: ${limit}]` : ""}`);
+
         try {
             // Launch browser
+            console.log(`[${extractorName}] Launching browser...`);
             this.browser = await puppeteer.launch({
                 headless: true,
                 args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -42,6 +52,7 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             await this.page.setViewport({ width: 1920, height: 1080 });
 
             // Navigate to search page
+            console.log(`[${extractorName}] Navigating to search page...`);
             await this.page.goto(this.url, {
                 waitUntil: "networkidle2",
                 timeout: 60000,
@@ -64,13 +75,18 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             }
 
             // Set up search filters
+            console.log(`[${extractorName}] Setting up search filters (${startDateStr}${endDateStr ? ` to ${endDateStr}` : ""})...`);
             await this.setupSearchFilters(this.page, startDateStr, endDateStr);
 
             // Perform search
+            console.log(`[${extractorName}] Performing search...`);
             await this.performSearch(this.page);
 
             // Parse permits from all pages
+            console.log(`[${extractorName}] Extracting permits from search results...`);
             const permits = await this.navigatePages(this.page, limit);
+            
+            console.log(`[${extractorName}] ✅ Scrape completed: ${permits.length} permit(s) extracted`);
 
             return {
                 permits,
@@ -78,6 +94,11 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 scrapedAt: new Date(),
             };
         } catch (error: any) {
+            const extractorName = this.getName();
+            console.error(`[${extractorName}] ❌ Scrape failed: ${error.message}`);
+            if (error.stack) {
+                console.error(`[${extractorName}] Stack trace:`, error.stack);
+            }
             return {
                 permits: [],
                 success: false,
@@ -216,6 +237,7 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
      * Opens the detail page in a new tab, extracts the data, then closes the tab
      */
     protected async extractDetailPageData(detailUrl: string): Promise<{ value?: number; contractorLicense?: string }> {
+        const extractorName = this.getName();
         if (!this.page || !this.browser) {
             throw new Error("Page or browser not initialized");
         }
@@ -250,6 +272,10 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
 
             // Wait for AngularJS to be ready
             await this.waitForAngular(detailPage);
+            
+            // Extract permit number from URL for logging
+            const permitMatch = detailUrl.match(/[A-Z0-9-]+$/);
+            const permitId = permitMatch ? permitMatch[0] : "unknown";
 
             // Extract Valuation
             let value: number | undefined;
@@ -365,6 +391,9 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 } catch (e) {
                     // Ignore errors extracting Contractor License
                 }
+            } else {
+                // Log that we're skipping contractor info extraction
+                // (only log occasionally to avoid spam)
             }
 
             return { value, contractorLicense };
@@ -820,14 +849,27 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             throw new Error("Page not initialized");
         }
 
+        const extractorName = this.getName();
         const permits: PermitData[] = [];
 
         // Find all permit result divs
         // Each permit is in a div with ng-repeat="record in vm.getEntityRecords()"
         const permitDivs = await this.page.$$('div[name="label-SearchResult"][ng-repeat*="record"], div[ng-repeat*="getEntityRecords"]');
+        const totalPermits = permitDivs.length;
+        
+        if (totalPermits === 0) {
+            console.log(`[${extractorName}] No permits found on current page`);
+            return permits;
+        }
+
+        console.log(`[${extractorName}] Found ${totalPermits} permit(s) on current page, extracting details...`);
 
         for (let i = 0; i < permitDivs.length; i++) {
             if (limit && permits.length >= limit) break;
+            
+            if ((i + 1) % 10 === 0 || i === permitDivs.length - 1) {
+                console.log(`[${extractorName}] Processing permit ${i + 1}/${totalPermits}...`);
+            }
 
             const permitDiv = permitDivs[i];
 
@@ -926,6 +968,7 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                         contractorLicense = detailData.contractorLicense;
                     } catch (error: any) {
                         // Ignore errors extracting detail data
+                        console.log(`[${extractorName}] ⚠️  Could not extract detail data for ${permitNumber}: ${error.message}`);
                     }
                 }
 
@@ -962,14 +1005,18 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
      * Navigate through pagination if needed
      */
     protected async navigatePages(page: Page, limit?: number): Promise<PermitData[]> {
+        const extractorName = this.getName();
         const allPermits: PermitData[] = [];
         let pageNum = 1;
 
         while (true) {
+            console.log(`[${extractorName}] 📄 Processing page ${pageNum}...`);
             const permits = await this.parsePermitData(limit ? limit - allPermits.length : undefined);
             allPermits.push(...permits);
+            console.log(`[${extractorName}] Page ${pageNum} complete: ${permits.length} permit(s) extracted (total: ${allPermits.length})`);
 
             if (limit && allPermits.length >= limit) {
+                console.log(`[${extractorName}] Reached limit of ${limit} permits`);
                 break;
             }
 
@@ -994,10 +1041,12 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             });
 
             if (!hasNextPage) {
+                console.log(`[${extractorName}] No more pages available`);
                 break;
             }
 
             // Navigate to next page
+            console.log(`[${extractorName}] Navigating to page ${pageNum + 1}...`);
             const clicked = await page.evaluate(() => {
                 // Try Energov-specific pagination first
                 const nextBtnEnergov = (globalThis as any).document.getElementById('link-NextPage');
@@ -1040,7 +1089,7 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             });
             
             if (!clicked) {
-                console.warn(`[${this.constructor.name}] Could not find or click next page button`);
+                console.warn(`[${extractorName}] Could not find or click next page button`);
                 break;
             }
 
@@ -1049,6 +1098,7 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             pageNum++;
         }
 
+        console.log(`[${extractorName}] ✅ Finished processing all pages: ${allPermits.length} total permit(s)`);
         return allPermits;
     }
 
