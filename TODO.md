@@ -25,41 +25,7 @@
      - Use proper from name/address format
      - Monitor bounce/complaint rates in AWS SES
 
-### 3. **Contact Us Flow**
-   - Implement contact form
-     - Create contact form page/component
-     - Form fields (name, email, message, etc.)
-     - Form submission handling
-     - Email notification to admin/team
-     - **Security considerations**:
-       - Input validation and sanitization
-       - CSRF protection
-       - Rate limiting to prevent spam/abuse
-       - SQL injection prevention (if storing in DB)
-       - XSS prevention (sanitize user input before display)
-       - Email validation and verification
-
-### 4. **Features Voting Page**
-   - **Create features voting page**: Allow users to view ongoing features and vote on them
-     - Create page/route for features voting
-     - Display list of ongoing/pending features
-     - Implement voting functionality (upvote/downvote)
-     - Store votes in database (link to user accounts)
-     - Display vote counts and user's vote status
-     - **Security considerations**:
-       - Prevent duplicate votes (one vote per user per feature)
-       - Rate limiting on voting actions
-       - Authentication required for voting
-       - Input validation
-
-### 5. **Pricing Tab/Page**
-   - **Add pricing page**: Create a pricing page accessible without sign-in
-     - Display pricing information for freemium vs premium plans
-     - Show feature comparison table
-     - Include FAQ section
-     - Add call-to-action buttons for signup/upgrade
-
-### 6. **Username/Email Signup**
+### 3. **Username/Email Signup**
    - **Add credentials-based authentication**: Implement username/email signup alongside Google sign-in
      - Add Credentials provider to NextAuth configuration
      - Create signup form component with username and email fields
@@ -188,5 +154,8 @@
   - Campbell scraper pagination issue: Added pagination support to navigate through all result pages instead of stopping at first page (100 permits)
   - Mountain View scraper count discrepancy: Issue resolved
   - ID-based scraper date range fix: ID-based scrapers now skip to next prefix when permit applied date exceeds end date
+- [x] **Contact Us Flow**: Implemented contact modal with form submission
+- [x] **Features Voting Page**: Implemented features voting modal with voting functionality
+- [x] **Pricing Tab/Page**: Created pricing page with plan comparison, FAQ, and upgrade flow
 
 *Last updated: 2025-01-20*
