@@ -9,6 +9,12 @@
      - Renew subscription functionality
      - View billing history
      - Manage payment methods
+   - **Handle cancel_at_period_end**: When users cancel subscriptions, handle `cancel_at_period_end` flag
+     - Currently downgrades immediately when subscription status becomes "canceled"
+     - Should check `subscription.cancel_at_period_end` and `subscription.period_end` 
+     - If `cancel_at_period_end` is true, keep premium access until `period_end` date
+     - Only downgrade to freemium when period actually ends (status becomes "canceled" after period_end)
+     - Update webhook handler in `apps/web/src/app/api/webhooks/stripe/route.ts` for `customer.subscription.updated` event
 
 ### 2. **Email Deliverability**
    - **Improve email deliverability**: Prevent emails from landing in spam folders

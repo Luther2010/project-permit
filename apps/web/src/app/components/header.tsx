@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { AuthButtons } from "./auth-buttons";
 import { getMe, type User } from "@/lib/user";
 import { useEffect, useState } from "react";
@@ -12,6 +13,7 @@ import { FeaturesVotingModal } from "./features-voting-modal";
 
 export function Header() {
     const { data: session } = useSession();
+    const pathname = usePathname();
     const [user, setUser] = useState<User | null>(null);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false);
@@ -25,12 +27,15 @@ export function Header() {
                 } catch (error) {
                     console.error("Failed to fetch user:", error);
                 }
+            } else {
+                setUser(null);
             }
         }
         fetchUser();
-    }, [session]);
+    }, [session, pathname]);
 
     const isPremium = user?.isPremium ?? false;
+    const isAuthenticated = !!session;
 
     return (
         <header className="bg-white border-b border-gray-200 shadow-sm">
@@ -52,14 +57,29 @@ export function Header() {
                         </Link>
                     </div>
 
-                    {/* Right side: Sign in/out, Manage Subscriptions, Features, Contact Us */}
+                    {/* Right side: Free Trial Banner, Sign in/out, Manage Subscriptions, Pricing, Features, Contact Us */}
                     <div className="flex items-center gap-4">
+                        {/* Free Trial Banner - only show for authenticated non-premium users */}
+                        {isAuthenticated && !isPremium && (
+                            <Link
+                                href="/pricing"
+                                className="text-sm text-gray-600 hover:text-gray-900 transition-colors mr-2"
+                            >
+                                You&apos;re on our free trial.{" "}
+                                <span className="font-medium underline">
+                                    Click here to upgrade.
+                                </span>
+                            </Link>
+                        )}
                         <AuthButtons
-                            isAuthenticated={!!session}
+                            isAuthenticated={isAuthenticated}
                             userName={session?.user?.name}
                             userEmail={session?.user?.email}
                             isPremium={isPremium}
                         />
+                        <Link href="/pricing" className={headerNavStyles}>
+                            Pricing
+                        </Link>
                         <button
                             onClick={() => setIsFeaturesModalOpen(true)}
                             className={headerNavStyles}

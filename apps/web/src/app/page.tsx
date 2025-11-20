@@ -475,7 +475,7 @@ export default function Home() {
                                                     </div>
                                                     <div className="mt-3">
                                                         <a
-                                                            href="/upgrade"
+                                                            href="/pricing"
                                                             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                                                         >
                                                             Upgrade to Premium

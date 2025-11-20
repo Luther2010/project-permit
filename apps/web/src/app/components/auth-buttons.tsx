@@ -1,7 +1,6 @@
 "use client";
 
 import { signIn, signOut } from "next-auth/react";
-import Link from "next/link";
 import { ManageSubscriptionButton } from "./upgrade/manage-subscription-button";
 import { headerNavStyles } from "./header-styles";
 
@@ -34,11 +33,7 @@ export function AuthButtons({
                 </button>
                 {isPremium ? (
                     <ManageSubscriptionButton />
-                ) : (
-                    <Link href="/upgrade" className={headerNavStyles}>
-                        Upgrade
-                    </Link>
-                )}
+                ) : null}
             </>
         );
     }

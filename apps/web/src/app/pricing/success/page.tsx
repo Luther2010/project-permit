@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import Link from "next/link";
 
-function UpgradeSuccessContent() {
+function PricingSuccessContent() {
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const sessionId = searchParams.get("session_id");
@@ -44,7 +44,7 @@ function UpgradeSuccessContent() {
                     </h1>
                     <p className="text-gray-600 mb-6">{error}</p>
                     <Link
-                        href="/upgrade"
+                        href="/pricing"
                         className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                         Try Again
@@ -81,14 +81,14 @@ function UpgradeSuccessContent() {
     );
 }
 
-export default function UpgradeSuccessPage() {
+export default function PricingSuccessPage() {
     return (
         <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="text-gray-500">Loading...</div>
             </div>
         }>
-            <UpgradeSuccessContent />
+            <PricingSuccessContent />
         </Suspense>
     );
 }
