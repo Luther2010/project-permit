@@ -2,21 +2,7 @@
 
 ## 🚨 P0 - Critical Priorities
 
-### 1. **Subscription Management** (Stripe Integration)
-   - **Subscription management**: Implement user-facing subscription management features
-     - View subscription status and details page
-     - Cancel subscription functionality
-     - Renew subscription functionality
-     - View billing history
-     - Manage payment methods
-   - **Handle cancel_at_period_end**: When users cancel subscriptions, handle `cancel_at_period_end` flag
-     - Currently downgrades immediately when subscription status becomes "canceled"
-     - Should check `subscription.cancel_at_period_end` and `subscription.period_end` 
-     - If `cancel_at_period_end` is true, keep premium access until `period_end` date
-     - Only downgrade to freemium when period actually ends (status becomes "canceled" after period_end)
-     - Update webhook handler in `apps/web/src/app/api/webhooks/stripe/route.ts` for `customer.subscription.updated` event
-
-### 2. **Email Deliverability**
+### 1. **Email Deliverability**
    - **Improve email deliverability**: Prevent emails from landing in spam folders
      - Verify domain in AWS SES (not just email address)
      - Set up SPF, DKIM, DMARC DNS records
@@ -25,7 +11,7 @@
      - Use proper from name/address format
      - Monitor bounce/complaint rates in AWS SES
 
-### 3. **Username/Email Signup**
+### 2. **Username/Email Signup**
    - **Add credentials-based authentication**: Implement username/email signup alongside Google sign-in
      - Add Credentials provider to NextAuth configuration
      - Create signup form component with username and email fields
@@ -61,6 +47,13 @@
    - Organize PermitType structure to enable smart contractor matching
    - Map permit types (e.g., ADU) to relevant contractor classifications (e.g., ELECTRICAL)
    - Create relationship system where contractors with ELECTRICAL classification can be matched to ADU permits
+
+### Subscription Management UI
+   - **Show subscription end date**: Display when subscription will end if user has canceled
+     - When subscription has `cancel_at` or `cancel_at_period_end: true`, show expiration date in UI
+     - Display in pricing page, header, or subscription management area
+     - Show message like "Your premium access will end on [date]"
+     - Update UI when subscription status changes
 
 ### SEO & Security
    - **SEO**: Implement search engine optimization
@@ -157,5 +150,9 @@
 - [x] **Contact Us Flow**: Implemented contact modal with form submission
 - [x] **Features Voting Page**: Implemented features voting modal with voting functionality
 - [x] **Pricing Tab/Page**: Created pricing page with plan comparison, FAQ, and upgrade flow
+- [x] **Subscription Management**: Implemented subscription management via Stripe Customer Portal
+  - Users can cancel subscriptions through Stripe Customer Portal
+  - Webhook handler processes subscription updates and cancellations
+  - Subscription status tracked in database
 
 *Last updated: 2025-01-20*
