@@ -411,7 +411,7 @@ export class MountainViewExtractor extends BaseMonthlyExtractor {
                     if (matches.length > 0) {
                         // Use the LAST match (contractor comes after applicant)
                         const lastMatch = matches[matches.length - 1];
-                        let candidate = lastMatch[1].trim();
+                        let candidate: string | undefined = lastMatch[1].trim();
                         
                         // Validate it's a real company name
                         const isPersonName = candidate.match(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/);
@@ -573,9 +573,11 @@ export class MountainViewExtractor extends BaseMonthlyExtractor {
         return permits;
     }
 
-    async scrape(limit?: number, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
-        try {
-            // Launch browser
+    /**
+     * Initialize browser and page if not already initialized
+     */
+    private async ensureBrowser(): Promise<void> {
+        if (!this.browser) {
             this.browser = await puppeteer.launch({
                 headless: true,
                 args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -593,27 +595,42 @@ export class MountainViewExtractor extends BaseMonthlyExtractor {
                 'Connection': 'keep-alive',
                 'Upgrade-Insecure-Requests': '1',
             });
+        }
+    }
 
-            // Get month and year from startDate if provided (defaults to current month)
-            const { month, year } = this.getMonthYear(startDate);
-            const targetDate = new Date(year, month - 1, 1); // First day of target month
+    /**
+     * Scrape permits for a specific month
+     * Called by BaseMonthlyExtractor for each month in the date range
+     */
+    protected async scrapeMonth(targetDate: Date, startDate?: Date, endDate?: Date): Promise<ScrapeResult> {
+        try {
+            await this.ensureBrowser();
 
             // Find the PDF URL for the target month
-            const pdfUrl = await this.findPdfUrl(this.page, targetDate);
+            const pdfUrl = await this.findPdfUrl(this.page!, targetDate);
             
             if (!pdfUrl) {
-                throw new Error(`Could not find PDF for ${targetDate.getMonth() + 1}/${targetDate.getFullYear()}`);
+                return {
+                    permits: [],
+                    success: false,
+                    error: `Could not find PDF for ${targetDate.getMonth() + 1}/${targetDate.getFullYear()}`,
+                    scrapedAt: new Date(),
+                };
             }
 
             // Download and parse PDF using Puppeteer (handles cookies automatically)
-            const pdfText = await this.downloadAndParsePdf(this.page, pdfUrl);
+            const pdfText = await this.downloadAndParsePdf(this.page!, pdfUrl);
 
             // Parse permit data from PDF text
             let permits = this.parsePermitDataFromText(pdfText);
-
-            // Apply limit if specified
-            if (limit && permits.length > limit) {
-                permits = permits.slice(0, limit);
+            
+            // Filter permits by date range (since PDF might contain permits from different dates)
+            if (startDate && endDate) {
+                permits = permits.filter(permit => {
+                    if (!permit.appliedDate) return false;
+                    return permit.appliedDate >= startDate && permit.appliedDate <= endDate;
+                });
+                console.log(`[MountainViewExtractor] Found ${permits.length} permit(s) in ${targetDate.getMonth() + 1}/${targetDate.getFullYear()} (filtered from ${this.parsePermitDataFromText(pdfText).length} total)`);
             }
 
             return {
@@ -622,17 +639,24 @@ export class MountainViewExtractor extends BaseMonthlyExtractor {
                 scrapedAt: new Date(),
             };
         } catch (error: any) {
-            console.error(`[MountainViewExtractor] Error during scrape:`, error);
+            console.error(`[MountainViewExtractor] Error during scrape for ${targetDate.getMonth() + 1}/${targetDate.getFullYear()}:`, error);
             return {
                 permits: [],
                 success: false,
                 error: error.message || "Unknown error",
                 scrapedAt: new Date(),
             };
-        } finally {
-            if (this.browser) {
-                await this.browser.close();
-            }
+        }
+    }
+
+    /**
+     * Cleanup browser when done (called by scraper.ts after all months are processed)
+     */
+    async cleanup(): Promise<void> {
+        if (this.browser) {
+            await this.browser.close();
+            this.browser = null;
+            this.page = null;
         }
     }
 
