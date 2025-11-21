@@ -224,7 +224,7 @@ function HomeContent() {
             permitTypes: [] as PermitType[],
             statuses: urlFilters.statuses || [],
             cities: urlFilters.cities || [],
-            hasContractor: null,
+            hasContractor: urlFilters.hasContractor ?? null,
             minValue: urlFilters.minValue || "",
             maxValue: urlFilters.maxValue || "",
             minAppliedDate: "",
@@ -271,14 +271,15 @@ function HomeContent() {
             filters.minLastUpdateDate ||
             filters.maxLastUpdateDate ||
             filters.minValue ||
-            filters.maxValue;
+            filters.maxValue ||
+            filters.hasContractor !== null;
         // TODO: Add checks for other filters as they're added
         
         if (hasAnyFilters) {
             fetchPermits(1);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.minLastUpdateDate, filters.maxLastUpdateDate, filters.minValue, filters.maxValue]);
+    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.minLastUpdateDate, filters.maxLastUpdateDate, filters.minValue, filters.maxValue, filters.hasContractor]);
 
 
 
