@@ -224,73 +224,13 @@ export default function Home() {
         order: "DESC",
     });
 
-    const [freemiumAllPermits, setFreemiumAllPermits] = useState<
-        Permit[] | null
-    >(null);
 
-    function sortPermitsLocal(
-        list: Permit[],
-        field: SortField,
-        order: SortOrder
-    ): Permit[] {
-        const dir = order === "ASC" ? 1 : -1;
-        const compareString = (a?: string | null, b?: string | null) => {
-            const as = a ?? "";
-            const bs = b ?? "";
-            return as.localeCompare(bs) * dir;
-        };
-        const compareNumber = (a?: number | null, b?: number | null) => {
-            const an = a ?? Number.NEGATIVE_INFINITY;
-            const bn = b ?? Number.NEGATIVE_INFINITY;
-            return (an === bn ? 0 : an > bn ? 1 : -1) * dir;
-        };
-        const compareDate = (a?: string | null, b?: string | null) => {
-            const ad = a ? new Date(a).getTime() : Number.NEGATIVE_INFINITY;
-            const bd = b ? new Date(b).getTime() : Number.NEGATIVE_INFINITY;
-            return (ad === bd ? 0 : ad > bd ? 1 : -1) * dir;
-        };
-        const listCopy = [...list];
-        listCopy.sort((x, y) => {
-            switch (field) {
-                case "PERMIT_TYPE":
-                    return compareString(x.permitType, y.permitType);
-                case "PROPERTY_TYPE":
-                    return compareString(x.propertyType, y.propertyType);
-                case "CITY":
-                    return compareString(x.city, y.city);
-                case "VALUE":
-                    return compareNumber(x.value ?? null, y.value ?? null);
-                case "APPLIED_DATE":
-                    return compareDate(x.appliedDate, y.appliedDate);
-                case "STATUS":
-                    return compareString(x.status, y.status);
-                default:
-                    return 0;
-            }
-        });
-        return listCopy;
-    }
-
-    const applyFreemiumPagingAndSet = (all: Permit[], page: number) => {
-        const effectiveTotal = all.length;
-        const start = (page - 1) * PAGE_SIZE;
-        const end = start + PAGE_SIZE;
-        setPermits(all.slice(start, end));
-        setPagination({
-            permits: [],
-            totalCount: effectiveTotal,
-            page,
-            pageSize: PAGE_SIZE,
-            hasNextPage: end < effectiveTotal,
-            hasPreviousPage: page > 1,
-        });
-    };
 
     const fetchPermits = async (page: number = 1) => {
         setLoading(true);
         setHasSearched(true);
-        // First fetch to determine premium status and baseline data
-        const firstResult = await getPermits(
+        
+        const result = await getPermits(
             filters,
             page,
             PAGE_SIZE,
@@ -299,46 +239,16 @@ export default function Home() {
             userTimezone
         );
 
-        if (!isPremium) {
-            // For freemium: lock the subset to the canonical default order (issued desc)
-            // Cache all 3 permits once; then sort and page locally
-            if (!freemiumAllPermits || page === 1) {
-                const canonicalResult = await getPermits(
-                    filters,
-                    1,
-                    3,
-                    "APPLIED_DATE",
-                    "DESC",
-                    userTimezone
-                );
-                setFreemiumAllPermits(canonicalResult.permits);
-                const sorted = sortPermitsLocal(
-                    canonicalResult.permits,
-                    sort.field ?? "APPLIED_DATE",
-                    sort.order
-                );
-                applyFreemiumPagingAndSet(sorted, page);
-            } else if (freemiumAllPermits) {
-                const sorted = sortPermitsLocal(
-                    freemiumAllPermits,
-                    sort.field ?? "APPLIED_DATE",
-                    sort.order
-                );
-                applyFreemiumPagingAndSet(sorted, page);
-            }
-        } else {
-            // Premium: normal server-driven paging/sorting
-            setFreemiumAllPermits(null);
-            setPermits(firstResult.permits);
-            setPagination({
-                permits: [],
-                totalCount: firstResult.totalCount,
-                page: firstResult.page,
-                pageSize: firstResult.pageSize,
-                hasNextPage: firstResult.hasNextPage,
-                hasPreviousPage: firstResult.hasPreviousPage,
-            });
-        }
+        setPermits(result.permits);
+        setPagination({
+            permits: [],
+            totalCount: result.totalCount,
+            page: result.page,
+            pageSize: result.pageSize,
+            hasNextPage: result.hasNextPage,
+            hasPreviousPage: result.hasPreviousPage,
+        });
+        
         setLoading(false);
     };
 
@@ -364,16 +274,6 @@ export default function Home() {
     };
 
     const handlePageChange = async (page: number) => {
-        // If freemium and we have a cached subset, page locally
-        if (pagination && !isPremium && freemiumAllPermits) {
-            const sorted = sortPermitsLocal(
-                freemiumAllPermits,
-                sort.field ?? "APPLIED_DATE",
-                sort.order
-            );
-            applyFreemiumPagingAndSet(sorted, page);
-            return;
-        }
         await fetchPermits(page);
     };
 
@@ -393,17 +293,6 @@ export default function Home() {
     // Refetch when sort changes
     React.useEffect(() => {
         if (!hasSearched) return;
-        // For freemium: sort locally
-        if (pagination && !isPremium && freemiumAllPermits) {
-            const sorted = sortPermitsLocal(
-                freemiumAllPermits,
-                sort.field ?? "APPLIED_DATE",
-                sort.order
-            );
-            applyFreemiumPagingAndSet(sorted, pagination.page);
-            return;
-        }
-        // Premium: refetch with new sort
         fetchPermits(pagination?.page || 1);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sort.field, sort.order]);
