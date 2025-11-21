@@ -15,11 +15,13 @@ export function Header() {
     const { data: session } = useSession();
     const pathname = usePathname();
     const [user, setUser] = useState<User | null>(null);
+    const [isUserLoading, setIsUserLoading] = useState(true);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false);
 
     useEffect(() => {
         async function fetchUser() {
+            setIsUserLoading(true);
             if (session?.user?.id) {
                 try {
                     const userData = await getMe();
@@ -30,6 +32,7 @@ export function Header() {
             } else {
                 setUser(null);
             }
+            setIsUserLoading(false);
         }
         fetchUser();
     }, [session, pathname]);
@@ -59,8 +62,8 @@ export function Header() {
 
                     {/* Right side: Free Trial Banner, Sign in/out, Manage Subscriptions, Pricing, Features, Contact Us */}
                     <div className="flex items-center gap-4">
-                        {/* Free Trial Banner - only show for authenticated non-premium users */}
-                        {isAuthenticated && !isPremium && (
+                        {/* Free Trial Banner - only show for authenticated non-premium users after loading */}
+                        {isAuthenticated && !isUserLoading && !isPremium && (
                             <Link
                                 href="/pricing"
                                 className="text-sm text-gray-600 hover:text-gray-900 transition-colors mr-2"
