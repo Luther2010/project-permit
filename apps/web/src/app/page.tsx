@@ -233,12 +233,41 @@ function HomeContent() {
         };
     });
 
-    const [sort, setSort] = useState<SortState>({
-        field: "APPLIED_DATE",
-        order: "DESC",
+    // Initialize sort from URL params, default to APPLIED_DATE DESC
+    const [sort, setSort] = useState<SortState>(() => {
+        const sortByParam = searchParams.get("sortBy");
+        const sortOrderParam = searchParams.get("sortOrder");
+        
+        // Validate sortBy is a valid SortField
+        const validSortFields: SortField[] = ["PERMIT_TYPE", "PROPERTY_TYPE", "CITY", "VALUE", "APPLIED_DATE", "STATUS"];
+        const sortField = sortByParam && validSortFields.includes(sortByParam as SortField) 
+            ? (sortByParam as SortField) 
+            : "APPLIED_DATE";
+        
+        // Validate sortOrder is ASC or DESC
+        const sortOrder = sortOrderParam === "ASC" || sortOrderParam === "DESC" 
+            ? sortOrderParam 
+            : "DESC";
+        
+        return {
+            field: sortField,
+            order: sortOrder,
+        };
     });
 
     const [isInitialMount, setIsInitialMount] = useState(true);
+
+    // Helper function to update URL with filters and sort
+    const updateUrl = React.useCallback((filtersToUse: FilterState, sortToUse: SortState) => {
+        const params = filtersToSearchParams(filtersToUse);
+        // Add sort if not default (APPLIED_DATE DESC)
+        if (sortToUse.field && (sortToUse.field !== "APPLIED_DATE" || sortToUse.order !== "DESC")) {
+            params.set("sortBy", sortToUse.field);
+            params.set("sortOrder", sortToUse.order);
+        }
+        const newUrl = params.toString() ? `/?${params.toString()}` : "/";
+        router.replace(newUrl, { scroll: false });
+    }, [router]);
 
     // Update URL when filters change (but not on initial mount when reading from URL)
     useEffect(() => {
@@ -248,15 +277,35 @@ function HomeContent() {
         }
 
         const params = filtersToSearchParams(filters);
+        // Add sort if not default (APPLIED_DATE DESC)
+        if (sort.field && (sort.field !== "APPLIED_DATE" || sort.order !== "DESC")) {
+            params.set("sortBy", sort.field);
+            params.set("sortOrder", sort.order);
+        }
         const newUrl = params.toString() ? `/?${params.toString()}` : "/";
         router.replace(newUrl, { scroll: false });
-    }, [filters, router, isInitialMount]);
+    }, [filters, router, isInitialMount, sort.field, sort.order]);
 
-    // Auto-search on mount if URL has filter params
+    // Update URL when sort changes (but not on initial mount)
+    useEffect(() => {
+        if (isInitialMount) return;
+        updateUrl(filters, sort);
+    }, [sort.field, sort.order, filters, updateUrl, isInitialMount]);
+
+    // Auto-search on mount if URL has filter params or sort params
     React.useEffect(() => {
         if (hasSearched) return; // Already searched, don't run again
         
-        if (!hasFiltersInUrl(searchParams)) return; // No filters in URL
+        // Check if URL has sort parameters (non-default)
+        const sortByParam = searchParams.get("sortBy");
+        const sortOrderParam = searchParams.get("sortOrder");
+        const hasSortInUrl = sortByParam !== null || (sortOrderParam !== null && sortOrderParam !== "DESC");
+        
+        // Check if URL has filters
+        const hasFilters = hasFiltersInUrl(searchParams);
+        
+        // If no filters and no sort params, don't auto-search
+        if (!hasFilters && !hasSortInUrl) return;
         
         // Wait for userTimezone and user data to load so premium status is correct
         if (!userTimezone) return;
@@ -277,11 +326,14 @@ function HomeContent() {
             filters.maxValue ||
             filters.hasContractor !== null;
         
-        if (hasAnyFilters) {
+        // If we have filters or sort params, fetch permits
+        // Note: If only sort is in URL but no filters, we still need to fetch
+        // (this handles the case where user navigates directly to a URL with just sort params)
+        if (hasAnyFilters || hasSortInUrl) {
             fetchPermits(1);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.propertyTypes, filters.permitTypes, filters.minAppliedDate, filters.maxAppliedDate, filters.minLastUpdateDate, filters.maxLastUpdateDate, filters.minValue, filters.maxValue, filters.hasContractor]);
+    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.propertyTypes, filters.permitTypes, filters.minAppliedDate, filters.maxAppliedDate, filters.minLastUpdateDate, filters.maxLastUpdateDate, filters.minValue, filters.maxValue, filters.hasContractor, searchParams, sort.field, sort.order]);
 
 
 
@@ -329,11 +381,14 @@ function HomeContent() {
     };
 
     const handleSearch = async () => {
+        // Reset to page 1 when searching
         await fetchPermits(1);
+        // URL will be updated by the useEffect that watches filters
     };
 
     const handlePageChange = async (page: number) => {
         await fetchPermits(page);
+        // URL will be updated by the useEffect that watches pagination.page
     };
 
     // Fetch user info on mount
