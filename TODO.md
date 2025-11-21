@@ -33,6 +33,12 @@
    - Determine if we should fall back to `appliedDate` (DateTime) when `appliedDateString` is empty
    - Verify data quality and completeness across all cities
 
+### 5. **Sorting empty values**
+   - When sorting by a field, entries with empty/null values for that field should be shown last
+   - Apply this behavior consistently across all sortable fields (PERMIT_TYPE, PROPERTY_TYPE, CITY, VALUE, APPLIED_DATE, STATUS)
+   - Update GraphQL resolver sorting logic to handle null/empty values appropriately
+   - Ensure both ASC and DESC sorting respect this rule (empty values always last)
+
 ## 📋 P1 - Important Tasks
 
 ### Classification Improvements
