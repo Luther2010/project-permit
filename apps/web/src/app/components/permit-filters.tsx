@@ -131,10 +131,13 @@ export function PermitFilters({
                         />
                     </div>
                 </div>
+            </div>
 
+            {/* Sticky Active Filters and Search/Reset Buttons */}
+            <div className="flex-shrink-0 sticky bottom-0 bg-white border-t border-gray-200">
                 {/* Active Filters Summary */}
                 {hasActiveFilters && (
-                    <div className="px-4 py-2 bg-blue-50 border-t border-gray-200">
+                    <div className="px-4 py-2 bg-blue-50 border-b border-gray-200">
                         <div className="flex flex-wrap gap-2 items-center">
                             <span className="text-xs font-medium text-gray-700">
                                 Active filters:
@@ -182,25 +185,25 @@ export function PermitFilters({
                         </div>
                     </div>
                 )}
-            </div>
 
-            {/* Sticky Search and Reset Buttons */}
-            <div className="p-4 border-t border-gray-200 bg-white flex-shrink-0 sticky bottom-0">
-                <div className="space-y-2">
-                    <button
-                        onClick={onSearch}
-                        className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                    >
-                        Search
-                    </button>
-                    {hasActiveFilters && (
+                {/* Search and Reset Buttons */}
+                <div className="p-4">
+                    <div className="space-y-2">
                         <button
-                            onClick={handleReset}
-                            className="w-full text-sm text-gray-600 hover:text-gray-900 underline"
+                            onClick={onSearch}
+                            className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                         >
-                            Reset all filters
+                            Search
                         </button>
-                    )}
+                        {hasActiveFilters && (
+                            <button
+                                onClick={handleReset}
+                                className="w-full text-sm text-gray-600 hover:text-gray-900 underline"
+                            >
+                                Reset all filters
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
