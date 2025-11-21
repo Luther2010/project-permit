@@ -131,14 +131,6 @@ export function filtersToSearchParams(filters: FilterState): URLSearchParams {
         params.set("permitTypes", permitTypesParam);
     }
 
-    // Last Update Date Range
-    if (filters.minLastUpdateDate) {
-        params.set("minLastUpdateDate", filters.minLastUpdateDate);
-    }
-    if (filters.maxLastUpdateDate) {
-        params.set("maxLastUpdateDate", filters.maxLastUpdateDate);
-    }
-
     // Value Range
     if (filters.minValue) {
         params.set("minValue", filters.minValue);
@@ -181,10 +173,6 @@ export function searchParamsToFilters(
     const permitTypesParam = searchParams.get("permitTypes");
     const permitTypes = urlParamToPermitTypes(permitTypesParam, VALID_PERMIT_TYPES);
 
-    // Last Update Date Range
-    const minLastUpdateDate = searchParams.get("minLastUpdateDate") || "";
-    const maxLastUpdateDate = searchParams.get("maxLastUpdateDate") || "";
-
     // Value Range
     const minValue = searchParams.get("minValue") || "";
     const maxValue = searchParams.get("maxValue") || "";
@@ -202,8 +190,6 @@ export function searchParamsToFilters(
         statuses,
         propertyTypes,
         permitTypes,
-        minLastUpdateDate,
-        maxLastUpdateDate,
         minAppliedDate,
         maxAppliedDate,
         minValue,
@@ -233,11 +219,6 @@ export function hasFiltersInUrl(searchParams: URLSearchParams): boolean {
 
     // Check for permit types
     if (searchParams.get("permitTypes")) {
-        return true;
-    }
-
-    // Check for last update date range
-    if (searchParams.get("minLastUpdateDate") || searchParams.get("maxLastUpdateDate")) {
         return true;
     }
 

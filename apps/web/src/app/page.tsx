@@ -86,12 +86,6 @@ async function getPermits(
     if (filters.maxAppliedDate) {
         variables.maxAppliedDate = filters.maxAppliedDate;
     }
-    if (filters.minLastUpdateDate) {
-        variables.minLastUpdateDate = filters.minLastUpdateDate;
-    }
-    if (filters.maxLastUpdateDate) {
-        variables.maxLastUpdateDate = filters.maxLastUpdateDate;
-    }
 
     variables.page = page;
     variables.pageSize = pageSize;
@@ -117,8 +111,6 @@ async function getPermits(
             $maxValue: Float
             $minAppliedDate: String
             $maxAppliedDate: String
-            $minLastUpdateDate: String
-            $maxLastUpdateDate: String
             $timezone: String
             $page: Int
             $pageSize: Int
@@ -135,8 +127,6 @@ async function getPermits(
                 maxValue: $maxValue
                 minAppliedDate: $minAppliedDate
                 maxAppliedDate: $maxAppliedDate
-                minLastUpdateDate: $minLastUpdateDate
-                maxLastUpdateDate: $maxLastUpdateDate
                 timezone: $timezone
                 page: $page
                 pageSize: $pageSize
@@ -228,8 +218,6 @@ function HomeContent() {
             maxValue: urlFilters.maxValue || "",
             minAppliedDate: urlFilters.minAppliedDate || "",
             maxAppliedDate: urlFilters.maxAppliedDate || "",
-            minLastUpdateDate: urlFilters.minLastUpdateDate || "",
-            maxLastUpdateDate: urlFilters.maxLastUpdateDate || "",
         };
     });
 
@@ -320,8 +308,6 @@ function HomeContent() {
             filters.permitTypes.length > 0 ||
             filters.minAppliedDate ||
             filters.maxAppliedDate ||
-            filters.minLastUpdateDate ||
-            filters.maxLastUpdateDate ||
             filters.minValue ||
             filters.maxValue ||
             filters.hasContractor !== null;
@@ -333,7 +319,7 @@ function HomeContent() {
             fetchPermits(1);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.propertyTypes, filters.permitTypes, filters.minAppliedDate, filters.maxAppliedDate, filters.minLastUpdateDate, filters.maxLastUpdateDate, filters.minValue, filters.maxValue, filters.hasContractor, searchParams, sort.field, sort.order]);
+    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.propertyTypes, filters.permitTypes, filters.minAppliedDate, filters.maxAppliedDate, filters.minValue, filters.maxValue, filters.hasContractor, searchParams, sort.field, sort.order]);
 
 
 
