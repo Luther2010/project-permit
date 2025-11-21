@@ -87,7 +87,7 @@ function mapPermitStatus(status?: string): PermitStatus {
 }
 
 /**
- * Normalize date string to consistent MM/DD/YYYY format with leading zeros
+ * Normalize date string to consistent YYYY-MM-DD format
  * Parses date components directly to avoid timezone shifts
  */
 function normalizeDateString(dateString: string | null | undefined): string | undefined {
@@ -118,8 +118,8 @@ function normalizeDateString(dateString: string | null | undefined): string | un
             if (!isNaN(month) && !isNaN(day) && !isNaN(year) && 
                 month >= 1 && month <= 12 && day >= 1 && day <= 31 &&
                 year >= 1900 && year <= 2100) {
-                // Format as MM/DD/YYYY with leading zeros
-                return `${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}/${year}`;
+                // Format as YYYY-MM-DD with leading zeros (lexicographically sortable)
+                return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             }
         }
         
@@ -152,7 +152,7 @@ function normalizeDateString(dateString: string | null | undefined): string | un
                 // This prevents timezone shifts
                 if (!isNaN(originalMonth) && !isNaN(originalDay) && !isNaN(originalYear) &&
                     originalMonth === month && originalDay === day && originalYear === year) {
-                    return `${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}/${year}`;
+                    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 }
             }
         }
@@ -236,7 +236,7 @@ async function savePermits(permits: any[]): Promise<void> {
             const validAppliedDate = validateDate(permit.appliedDate);
             const validExpirationDate = validateDate(permit.expirationDate);
 
-            // Normalize appliedDateString to consistent MM/DD/YYYY format
+            // Normalize appliedDateString to consistent YYYY-MM-DD format (lexicographically sortable)
             const validAppliedDateString = normalizeDateString(permit.appliedDateString);
 
             const savedPermit = await prisma.permit.upsert({

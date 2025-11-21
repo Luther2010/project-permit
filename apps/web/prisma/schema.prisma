@@ -248,7 +248,7 @@ model Permit {
 
   // Dates
   appliedDate       DateTime?
-  appliedDateString String? // Store original date format (e.g., "10/27/2025")
+  appliedDateString String? // Store date in YYYY-MM-DD format (e.g., "2025-10-27") for lexicographic sorting
   expirationDate    DateTime?
 
   // Scraping metadata
