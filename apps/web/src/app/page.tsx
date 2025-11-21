@@ -225,8 +225,8 @@ function HomeContent() {
             statuses: urlFilters.statuses || [],
             cities: urlFilters.cities || [],
             hasContractor: null,
-            minValue: "",
-            maxValue: "",
+            minValue: urlFilters.minValue || "",
+            maxValue: urlFilters.maxValue || "",
             minAppliedDate: "",
             maxAppliedDate: "",
             minLastUpdateDate: urlFilters.minLastUpdateDate || "",
@@ -269,14 +269,16 @@ function HomeContent() {
             filters.cities.length > 0 || 
             filters.statuses.length > 0 ||
             filters.minLastUpdateDate ||
-            filters.maxLastUpdateDate;
+            filters.maxLastUpdateDate ||
+            filters.minValue ||
+            filters.maxValue;
         // TODO: Add checks for other filters as they're added
         
         if (hasAnyFilters) {
             fetchPermits(1);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.minLastUpdateDate, filters.maxLastUpdateDate]);
+    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.minLastUpdateDate, filters.maxLastUpdateDate, filters.minValue, filters.maxValue]);
 
 
 

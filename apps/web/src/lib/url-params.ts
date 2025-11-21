@@ -77,11 +77,18 @@ export function filtersToSearchParams(filters: FilterState): URLSearchParams {
         params.set("maxLastUpdateDate", filters.maxLastUpdateDate);
     }
 
+    // Value Range
+    if (filters.minValue) {
+        params.set("minValue", filters.minValue);
+    }
+    if (filters.maxValue) {
+        params.set("maxValue", filters.maxValue);
+    }
+
     // TODO: Add other filters as needed
     // - propertyTypes
     // - permitTypes
     // - hasContractor
-    // - minValue, maxValue
     // - minAppliedDate, maxAppliedDate
 
     return params;
@@ -103,11 +110,17 @@ export function searchParamsToFilters(
     const minLastUpdateDate = searchParams.get("minLastUpdateDate") || "";
     const maxLastUpdateDate = searchParams.get("maxLastUpdateDate") || "";
 
+    // Value Range
+    const minValue = searchParams.get("minValue") || "";
+    const maxValue = searchParams.get("maxValue") || "";
+
     return {
         cities,
         statuses,
         minLastUpdateDate,
         maxLastUpdateDate,
+        minValue,
+        maxValue,
         // TODO: Add other filters as needed
     };
 }
@@ -130,12 +143,16 @@ export function hasFiltersInUrl(searchParams: URLSearchParams): boolean {
     if (searchParams.get("minLastUpdateDate") || searchParams.get("maxLastUpdateDate")) {
         return true;
     }
+
+    // Check for value range
+    if (searchParams.get("minValue") || searchParams.get("maxValue")) {
+        return true;
+    }
     
     // TODO: Add checks for other filters as needed
     // - propertyTypes
     // - permitTypes
     // - hasContractor
-    // - minValue, maxValue
     // - minAppliedDate, maxAppliedDate
     
     return false;
