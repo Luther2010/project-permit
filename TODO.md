@@ -54,6 +54,10 @@
 
 ### Email Integration (Non-Deliverability)
    - **Email sending end-to-end MVP**: Send daily permits email to specific address for specific date ✅
+   - **Daily email cron job**: Automated daily email sending with city breakdown ✅
+   - **Email verification pending**:
+     - [ ] Verify 8 AM PT email is sent on production (Vercel cron job)
+     - [ ] Verify email can be sent to multiple premium users (not just test account)
    - **Polish email design and content**: Improve email template styling, layout, and readability
    - Implement notification system for permit updates/alerts
 
@@ -157,6 +161,7 @@
 - [x] **Shovels Data Source**: Research Shovels service/platform as a potential data source for contractor information
 - [x] **Contractor-Based Permit Search**: Implement contractor license-based search for cities that support it (Saratoga, Cupertino, Palo Alto)
 - [x] **Email sending end-to-end MVP**: Send daily permits email to specific address for specific date
+- [x] **Daily email cron job**: Implemented automated daily email sending with city breakdown, date range filtering, and Pacific Time calculations
 - [x] **Scraper Bug Fixes**: Fixed all scraper issues
   - Campbell scraper pagination issue: Added pagination support to navigate through all result pages instead of stopping at first page (100 permits)
   - Mountain View scraper count discrepancy: Issue resolved
