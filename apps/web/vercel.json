@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/cron/send-daily-permits",
-      "schedule": "0 8 * * *"
+      "schedule": "0 15 * * *"
     }
   ]
 }

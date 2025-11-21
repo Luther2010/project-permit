@@ -9,8 +9,8 @@ import {
 /**
  * Cron job endpoint to send daily permits email to all premium users
  * 
- * Runs daily at 8 AM (configured in vercel.json)
- * Sends emails for permits applied on the previous day
+ * Runs daily at 8 AM Pacific Time (15:00 UTC, configured in vercel.json)
+ * Sends emails for permits applied on the previous day (Pacific Time)
  * Only sends if there are permits and user has active premium subscription
  */
 export async function GET(request: Request) {
@@ -49,32 +49,44 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Get yesterday's date in UTC
-    const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    yesterday.setUTCHours(0, 0, 0, 0);
+    // Get yesterday's date in Pacific Time (America/Los_Angeles)
+    // This ensures consistent behavior regardless of where the script runs
+    const currentTime = new Date();
+    
+    // Format current date in Pacific Time to get the date components
+    const pacificDateFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    
+    const parts = pacificDateFormatter.formatToParts(currentTime);
+    const pacificYear = parseInt(parts.find(p => p.type === "year")!.value);
+    const pacificMonth = parseInt(parts.find(p => p.type === "month")!.value);
+    const pacificDay = parseInt(parts.find(p => p.type === "day")!.value);
+    
+    // Create a date object for today in Pacific Time (using UTC to avoid timezone shifts)
+    // Then subtract one day
+    const todayPacific = new Date(Date.UTC(pacificYear, pacificMonth - 1, pacificDay));
+    const yesterdayPacific = new Date(todayPacific);
+    yesterdayPacific.setUTCDate(yesterdayPacific.getUTCDate() - 1);
 
-    const year = yesterday.getUTCFullYear();
-    const month = yesterday.getUTCMonth() + 1;
-    const day = yesterday.getUTCDate();
+    const year = yesterdayPacific.getUTCFullYear();
+    const month = yesterdayPacific.getUTCMonth() + 1;
+    const day = yesterdayPacific.getUTCDate();
 
-    // Set to start and end of yesterday in UTC
-    const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-    const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-
+    // Format as YYYY-MM-DD for appliedDateString query (timezone-safe)
     const dateString = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    console.log(`[Cron] Processing daily permits email for ${dateString}`);
+    console.log(`[Cron] Processing daily permits email for ${dateString} (yesterday in Pacific Time)`);
 
-    // Query permits applied yesterday
+    // Query permits applied yesterday using appliedDateString for timezone-safe filtering
     const permits = await prisma.permit.findMany({
       where: {
-        appliedDate: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        appliedDateString: dateString,
       },
       orderBy: {
-        appliedDate: "desc",
+        appliedDateString: "desc",
       },
     });
 
@@ -93,14 +105,14 @@ export async function GET(request: Request) {
     }
 
     // Get all premium users with active subscriptions
-    const now = new Date();
+    const currentDate = new Date();
     const premiumUsers = await prisma.user.findMany({
       where: {
         subscription: {
           plan: "PREMIUM",
           OR: [
             { validUntil: null }, // Lifetime premium
-            { validUntil: { gt: now } }, // Active premium (not expired)
+            { validUntil: { gt: currentDate } }, // Active premium (not expired)
           ],
         },
       },
