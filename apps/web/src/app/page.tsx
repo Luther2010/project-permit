@@ -226,8 +226,8 @@ function HomeContent() {
             hasContractor: urlFilters.hasContractor ?? null,
             minValue: urlFilters.minValue || "",
             maxValue: urlFilters.maxValue || "",
-            minAppliedDate: "",
-            maxAppliedDate: "",
+            minAppliedDate: urlFilters.minAppliedDate || "",
+            maxAppliedDate: urlFilters.maxAppliedDate || "",
             minLastUpdateDate: urlFilters.minLastUpdateDate || "",
             maxLastUpdateDate: urlFilters.maxLastUpdateDate || "",
         };
@@ -269,18 +269,19 @@ function HomeContent() {
             filters.statuses.length > 0 ||
             filters.propertyTypes.length > 0 ||
             filters.permitTypes.length > 0 ||
+            filters.minAppliedDate ||
+            filters.maxAppliedDate ||
             filters.minLastUpdateDate ||
             filters.maxLastUpdateDate ||
             filters.minValue ||
             filters.maxValue ||
             filters.hasContractor !== null;
-        // TODO: Add checks for other filters as they're added
         
         if (hasAnyFilters) {
             fetchPermits(1);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.propertyTypes, filters.permitTypes, filters.minLastUpdateDate, filters.maxLastUpdateDate, filters.minValue, filters.maxValue, filters.hasContractor]);
+    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.propertyTypes, filters.permitTypes, filters.minAppliedDate, filters.maxAppliedDate, filters.minLastUpdateDate, filters.maxLastUpdateDate, filters.minValue, filters.maxValue, filters.hasContractor]);
 
 
 
