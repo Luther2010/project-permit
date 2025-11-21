@@ -10,6 +10,9 @@
      - Add physical address to email footer (CAN-SPAM requirement)
      - Use proper from name/address format
      - Monitor bounce/complaint rates in AWS SES
+   - **Email verification pending**:
+     - [ ] Verify 8 AM PT email is sent on production (Vercel cron job)
+     - [ ] Verify email can be sent to multiple premium users (not just test account)
 
 ### 2. **Username/Email Signup**
    - **Add credentials-based authentication**: Implement username/email signup alongside Google sign-in
@@ -20,13 +23,7 @@
      - Add validation for username, email, and password
      - Handle duplicate email/username errors gracefully
 
-### 3. **Investigate updatedDate vs scrapedDate (timezone)**
-   - Investigate the difference between `updatedDate` and `scrapedDate` fields and their timezone handling
-   - Determine which field should be used for "Last Update Date Range" filtering
-   - Ensure consistent timezone handling across both fields
-   - Verify that filtering logic correctly uses the appropriate field
-
-### 4. **Investigate empty appliedDateString**
+### 3. **Investigate empty appliedDateString**
    - Investigate why many permits have an empty `appliedDateString` field
    - Determine if this is a scraper issue (data not available on source sites) or extraction issue
    - Check which cities/extractors are most affected
@@ -55,9 +52,6 @@
 ### Email Integration (Non-Deliverability)
    - **Email sending end-to-end MVP**: Send daily permits email to specific address for specific date ✅
    - **Daily email cron job**: Automated daily email sending with city breakdown ✅
-   - **Email verification pending**:
-     - [ ] Verify 8 AM PT email is sent on production (Vercel cron job)
-     - [ ] Verify email can be sent to multiple premium users (not just test account)
    - **Polish email design and content**: Improve email template styling, layout, and readability
    - Implement notification system for permit updates/alerts
 
@@ -178,5 +172,10 @@
   - Applied consistently across all nullable sortable fields (VALUE, APPLIED_DATE, PERMIT_TYPE, STATUS, CITY)
   - Updated GraphQL resolver sorting logic to use Prisma's null positioning feature
   - Both ASC and DESC sorting respect this rule (null values always last)
+- [x] **Investigate updatedDate vs scrapedDate (timezone)**: Completed timezone investigation and standardization
+  - Investigated the difference between `updatedDate` and `scrapedDate` fields and their timezone handling
+  - Determined which field should be used for "Last Update Date Range" filtering (Removed from UI, using appliedDateString for date filtering)
+  - Ensured consistent timezone handling across both fields (Standardized on appliedDateString for timezone-safe filtering)
+  - Verified that filtering logic correctly uses the appropriate field
 
 *Last updated: 2025-01-20*
