@@ -1,8 +1,12 @@
+import { City } from "@prisma/client";
+import { getCityDisplayName } from "@/lib/cities";
+
 export interface DailyPermitsEmailData {
   date: string; // Date string in format like "October 27, 2025"
   minDateString: string; // YYYY-MM-DD format for filtering
   maxDateString: string; // YYYY-MM-DD format for filtering and display
   permitCount: number;
+  cityCounts: Map<string | null, number>; // Map of city to permit count
   baseUrl: string;
 }
 
@@ -10,7 +14,7 @@ export interface DailyPermitsEmailData {
  * Generate HTML email template for daily permits
  */
 export function generateDailyPermitsEmail(data: DailyPermitsEmailData): string {
-  const { date, minDateString, maxDateString, permitCount, baseUrl } = data;
+  const { date, minDateString, maxDateString, permitCount, cityCounts, baseUrl } = data;
 
   // Format dates for display (MM/DD format)
   const formatDateForDisplay = (dateStr: string): string => {
@@ -22,6 +26,21 @@ export function generateDailyPermitsEmail(data: DailyPermitsEmailData): string {
 
   // Create a link that filters for exactly these permits
   const filterUrl = `${baseUrl}/?minAppliedDate=${encodeURIComponent(minDateString)}&maxAppliedDate=${encodeURIComponent(maxDateString)}`;
+
+  // Generate city breakdown HTML
+  const cityBreakdown = Array.from(cityCounts.entries())
+    .filter(([city]) => city !== null)
+    .sort((a, b) => b[1] - a[1]) // Sort by count descending
+    .map(([city, count]) => {
+      const cityName = city ? getCityDisplayName(city as City) : "Unknown";
+      return `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 8px 0; color: #374151;">${cityName}</td>
+          <td style="padding: 8px 0; color: #374151; text-align: right; font-weight: 600;">${count}</td>
+        </tr>
+      `;
+    })
+    .join("");
 
   return `
 <!DOCTYPE html>
@@ -51,6 +70,17 @@ export function generateDailyPermitsEmail(data: DailyPermitsEmailData): string {
               <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.5;">
                 We found <strong>${permitCount}</strong> new permit${permitCount !== 1 ? "s" : ""} applied from ${minDateDisplay} to ${maxDateDisplay}.
               </p>
+              
+              ${cityBreakdown ? `
+              <div style="margin-top: 24px;">
+                <h3 style="margin: 0 0 12px; color: #111827; font-size: 14px; font-weight: 600; text-transform: uppercase;">Breakdown by City</h3>
+                <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                  <tbody>
+                    ${cityBreakdown}
+                  </tbody>
+                </table>
+              </div>
+              ` : ""}
               
               <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
                 <a href="${filterUrl}" style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">
@@ -83,7 +113,7 @@ export function generateDailyPermitsEmail(data: DailyPermitsEmailData): string {
 export function generateDailyPermitsEmailText(
   data: DailyPermitsEmailData
 ): string {
-  const { date, minDateString, maxDateString, permitCount, baseUrl } = data;
+  const { date, minDateString, maxDateString, permitCount, cityCounts, baseUrl } = data;
 
   // Format dates for display (MM/DD format)
   const formatDateForDisplay = (dateStr: string): string => {
@@ -94,6 +124,16 @@ export function generateDailyPermitsEmailText(
   const maxDateDisplay = formatDateForDisplay(maxDateString);
 
   const filterUrl = `${baseUrl}/?minAppliedDate=${encodeURIComponent(minDateString)}&maxAppliedDate=${encodeURIComponent(maxDateString)}`;
+
+  // Generate city breakdown text
+  const cityBreakdownText = Array.from(cityCounts.entries())
+    .filter(([city]) => city !== null)
+    .sort((a, b) => b[1] - a[1]) // Sort by count descending
+    .map(([city, count]) => {
+      const cityName = city ? getCityDisplayName(city as City) : "Unknown";
+      return `  ${cityName}: ${count}`;
+    })
+    .join("\n");
 
   if (permitCount === 0) {
     return `New Permits - ${date}
@@ -107,6 +147,9 @@ View all permits: ${baseUrl}
   return `New Permits - ${date}
 
 We found ${permitCount} new permit${permitCount !== 1 ? "s" : ""} applied from ${minDateDisplay} to ${maxDateDisplay}.
+
+Breakdown by City:
+${cityBreakdownText}
 
 View these permits: ${filterUrl}
 

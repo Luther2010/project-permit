@@ -92,15 +92,29 @@ export async function GET(request: Request) {
     console.log(`[Cron] Processing daily permits email for permits applied between ${minDateString} and ${maxDateString} (2 days ago to yesterday in Pacific Time)`);
 
     // Query permits applied between 2 days ago and yesterday (most recent permits that have been scraped)
-    // We only need the count, not the actual permit data
-    const permitCount = await prisma.permit.count({
-      where: {
-        appliedDateString: {
-          gte: minDateString,
-          lte: maxDateString,
+    // Get total count and city breakdown
+    const [permitCount, cityCounts] = await Promise.all([
+      prisma.permit.count({
+        where: {
+          appliedDateString: {
+            gte: minDateString,
+            lte: maxDateString,
+          },
         },
-      },
-    });
+      }),
+      prisma.permit.groupBy({
+        by: ['city'],
+        where: {
+          appliedDateString: {
+            gte: minDateString,
+            lte: maxDateString,
+          },
+        },
+        _count: {
+          id: true,
+        },
+      }),
+    ]);
     console.log(`[Cron] Found ${permitCount} permit(s) for dates between ${minDateString} and ${maxDateString}`);
 
     // If no permits, skip sending emails
@@ -159,12 +173,18 @@ export async function GET(request: Request) {
       process.env.NEXTAUTH_URL ||
       "https://project-permit-web.vercel.app";
 
+    // Convert city counts to a map for easy lookup
+    const cityCountMap = new Map<string | null, number>(
+      cityCounts.map((item) => [item.city, item._count.id])
+    );
+
     // Generate email content (same for all users)
     const htmlBody = generateDailyPermitsEmail({
       date: formattedDate,
       minDateString,
       maxDateString,
       permitCount,
+      cityCounts: cityCountMap,
       baseUrl,
     });
 
@@ -173,6 +193,7 @@ export async function GET(request: Request) {
       minDateString,
       maxDateString,
       permitCount,
+      cityCounts: cityCountMap,
       baseUrl,
     });
 
