@@ -10,7 +10,6 @@ import { Header } from "./components/header";
 import { PermitFilters, type FilterState } from "./components/permit-filters";
 import { PermitTable } from "./components/permit-table";
 import { Pagination } from "./components/pagination";
-import { PropertyType, PermitType } from "@prisma/client";
 import { getMe, type User } from "@/lib/user";
 import {
     filtersToSearchParams,
