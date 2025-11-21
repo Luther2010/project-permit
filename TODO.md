@@ -26,6 +26,13 @@
    - Ensure consistent timezone handling across both fields
    - Verify that filtering logic correctly uses the appropriate field
 
+### 4. **Investigate empty appliedDateString**
+   - Investigate why many permits have an empty `appliedDateString` field
+   - Determine if this is a scraper issue (data not available on source sites) or extraction issue
+   - Check which cities/extractors are most affected
+   - Determine if we should fall back to `appliedDate` (DateTime) when `appliedDateString` is empty
+   - Verify data quality and completeness across all cities
+
 ## 📋 P1 - Important Tasks
 
 ### Classification Improvements
