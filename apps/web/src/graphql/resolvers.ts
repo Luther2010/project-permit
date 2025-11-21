@@ -154,18 +154,16 @@ export const resolvers = {
                         args.maxValue;
             }
             if (args.minAppliedDate || args.maxAppliedDate) {
-                where.appliedDate = {} as Record<string, unknown>;
+                where.appliedDateString = {} as Record<string, unknown>;
                 if (args.minAppliedDate) {
-                    const minDate = new Date(args.minAppliedDate);
-                    // Set to start of day
-                    minDate.setHours(0, 0, 0, 0);
-                    (where.appliedDate as Record<string, unknown>).gte = minDate;
+                    // Use appliedDateString for timezone-safe date filtering
+                    // Input is expected to be YYYY-MM-DD format
+                    (where.appliedDateString as Record<string, unknown>).gte = args.minAppliedDate;
                 }
                 if (args.maxAppliedDate) {
-                    const maxDate = new Date(args.maxAppliedDate);
-                    // Set to end of day
-                    maxDate.setHours(23, 59, 59, 999);
-                    (where.appliedDate as Record<string, unknown>).lte = maxDate;
+                    // Use appliedDateString for timezone-safe date filtering
+                    // Input is expected to be YYYY-MM-DD format
+                    (where.appliedDateString as Record<string, unknown>).lte = args.maxAppliedDate;
                 }
             }
             if (args.minLastUpdateDate || args.maxLastUpdateDate) {

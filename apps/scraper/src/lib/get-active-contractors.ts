@@ -27,12 +27,16 @@ export async function getActiveContractorsByDateRange(
   );
 
   // Query permits in the date range and get their associated contractors
+  // Convert Date objects to YYYY-MM-DD strings for timezone-safe filtering
+  const startDateString = startDate.toISOString().split('T')[0];
+  const endDateString = endDate.toISOString().split('T')[0];
+  
   const permitContractors = await prisma.permitContractor.findMany({
     where: {
       permit: {
-        appliedDate: {
-          gte: startDate,
-          lte: endDate,
+        appliedDateString: {
+          gte: startDateString,
+          lte: endDateString,
         },
       },
     },
@@ -52,9 +56,9 @@ export async function getActiveContractorsByDateRange(
     by: ["contractorId"],
     where: {
       permit: {
-        appliedDate: {
-          gte: startDate,
-          lte: endDate,
+        appliedDateString: {
+          gte: startDateString,
+          lte: endDateString,
         },
       },
     },
@@ -134,11 +138,15 @@ export async function getActiveContractorsByCityAndDateRange(
   endDate: Date,
   cities?: string[]
 ): Promise<ActiveContractor[]> {
+  // Convert Date objects to YYYY-MM-DD strings for timezone-safe filtering
+  const startDateString = startDate.toISOString().split('T')[0];
+  const endDateString = endDate.toISOString().split('T')[0];
+  
   const whereClause: any = {
     permit: {
-      appliedDate: {
-        gte: startDate,
-        lte: endDate,
+      appliedDateString: {
+        gte: startDateString,
+        lte: endDateString,
       },
     },
   };

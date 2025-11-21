@@ -5,7 +5,7 @@ export async function GET() {
     try {
         const permits = await prisma.permit.findMany({
             orderBy: {
-                appliedDate: "desc",
+                appliedDateString: "desc",
             },
         });
 
