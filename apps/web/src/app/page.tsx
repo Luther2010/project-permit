@@ -222,7 +222,7 @@ function HomeContent() {
         return {
             propertyTypes: [] as PropertyType[],
             permitTypes: [] as PermitType[],
-            statuses: [],
+            statuses: urlFilters.statuses || [],
             cities: urlFilters.cities || [],
             hasContractor: null,
             minValue: "",
@@ -265,14 +265,14 @@ function HomeContent() {
         if (!userLoaded) return;
         
         // Check if we have any filters set (from URL)
-        const hasAnyFilters = filters.cities.length > 0;
+        const hasAnyFilters = filters.cities.length > 0 || filters.statuses.length > 0;
         // TODO: Add checks for other filters as they're added
         
         if (hasAnyFilters) {
             fetchPermits(1);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userTimezone, user, session, filters.cities]);
+    }, [userTimezone, user, session, filters.cities, filters.statuses]);
 
 
 
