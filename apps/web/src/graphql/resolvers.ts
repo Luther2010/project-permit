@@ -270,7 +270,11 @@ export const resolvers = {
                 : Math.min(pageSize, remainingItems);
 
             // Build orderBy clause based on sort parameters
-            let orderBy: Record<string, string> = { appliedDate: "desc" }; // Default sort
+            // Default sort: appliedDate desc with nulls last
+            let orderBy: Record<string, string | { sort: string; nulls: string }> = { 
+                appliedDate: { sort: "desc", nulls: "last" } 
+            };
+            
             if (args.sortBy) {
                 const sortFieldMap: Record<string, string> = {
                     PERMIT_TYPE: "permitType",
@@ -283,7 +287,15 @@ export const resolvers = {
                 const prismaField = sortFieldMap[args.sortBy];
                 if (prismaField) {
                     const sortOrder = args.sortOrder === "ASC" ? "asc" : "desc";
-                    orderBy = { [prismaField]: sortOrder };
+                    
+                    // Use null positioning for nullable fields (value, appliedDate, permitType, status, city)
+                    // For non-nullable fields (propertyType), use simple syntax
+                    const nullableFields = ["value", "appliedDate", "permitType", "status", "city"];
+                    if (nullableFields.includes(prismaField)) {
+                        orderBy = { [prismaField]: { sort: sortOrder, nulls: "last" } };
+                    } else {
+                        orderBy = { [prismaField]: sortOrder };
+                    }
                 }
             }
 
