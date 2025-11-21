@@ -28,45 +28,44 @@ async function sendDailyPermitsEmail(to: string, date: string) {
     throw new Error("Invalid date format. Use YYYY-MM-DD");
   }
 
-  // Parse date and create date range for the day
-  // Use UTC to match how dates are stored in the database
-  const [year, month, day] = date.split("-").map(Number);
-  if (!year || !month || !day) {
-    throw new Error("Invalid date value");
-  }
+  // Validate date format (YYYY-MM-DD) - use as-is for appliedDateString
+  const dateString = date; // Already validated above
 
-  // Set to start of day (00:00:00) in UTC
-  const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  console.log(`Querying permits for date: ${dateString}`);
 
-  // Set to end of day (23:59:59.999) in UTC
-  const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-
-  console.log(`Querying permits for date: ${date}`);
-  console.log(`Date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
-
-  // Query permits applied on the specified date
-  const permits = await prisma.permit.findMany({
-    where: {
-      appliedDate: {
-        gte: startOfDay,
-        lte: endOfDay,
+  // Query permits applied on the specified date using appliedDateString
+  // Get total count and city breakdown
+  const [permitCount, cityCounts] = await Promise.all([
+    prisma.permit.count({
+      where: {
+        appliedDateString: dateString,
       },
-    },
-    orderBy: {
-      appliedDate: "desc",
-    },
-  });
+    }),
+    prisma.permit.groupBy({
+      by: ['city'],
+      where: {
+        appliedDateString: dateString,
+      },
+      _count: {
+        id: true,
+      },
+    }),
+  ]);
 
-  const permitCount = permits.length;
-  console.log(`Found ${permitCount} permit(s) for ${date}`);
+  console.log(`Found ${permitCount} permit(s) for ${dateString}`);
 
   if (permitCount === 0) {
     console.log("No permits found. Email will not be sent.");
     return;
   }
 
+  // Parse date for formatting
+  const [year, month, day] = dateString.split("-").map(Number);
+  if (!year || !month || !day) {
+    throw new Error("Invalid date value");
+  }
+
   // Format date for email (e.g., "October 27, 2025")
-  // Use the parsed date components to create a local date for formatting
   const formattedDate = new Date(year, month - 1, day).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -78,18 +77,27 @@ async function sendDailyPermitsEmail(to: string, date: string) {
     process.env.NEXTAUTH_URL ||
     "https://project-permit-web.vercel.app";
 
+  // Convert city counts to a map for easy lookup
+  const cityCountMap = new Map<string | null, number>(
+    cityCounts.map((item) => [item.city, item._count.id])
+  );
+
   // Generate email content
   const htmlBody = generateDailyPermitsEmail({
     date: formattedDate,
+    minDateString: dateString,
+    maxDateString: dateString,
     permitCount,
-    permits,
+    cityCounts: cityCountMap,
     baseUrl,
   });
 
   const textBody = generateDailyPermitsEmailText({
     date: formattedDate,
+    minDateString: dateString,
+    maxDateString: dateString,
     permitCount,
-    permits,
+    cityCounts: cityCountMap,
     baseUrl,
   });
 

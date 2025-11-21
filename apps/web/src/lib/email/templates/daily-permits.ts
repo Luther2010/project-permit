@@ -18,7 +18,7 @@ export function generateDailyPermitsEmail(data: DailyPermitsEmailData): string {
 
   // Format dates for display (MM/DD format)
   const formatDateForDisplay = (dateStr: string): string => {
-    const [year, month, day] = dateStr.split('-');
+    const [, month, day] = dateStr.split('-');
     return `${month}/${day}`;
   };
   const minDateDisplay = formatDateForDisplay(minDateString);
@@ -117,7 +117,7 @@ export function generateDailyPermitsEmailText(
 
   // Format dates for display (MM/DD format)
   const formatDateForDisplay = (dateStr: string): string => {
-    const [year, month, day] = dateStr.split('-');
+    const [, month, day] = dateStr.split('-');
     return `${month}/${day}`;
   };
   const minDateDisplay = formatDateForDisplay(minDateString);
