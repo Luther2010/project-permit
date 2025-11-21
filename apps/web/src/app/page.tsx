@@ -220,7 +220,7 @@ function HomeContent() {
         const urlFilters = searchParamsToFilters(searchParams);
         
         return {
-            propertyTypes: [] as PropertyType[],
+            propertyTypes: urlFilters.propertyTypes || [],
             permitTypes: [] as PermitType[],
             statuses: urlFilters.statuses || [],
             cities: urlFilters.cities || [],
@@ -268,6 +268,7 @@ function HomeContent() {
         const hasAnyFilters = 
             filters.cities.length > 0 || 
             filters.statuses.length > 0 ||
+            filters.propertyTypes.length > 0 ||
             filters.minLastUpdateDate ||
             filters.maxLastUpdateDate ||
             filters.minValue ||
@@ -279,7 +280,7 @@ function HomeContent() {
             fetchPermits(1);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.minLastUpdateDate, filters.maxLastUpdateDate, filters.minValue, filters.maxValue, filters.hasContractor]);
+    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.propertyTypes, filters.minLastUpdateDate, filters.maxLastUpdateDate, filters.minValue, filters.maxValue, filters.hasContractor]);
 
 
 

@@ -1,4 +1,4 @@
-import { City, PermitStatus } from "@prisma/client";
+import { City, PermitStatus, PropertyType } from "@prisma/client";
 import type { FilterState } from "@/app/components/permit-filters";
 
 /**
@@ -10,6 +10,11 @@ export const VALID_CITIES = Object.values(City) as readonly City[];
  * Valid statuses for URL param validation
  */
 export const VALID_STATUSES = Object.values(PermitStatus) as readonly PermitStatus[];
+
+/**
+ * Valid property types for URL param validation
+ */
+export const VALID_PROPERTY_TYPES = Object.values(PropertyType) as readonly PropertyType[];
 
 /**
  * Serialize cities array to URL parameter string
@@ -52,6 +57,26 @@ export function urlParamToStatuses(
 }
 
 /**
+ * Serialize property types array to URL parameter string
+ */
+export function propertyTypesToUrlParam(propertyTypes: PropertyType[]): string {
+    return propertyTypes.length > 0 ? propertyTypes.join(",") : "";
+}
+
+/**
+ * Deserialize URL parameter string to property types array
+ */
+export function urlParamToPropertyTypes(
+    param: string | null,
+    validPropertyTypes: readonly PropertyType[]
+): PropertyType[] {
+    if (!param) return [];
+    return param
+        .split(",")
+        .filter((p): p is PropertyType => validPropertyTypes.includes(p as PropertyType));
+}
+
+/**
  * Convert FilterState to URL search params
  */
 export function filtersToSearchParams(filters: FilterState): URLSearchParams {
@@ -67,6 +92,12 @@ export function filtersToSearchParams(filters: FilterState): URLSearchParams {
     const statusesParam = statusesToUrlParam(filters.statuses);
     if (statusesParam) {
         params.set("statuses", statusesParam);
+    }
+
+    // Property Types
+    const propertyTypesParam = propertyTypesToUrlParam(filters.propertyTypes);
+    if (propertyTypesParam) {
+        params.set("propertyTypes", propertyTypesParam);
     }
 
     // Last Update Date Range
@@ -91,7 +122,6 @@ export function filtersToSearchParams(filters: FilterState): URLSearchParams {
     }
 
     // TODO: Add other filters as needed
-    // - propertyTypes
     // - permitTypes
     // - minAppliedDate, maxAppliedDate
 
@@ -110,6 +140,9 @@ export function searchParamsToFilters(
     const statusesParam = searchParams.get("statuses");
     const statuses = urlParamToStatuses(statusesParam, VALID_STATUSES);
 
+    const propertyTypesParam = searchParams.get("propertyTypes");
+    const propertyTypes = urlParamToPropertyTypes(propertyTypesParam, VALID_PROPERTY_TYPES);
+
     // Last Update Date Range
     const minLastUpdateDate = searchParams.get("minLastUpdateDate") || "";
     const maxLastUpdateDate = searchParams.get("maxLastUpdateDate") || "";
@@ -125,6 +158,7 @@ export function searchParamsToFilters(
     return {
         cities,
         statuses,
+        propertyTypes,
         minLastUpdateDate,
         maxLastUpdateDate,
         minValue,
@@ -148,6 +182,11 @@ export function hasFiltersInUrl(searchParams: URLSearchParams): boolean {
         return true;
     }
 
+    // Check for property types
+    if (searchParams.get("propertyTypes")) {
+        return true;
+    }
+
     // Check for last update date range
     if (searchParams.get("minLastUpdateDate") || searchParams.get("maxLastUpdateDate")) {
         return true;
@@ -164,7 +203,6 @@ export function hasFiltersInUrl(searchParams: URLSearchParams): boolean {
     }
     
     // TODO: Add checks for other filters as needed
-    // - propertyTypes
     // - permitTypes
     // - minAppliedDate, maxAppliedDate
     
