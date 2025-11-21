@@ -33,11 +33,6 @@
    - Determine if we should fall back to `appliedDate` (DateTime) when `appliedDateString` is empty
    - Verify data quality and completeness across all cities
 
-### 5. **Sorting empty values**
-   - When sorting by a field, entries with empty/null values for that field should be shown last
-   - Apply this behavior consistently across all sortable fields (PERMIT_TYPE, PROPERTY_TYPE, CITY, VALUE, APPLIED_DATE, STATUS)
-   - Update GraphQL resolver sorting logic to handle null/empty values appropriately
-   - Ensure both ASC and DESC sorting respect this rule (empty values always last)
 
 ## 📋 P1 - Important Tasks
 
@@ -173,5 +168,10 @@
   - Users can cancel subscriptions through Stripe Customer Portal
   - Webhook handler processes subscription updates and cancellations
   - Subscription status tracked in database
+- [x] **Sorting empty values**: Implemented null positioning for permit sorting
+  - When sorting by a field, entries with empty/null values for that field are shown last
+  - Applied consistently across all nullable sortable fields (VALUE, APPLIED_DATE, PERMIT_TYPE, STATUS, CITY)
+  - Updated GraphQL resolver sorting logic to use Prisma's null positioning feature
+  - Both ASC and DESC sorting respect this rule (null values always last)
 
 *Last updated: 2025-01-20*
