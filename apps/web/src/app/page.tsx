@@ -3,14 +3,20 @@
 import { graphqlFetch } from "@/lib/graphql-client";
 import type { Permit } from "@/types/permit";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import * as React from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "./components/header";
 import { PermitFilters, type FilterState } from "./components/permit-filters";
 import { PermitTable } from "./components/permit-table";
 import { Pagination } from "./components/pagination";
-import type { PropertyType, PermitType, City } from "@prisma/client";
+import { PropertyType, PermitType } from "@prisma/client";
 import { getMe, type User } from "@/lib/user";
+import {
+    filtersToSearchParams,
+    searchParamsToFilters,
+    hasFiltersInUrl,
+} from "@/lib/url-params";
 
 const PAGE_SIZE = 10;
 
@@ -183,8 +189,11 @@ async function getPermits(
     }
 }
 
-export default function Home() {
+
+function HomeContent() {
     const { data: session } = useSession();
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const [permits, setPermits] = useState<Permit[]>([]);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
@@ -205,24 +214,65 @@ export default function Home() {
             setUserTimezone("UTC");
         }
     }, []);
-    const [filters, setFilters] = useState<FilterState>({
-        propertyTypes: [] as PropertyType[],
-        permitTypes: [] as PermitType[],
-        statuses: [],
-        cities: [] as City[],
-        hasContractor: null,
-        minValue: "",
-        maxValue: "",
-        minAppliedDate: "",
-        maxAppliedDate: "",
-        minLastUpdateDate: "",
-        maxLastUpdateDate: "",
+
+    // Initialize filters from URL params
+    const [filters, setFilters] = useState<FilterState>(() => {
+        const urlFilters = searchParamsToFilters(searchParams);
+        
+        return {
+            propertyTypes: [] as PropertyType[],
+            permitTypes: [] as PermitType[],
+            statuses: [],
+            cities: urlFilters.cities || [],
+            hasContractor: null,
+            minValue: "",
+            maxValue: "",
+            minAppliedDate: "",
+            maxAppliedDate: "",
+            minLastUpdateDate: "",
+            maxLastUpdateDate: "",
+        };
     });
 
     const [sort, setSort] = useState<SortState>({
         field: "APPLIED_DATE",
         order: "DESC",
     });
+
+    const [isInitialMount, setIsInitialMount] = useState(true);
+
+    // Update URL when filters change (but not on initial mount when reading from URL)
+    useEffect(() => {
+        if (isInitialMount) {
+            setIsInitialMount(false);
+            return;
+        }
+
+        const params = filtersToSearchParams(filters);
+        const newUrl = params.toString() ? `/?${params.toString()}` : "/";
+        router.replace(newUrl, { scroll: false });
+    }, [filters, router, isInitialMount]);
+
+    // Auto-search on mount if URL has filter params
+    React.useEffect(() => {
+        if (hasSearched) return; // Already searched, don't run again
+        
+        if (!hasFiltersInUrl(searchParams)) return; // No filters in URL
+        
+        // Wait for userTimezone and user data to load so premium status is correct
+        if (!userTimezone) return;
+        const userLoaded = session ? user !== null : true;
+        if (!userLoaded) return;
+        
+        // Check if we have any filters set (from URL)
+        const hasAnyFilters = filters.cities.length > 0;
+        // TODO: Add checks for other filters as they're added
+        
+        if (hasAnyFilters) {
+            fetchPermits(1);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userTimezone, user, session, filters.cities]);
 
 
 
@@ -408,5 +458,22 @@ export default function Home() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function Home() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-blue-50">
+                <Header />
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="text-center py-12">
+                        <p className="text-gray-500">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        }>
+            <HomeContent />
+        </Suspense>
     );
 }
