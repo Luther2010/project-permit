@@ -1,9 +1,8 @@
-import type { Permit } from "@prisma/client";
-
 export interface DailyPermitsEmailData {
   date: string; // Date string in format like "October 27, 2025"
+  minDateString: string; // YYYY-MM-DD format for filtering
+  maxDateString: string; // YYYY-MM-DD format for filtering and display
   permitCount: number;
-  permits: Permit[];
   baseUrl: string;
 }
 
@@ -11,37 +10,18 @@ export interface DailyPermitsEmailData {
  * Generate HTML email template for daily permits
  */
 export function generateDailyPermitsEmail(data: DailyPermitsEmailData): string {
-  const { date, permitCount, permits, baseUrl } = data;
+  const { date, minDateString, maxDateString, permitCount, baseUrl } = data;
 
-  const permitRows = permits
-    .map((permit) => {
-      const address = permit.address || "N/A";
-      const city = permit.city || "N/A";
-      const permitType = permit.permitType || "N/A";
-      const value = permit.value
-        ? `$${permit.value.toLocaleString()}`
-        : "N/A";
-      const appliedDate = permit.appliedDateString || "N/A";
-      const permitUrl = `${baseUrl}/?permitNumber=${encodeURIComponent(
-        permit.permitNumber
-      )}`;
+  // Format dates for display (MM/DD format)
+  const formatDateForDisplay = (dateStr: string): string => {
+    const [year, month, day] = dateStr.split('-');
+    return `${month}/${day}`;
+  };
+  const minDateDisplay = formatDateForDisplay(minDateString);
+  const maxDateDisplay = formatDateForDisplay(maxDateString);
 
-      return `
-        <tr style="border-bottom: 1px solid #e5e7eb;">
-          <td style="padding: 12px 0;">
-            <a href="${permitUrl}" style="color: #2563eb; text-decoration: none; font-weight: 600;">
-              ${permit.permitNumber}
-            </a>
-          </td>
-          <td style="padding: 12px 0; color: #374151;">${address}</td>
-          <td style="padding: 12px 0; color: #374151;">${city}</td>
-          <td style="padding: 12px 0; color: #374151;">${permitType}</td>
-          <td style="padding: 12px 0; color: #374151;">${value}</td>
-          <td style="padding: 12px 0; color: #374151;">${appliedDate}</td>
-        </tr>
-      `;
-    })
-    .join("");
+  // Create a link that filters for exactly these permits
+  const filterUrl = `${baseUrl}/?minAppliedDate=${encodeURIComponent(minDateString)}&maxAppliedDate=${encodeURIComponent(maxDateString)}`;
 
   return `
 <!DOCTYPE html>
@@ -69,30 +49,12 @@ export function generateDailyPermitsEmail(data: DailyPermitsEmailData): string {
           <tr>
             <td style="padding: 32px;">
               <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.5;">
-                We found <strong>${permitCount}</strong> new permit${permitCount !== 1 ? "s" : ""} applied on ${date}.
+                We found <strong>${permitCount}</strong> new permit${permitCount !== 1 ? "s" : ""} applied from ${minDateDisplay} to ${maxDateDisplay}.
               </p>
               
-              ${permitCount > 0 ? `
-              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-top: 24px;">
-                <thead>
-                  <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;">
-                    <th style="padding: 12px 0; text-align: left; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase;">Permit #</th>
-                    <th style="padding: 12px 0; text-align: left; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase;">Address</th>
-                    <th style="padding: 12px 0; text-align: left; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase;">City</th>
-                    <th style="padding: 12px 0; text-align: left; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase;">Type</th>
-                    <th style="padding: 12px 0; text-align: left; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase;">Value</th>
-                    <th style="padding: 12px 0; text-align: left; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase;">Applied Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${permitRows}
-                </tbody>
-              </table>
-              ` : ""}
-              
               <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
-                <a href="${baseUrl}" style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">
-                  View All Permits
+                <a href="${filterUrl}" style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                  View These Permits
                 </a>
               </div>
             </td>
@@ -121,38 +83,32 @@ export function generateDailyPermitsEmail(data: DailyPermitsEmailData): string {
 export function generateDailyPermitsEmailText(
   data: DailyPermitsEmailData
 ): string {
-  const { date, permitCount, permits, baseUrl } = data;
+  const { date, minDateString, maxDateString, permitCount, baseUrl } = data;
+
+  // Format dates for display (MM/DD format)
+  const formatDateForDisplay = (dateStr: string): string => {
+    const [year, month, day] = dateStr.split('-');
+    return `${month}/${day}`;
+  };
+  const minDateDisplay = formatDateForDisplay(minDateString);
+  const maxDateDisplay = formatDateForDisplay(maxDateString);
+
+  const filterUrl = `${baseUrl}/?minAppliedDate=${encodeURIComponent(minDateString)}&maxAppliedDate=${encodeURIComponent(maxDateString)}`;
 
   if (permitCount === 0) {
     return `New Permits - ${date}
 
-We found 0 new permits applied on ${date}.
+We found 0 new permits applied from ${minDateDisplay} to ${maxDateDisplay}.
 
 View all permits: ${baseUrl}
 `;
   }
 
-  const permitList = permits
-    .map((permit) => {
-      const address = permit.address || "N/A";
-      const city = permit.city || "N/A";
-      const permitType = permit.permitType || "N/A";
-      const value = permit.value
-        ? `$${permit.value.toLocaleString()}`
-        : "N/A";
-      const appliedDate = permit.appliedDateString || "N/A";
-
-      return `- ${permit.permitNumber}: ${address}, ${city} (${permitType}) - ${value} - Applied: ${appliedDate}`;
-    })
-    .join("\n");
-
   return `New Permits - ${date}
 
-We found ${permitCount} new permit${permitCount !== 1 ? "s" : ""} applied on ${date}.
+We found ${permitCount} new permit${permitCount !== 1 ? "s" : ""} applied from ${minDateDisplay} to ${maxDateDisplay}.
 
-${permitList}
-
-View all permits: ${baseUrl}
+View these permits: ${filterUrl}
 
 ---
 You're receiving this email because you're a premium subscriber to Project Permit.

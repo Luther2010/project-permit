@@ -10,7 +10,9 @@ import {
  * Cron job endpoint to send daily permits email to all premium users
  * 
  * Runs daily at 8 AM Pacific Time (15:00 UTC, configured in vercel.json)
- * Sends emails for permits applied on the previous day (Pacific Time)
+ * Sends emails for permits applied 2 days ago (the day before yesterday)
+ * This is because permits applied on day N become available/scraped on day N+1,
+ * so when the email runs on day N+2, it should send permits from day N
  * Only sends if there are permits and user has active premium subscription
  */
 export async function GET(request: Request) {
@@ -49,7 +51,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Get yesterday's date in Pacific Time (America/Los_Angeles)
+    // Get the date from 2 days ago in Pacific Time (America/Los_Angeles)
+    // Permits applied on day N become available/scraped on day N+1,
+    // so when email runs on day N+2, it should send permits from day N
     // This ensures consistent behavior regardless of where the script runs
     const currentTime = new Date();
     
@@ -67,40 +71,46 @@ export async function GET(request: Request) {
     const pacificDay = parseInt(parts.find(p => p.type === "day")!.value);
     
     // Create a date object for today in Pacific Time (using UTC to avoid timezone shifts)
-    // Then subtract one day
+    // Calculate 2 days ago (minimum date) and yesterday (maximum date)
+    // We use yesterday as max because permits applied today may not have been scraped yet
     const todayPacific = new Date(Date.UTC(pacificYear, pacificMonth - 1, pacificDay));
-    const yesterdayPacific = new Date(todayPacific);
-    yesterdayPacific.setUTCDate(yesterdayPacific.getUTCDate() - 1);
+    const minDate = new Date(todayPacific);
+    minDate.setUTCDate(minDate.getUTCDate() - 2);
+    const maxDate = new Date(todayPacific);
+    maxDate.setUTCDate(maxDate.getUTCDate() - 1); // Use yesterday as maximum date
 
-    const year = yesterdayPacific.getUTCFullYear();
-    const month = yesterdayPacific.getUTCMonth() + 1;
-    const day = yesterdayPacific.getUTCDate();
+    const minYear = minDate.getUTCFullYear();
+    const minMonth = minDate.getUTCMonth() + 1;
+    const minDay = minDate.getUTCDate();
+    const maxYear = maxDate.getUTCFullYear();
+    const maxMonth = maxDate.getUTCMonth() + 1;
+    const maxDay = maxDate.getUTCDate();
 
     // Format as YYYY-MM-DD for appliedDateString query (timezone-safe)
-    const dateString = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    console.log(`[Cron] Processing daily permits email for ${dateString} (yesterday in Pacific Time)`);
+    const minDateString = `${minYear}-${String(minMonth).padStart(2, "0")}-${String(minDay).padStart(2, "0")}`;
+    const maxDateString = `${maxYear}-${String(maxMonth).padStart(2, "0")}-${String(maxDay).padStart(2, "0")}`;
+    console.log(`[Cron] Processing daily permits email for permits applied between ${minDateString} and ${maxDateString} (2 days ago to yesterday in Pacific Time)`);
 
-    // Query permits applied yesterday using appliedDateString for timezone-safe filtering
-    const permits = await prisma.permit.findMany({
+    // Query permits applied between 2 days ago and yesterday (most recent permits that have been scraped)
+    // We only need the count, not the actual permit data
+    const permitCount = await prisma.permit.count({
       where: {
-        appliedDateString: dateString,
-      },
-      orderBy: {
-        appliedDateString: "desc",
+        appliedDateString: {
+          gte: minDateString,
+          lte: maxDateString,
+        },
       },
     });
-
-    const permitCount = permits.length;
-    console.log(`[Cron] Found ${permitCount} permit(s) for ${dateString}`);
+    console.log(`[Cron] Found ${permitCount} permit(s) for dates between ${minDateString} and ${maxDateString}`);
 
     // If no permits, skip sending emails
     if (permitCount === 0) {
       console.log(`[Cron] No permits found. Skipping email send.`);
       return NextResponse.json({
         success: true,
-        message: "No permits found for yesterday. No emails sent.",
+        message: `No permits found for dates between ${minDateString} and ${maxDateString}. No emails sent.`,
         permitCount: 0,
-        date: dateString,
+        date: maxDateString,
       });
     }
 
@@ -131,13 +141,14 @@ export async function GET(request: Request) {
         success: true,
         message: "No premium users found. No emails sent.",
         permitCount,
-        date: dateString,
+        date: maxDateString,
         usersNotified: 0,
       });
     }
 
     // Format date for email (e.g., "October 27, 2025")
-    const formattedDate = new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    // Use the max date (yesterday) for the email subject
+    const formattedDate = new Date(maxYear, maxMonth - 1, maxDay).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -151,15 +162,17 @@ export async function GET(request: Request) {
     // Generate email content (same for all users)
     const htmlBody = generateDailyPermitsEmail({
       date: formattedDate,
+      minDateString,
+      maxDateString,
       permitCount,
-      permits,
       baseUrl,
     });
 
     const textBody = generateDailyPermitsEmailText({
       date: formattedDate,
+      minDateString,
+      maxDateString,
       permitCount,
-      permits,
       baseUrl,
     });
 
@@ -174,7 +187,7 @@ export async function GET(request: Request) {
       try {
         await sendEmail({
           to: user.email,
-          subject: `New Permits - ${formattedDate} (${permitCount} permit${permitCount !== 1 ? "s" : ""})`,
+          subject: `New Permits - ${minDateString} to ${maxDateString} (${permitCount} permit${permitCount !== 1 ? "s" : ""})`,
           htmlBody,
           textBody,
         });
@@ -194,9 +207,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Processed daily permits email for ${dateString}`,
+      message: `Processed daily permits email for dates between ${minDateString} and ${maxDateString}`,
       permitCount,
-      date: dateString,
+      date: maxDateString,
       usersNotified: results.success,
       usersFailed: results.failed,
       errors: results.errors.length > 0 ? results.errors : undefined,
