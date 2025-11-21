@@ -290,7 +290,7 @@ function HomeContent() {
     useEffect(() => {
         if (isInitialMount) return;
         updateUrl(filters, sort);
-    }, [sort.field, sort.order, filters, updateUrl, isInitialMount]);
+    }, [sort,sort.field, sort.order, filters, updateUrl, isInitialMount]);
 
     // Auto-search on mount if URL has filter params or sort params
     React.useEffect(() => {
@@ -391,6 +391,13 @@ function HomeContent() {
         // URL will be updated by the useEffect that watches pagination.page
     };
 
+    const handleSortReset = () => {
+        setSort({
+            field: "APPLIED_DATE",
+            order: "DESC",
+        });
+    };
+
     // Fetch user info on mount
     React.useEffect(() => {
         const fetchUser = async () => {
@@ -422,6 +429,7 @@ function HomeContent() {
                             filters={filters}
                             onFiltersChange={setFilters}
                             onSearch={handleSearch}
+                            onSortReset={handleSortReset}
                         />
                     </aside>
 

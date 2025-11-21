@@ -29,12 +29,14 @@ interface PermitFiltersProps {
     filters: FilterState;
     onFiltersChange: (filters: FilterState) => void;
     onSearch: () => void;
+    onSortReset?: () => void;
 }
 
 export function PermitFilters({
     filters,
     onFiltersChange,
     onSearch,
+    onSortReset,
 }: PermitFiltersProps) {
     const handleChange = <K extends keyof FilterState>(field: K, value: FilterState[K]) => {
         onFiltersChange({
@@ -58,6 +60,7 @@ export function PermitFilters({
             maxLastUpdateDate: "",
         };
         onFiltersChange(resetFilters);
+        onSortReset?.();
     };
 
     const hasActiveFilters =
