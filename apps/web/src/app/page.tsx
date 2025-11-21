@@ -229,8 +229,8 @@ function HomeContent() {
             maxValue: "",
             minAppliedDate: "",
             maxAppliedDate: "",
-            minLastUpdateDate: "",
-            maxLastUpdateDate: "",
+            minLastUpdateDate: urlFilters.minLastUpdateDate || "",
+            maxLastUpdateDate: urlFilters.maxLastUpdateDate || "",
         };
     });
 
@@ -265,14 +265,18 @@ function HomeContent() {
         if (!userLoaded) return;
         
         // Check if we have any filters set (from URL)
-        const hasAnyFilters = filters.cities.length > 0 || filters.statuses.length > 0;
+        const hasAnyFilters = 
+            filters.cities.length > 0 || 
+            filters.statuses.length > 0 ||
+            filters.minLastUpdateDate ||
+            filters.maxLastUpdateDate;
         // TODO: Add checks for other filters as they're added
         
         if (hasAnyFilters) {
             fetchPermits(1);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userTimezone, user, session, filters.cities, filters.statuses]);
+    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.minLastUpdateDate, filters.maxLastUpdateDate]);
 
 
 

@@ -20,6 +20,12 @@
      - Add validation for username, email, and password
      - Handle duplicate email/username errors gracefully
 
+### 3. **Investigate updatedDate vs scrapedDate (timezone)**
+   - Investigate the difference between `updatedDate` and `scrapedDate` fields and their timezone handling
+   - Determine which field should be used for "Last Update Date Range" filtering
+   - Ensure consistent timezone handling across both fields
+   - Verify that filtering logic correctly uses the appropriate field
+
 ## 📋 P1 - Important Tasks
 
 ### Classification Improvements
