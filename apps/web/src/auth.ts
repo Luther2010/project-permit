@@ -1,7 +1,9 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
+import bcrypt from "bcrypt";
 
 // Extend next-auth types to include id in session
 declare module "next-auth" {
@@ -21,6 +23,58 @@ export const authOptions: NextAuthOptions = {
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID!,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        }),
+        CredentialsProvider({
+            name: "Credentials",
+            credentials: {
+                email: { label: "Email", type: "email" },
+                password: { label: "Password", type: "password" },
+            },
+            async authorize(credentials) {
+                if (!credentials?.email || !credentials?.password) {
+                    return null;
+                }
+
+                // Find user by email
+                const user = await prisma.user.findUnique({
+                    where: { email: credentials.email },
+                    include: { accounts: true },
+                });
+
+                if (!user) {
+                    return null; // User doesn't exist
+                }
+
+                // Check if user has OAuth accounts (Google sign-in only)
+                if (user.accounts.length > 0 && !user.password) {
+                    // User exists but signed up with OAuth only
+                    // Return null - we'll handle the error message in the UI
+                    // by checking the error response
+                    return null;
+                }
+
+                // Check if user has a password
+                if (!user.password) {
+                    return null; // User exists but no password set
+                }
+
+                // Verify password
+                const isValid = await bcrypt.compare(
+                    credentials.password,
+                    user.password
+                );
+
+                if (!isValid) {
+                    return null; // Wrong password
+                }
+
+                // Return user object (NextAuth will create session)
+                return {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                };
+            },
         }),
     ],
     pages: {
@@ -49,7 +103,21 @@ export const authOptions: NextAuthOptions = {
         },
         async session({ session, token }) {
             if (session.user && token.id) {
-                session.user.id = token.id as string;
+                // Verify user still exists in database
+                try {
+                    const user = await prisma.user.findUnique({
+                        where: { id: token.id as string },
+                        select: { id: true }, // Only select id to minimize query
+                    });
+
+                    if (user) {
+                        session.user.id = token.id as string;
+                    }
+                    // If user doesn't exist, don't set id - session will be treated as invalid
+                } catch (error) {
+                    // If database query fails, don't set id
+                    console.error("Error verifying user in session:", error);
+                }
             }
             return session;
         },

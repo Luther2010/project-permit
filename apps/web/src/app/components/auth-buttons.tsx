@@ -1,8 +1,10 @@
 "use client";
 
-import { signIn, signOut } from "next-auth/react";
+import { useState } from "react";
+import { signOut } from "next-auth/react";
 import { ManageSubscriptionButton } from "./upgrade/manage-subscription-button";
 import { headerNavStyles } from "./header-styles";
+import { AuthModal } from "./auth-modal";
 
 interface AuthButtonsProps {
     isAuthenticated: boolean;
@@ -17,6 +19,9 @@ export function AuthButtons({
     userEmail,
     isPremium,
 }: AuthButtonsProps) {
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+
     if (isAuthenticated) {
         return (
             <>
@@ -39,11 +44,21 @@ export function AuthButtons({
     }
 
     return (
-        <button
-            onClick={() => signIn("google", { callbackUrl: "/" })}
-            className={headerNavStyles}
-        >
-            Sign in
-        </button>
+        <>
+            <button
+                onClick={() => {
+                    setAuthMode("signin");
+                    setShowAuthModal(true);
+                }}
+                className={headerNavStyles}
+            >
+                Sign in
+            </button>
+            <AuthModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                initialMode={authMode}
+            />
+        </>
     );
 }

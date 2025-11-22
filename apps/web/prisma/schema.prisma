@@ -163,6 +163,7 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   name          String?
+  password      String?   // Hashed password for credentials-based auth (null for OAuth users)
   emailVerified DateTime?
   image         String?
   createdAt     DateTime  @default(now())

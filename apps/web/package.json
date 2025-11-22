@@ -20,6 +20,7 @@
     "@aws-sdk/client-ses": "^3.931.0",
     "@graphql-tools/schema": "^10.0.25",
     "@prisma/client": "^6.18.0",
+    "bcrypt": "^6.0.0",
     "graphql": "^16.11.0",
     "graphql-yoga": "^5.16.0",
     "next": "16.0.0",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
