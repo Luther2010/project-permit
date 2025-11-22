@@ -98,7 +98,7 @@ export function AuthForm({ mode, onClose, onSwitchMode }: AuthFormProps) {
                 if (onClose) onClose();
                 window.location.reload();
             }
-        } catch (err) {
+        } catch {
             setError("An unexpected error occurred. Please try again.");
             setLoading(false);
         }
@@ -215,7 +215,7 @@ export function AuthForm({ mode, onClose, onSwitchMode }: AuthFormProps) {
                         </>
                     ) : (
                         <>
-                            Don't have an account?{" "}
+                            Don&apos;t have an account?{" "}
                             <button
                                 type="button"
                                 onClick={onSwitchMode}
