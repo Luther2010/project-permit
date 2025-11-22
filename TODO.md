@@ -14,16 +14,7 @@
      - [ ] Verify 8 AM PT email is sent on production (Vercel cron job)
      - [ ] Verify email can be sent to multiple premium users (not just test account)
 
-### 2. **Username/Email Signup**
-   - **Add credentials-based authentication**: Implement username/email signup alongside Google sign-in
-     - Add Credentials provider to NextAuth configuration
-     - Create signup form component with username and email fields
-     - Implement password hashing (bcrypt) for secure storage
-     - Update auth-buttons component to show signup option
-     - Add validation for username, email, and password
-     - Handle duplicate email/username errors gracefully
-
-### 3. **Investigate empty appliedDateString**
+### 2. **Investigate empty appliedDateString**
    - Investigate why many permits have an empty `appliedDateString` field
    - Determine if this is a scraper issue (data not available on source sites) or extraction issue
    - Check which cities/extractors are most affected
@@ -177,5 +168,14 @@
   - Determined which field should be used for "Last Update Date Range" filtering (Removed from UI, using appliedDateString for date filtering)
   - Ensured consistent timezone handling across both fields (Standardized on appliedDateString for timezone-safe filtering)
   - Verified that filtering logic correctly uses the appropriate field
+- [x] **Username/Email Signup**: Implemented email/password authentication alongside Google sign-in
+  - Added password field to User model (nullable for OAuth users)
+  - Added Credentials provider to NextAuth configuration
+  - Created signup and sign-in form components with validation
+  - Implemented password hashing with bcrypt (12 salt rounds)
+  - Updated auth-buttons to show modal with both Google and email/password options
+  - Added user verification in session callback to invalidate deleted users
+  - Blocks email/password sign-in for OAuth-only users with clear error message
+  - Created auth modal using base Modal component
 
 *Last updated: 2025-01-20*
