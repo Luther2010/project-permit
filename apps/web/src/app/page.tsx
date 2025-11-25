@@ -7,6 +7,7 @@ import { useState, useEffect, Suspense } from "react";
 import * as React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "./components/header";
+import { HeroSection } from "./components/hero-section";
 import { PermitFilters, type FilterState } from "./components/permit-filters";
 import { PermitTable } from "./components/permit-table";
 import { Pagination } from "./components/pagination";
@@ -407,6 +408,7 @@ function HomeContent() {
     return (
         <div className="min-h-screen bg-blue-50">
             <Header />
+            <HeroSection />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="flex gap-6">
                     {/* Left Sidebar - Filters */}
