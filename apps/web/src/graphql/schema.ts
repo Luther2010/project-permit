@@ -138,6 +138,12 @@ export const typeDefs = `
     message: String!
   }
 
+  type CityDataCoverage {
+    city: City!
+    latestPermitDate: String
+    permitCount: Int!
+  }
+
   type Query {
     permits(
       query: String
@@ -164,6 +170,7 @@ export const typeDefs = `
     permitByNumber(permitNumber: String!): Permit
     me: User
     activeFeatures: [FeatureOption!]!
+    cityDataCoverage: [CityDataCoverage!]!
   }
 
   type Mutation {

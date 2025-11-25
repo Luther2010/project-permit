@@ -378,6 +378,29 @@ export const resolvers = {
                 voteCount: feature._count.votes,
             }));
         },
+        cityDataCoverage: async () => {
+            // Get latest permit date and count for each city
+            const cityData = await prisma.permit.groupBy({
+                by: ["city"],
+                where: {
+                    city: { not: null },
+                },
+                _max: {
+                    appliedDateString: true,
+                },
+                _count: {
+                    id: true,
+                },
+            });
+
+            return cityData
+                .filter((item) => item.city !== null)
+                .map((item) => ({
+                    city: item.city,
+                    latestPermitDate: item._max.appliedDateString,
+                    permitCount: item._count.id,
+                }));
+        },
     },
     Mutation: {
         submitContactForm: async (
