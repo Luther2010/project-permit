@@ -10,6 +10,7 @@
  * Usage:
  *   pnpm tsx src/enrich-contractors.ts "Cupertino" --start-date 2025-01-01 --end-date 2025-01-31 --limit 10
  *   pnpm tsx src/enrich-contractors.ts "Palo Alto" --start-date 2025-01-01 --end-date 2025-01-31
+ *   pnpm tsx src/enrich-contractors.ts --start-date 2025-01-01 --end-date 2025-01-31  (enriches all supported cities)
  */
 
 import { getActiveContractorsByCityAndDateRange } from "./lib/get-active-contractors";
@@ -255,21 +256,28 @@ export async function enrichPermitsForCity(
 // Main execution
 async function main() {
     const args = process.argv.slice(2);
-    const cityName = args[0];
-
-    if (!cityName) {
-        console.error("Usage: pnpm tsx src/enrich-contractors.ts <city> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--contractor-start-date <YYYY-MM-DD>] [--contractor-end-date <YYYY-MM-DD>] [--limit <number>]");
-        console.error("Supported cities: Cupertino, Palo Alto");
-        console.error("Example: pnpm tsx src/enrich-contractors.ts \"Cupertino\" --start-date 2025-01-01 --end-date 2025-01-31 --limit 10");
-        console.error("Note: Contractor date range defaults to last 12 months if not specified");
-        process.exit(1);
+    let cityName: string | undefined;
+    
+    // Check if first argument is a city name or a flag
+    if (args[0] && !args[0].startsWith("--")) {
+        cityName = args[0];
+        // Validate city is supported
+        if (!supportsContractorEnrichment(cityName)) {
+            console.error(`Error: City "${cityName}" does not support contractor enrichment.`);
+            console.error(`Supported cities: ${CITIES_WITH_CONTRACTOR_ENRICHMENT.join(", ")}`);
+            process.exit(1);
+        }
     }
+
+    // If no city provided, we'll enrich all supported cities
+    const citiesToEnrich = cityName ? [cityName] : CITIES_WITH_CONTRACTOR_ENRICHMENT;
 
     // Parse permit enrichment start date
     const startDateIndex = args.indexOf("--start-date");
     if (startDateIndex === -1 || !args[startDateIndex + 1]) {
         console.error("Error: --start-date is required");
-        console.error("Usage: pnpm tsx src/enrich-contractors.ts <city> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--contractor-start-date <YYYY-MM-DD>] [--contractor-end-date <YYYY-MM-DD>] [--limit <number>]");
+        console.error("Usage: pnpm tsx src/enrich-contractors.ts [city] --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--contractor-start-date <YYYY-MM-DD>] [--contractor-end-date <YYYY-MM-DD>] [--limit <number>]");
+        console.error("  If no city is provided, all supported cities will be enriched: Cupertino, Palo Alto");
         process.exit(1);
     }
     const startDateStr = args[startDateIndex + 1];
@@ -290,7 +298,8 @@ async function main() {
     const endDateIndex = args.indexOf("--end-date");
     if (endDateIndex === -1 || !args[endDateIndex + 1]) {
         console.error("Error: --end-date is required");
-        console.error("Usage: pnpm tsx src/enrich-contractors.ts <city> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--contractor-start-date <YYYY-MM-DD>] [--contractor-end-date <YYYY-MM-DD>] [--limit <number>]");
+        console.error("Usage: pnpm tsx src/enrich-contractors.ts [city] --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--contractor-start-date <YYYY-MM-DD>] [--contractor-end-date <YYYY-MM-DD>] [--limit <number>]");
+        console.error("  If no city is provided, all supported cities will be enriched: Cupertino, Palo Alto");
         process.exit(1);
     }
     const endDateStr = args[endDateIndex + 1];
@@ -373,14 +382,35 @@ async function main() {
     }
 
     try {
-        await enrichPermitsForCity(
-            cityName,
-            permitStartDate,
-            permitEndDate,
-            contractorStartDate,
-            contractorEndDate,
-            limit
-        );
+        if (citiesToEnrich.length === 0) {
+            console.error("No cities to enrich. Supported cities: Cupertino, Palo Alto");
+            process.exit(1);
+        }
+
+        if (citiesToEnrich.length > 1) {
+            console.log(`[enrich-contractors] Enriching permits for ${citiesToEnrich.length} cities: ${citiesToEnrich.join(", ")}`);
+        }
+
+        for (const city of citiesToEnrich) {
+            try {
+                await enrichPermitsForCity(
+                    city,
+                    permitStartDate,
+                    permitEndDate,
+                    contractorStartDate,
+                    contractorEndDate,
+                    limit
+                );
+            } catch (error) {
+                console.error(`[enrich-contractors] Fatal error enriching ${city}:`, error);
+                // Continue with next city instead of exiting
+                console.log(`[enrich-contractors] Continuing with remaining cities...`);
+            }
+        }
+
+        if (citiesToEnrich.length > 1) {
+            console.log(`[enrich-contractors] Completed enrichment for all ${citiesToEnrich.length} cities`);
+        }
     } catch (error) {
         console.error("Fatal error:", error);
         process.exit(1);
