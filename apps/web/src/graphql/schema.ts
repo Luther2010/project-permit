@@ -144,6 +144,17 @@ export const typeDefs = `
     permitCount: Int!
   }
 
+  type MonthlyPermitCount {
+    month: String! # Format: YYYY-MM
+    count: Int!
+  }
+
+  type CityPermitStats {
+    city: City!
+    monthlyCounts: [MonthlyPermitCount!]!
+    totalCount: Int!
+  }
+
   type Query {
     permits(
       query: String
@@ -171,6 +182,7 @@ export const typeDefs = `
     me: User
     activeFeatures: [FeatureOption!]!
     cityDataCoverage: [CityDataCoverage!]!
+    cityPermitStats(cities: [City!]!): [CityPermitStats!]!
   }
 
   type Mutation {

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { sendEmail } from "@/lib/email/ses-client";
 import { getClientIP, checkRateLimit, sanitizeInput } from "@/lib/rate-limit";
+import { City } from "@prisma/client";
 
 // Helper function to check if user is premium
 async function checkIsPremium(session: {
@@ -400,6 +401,65 @@ export const resolvers = {
                     latestPermitDate: item._max.appliedDateString,
                     permitCount: item._count.id,
                 }));
+        },
+        cityPermitStats: async (_: unknown, args: { cities: string[] }) => {
+            // Calculate date range for last 12 months
+            const now = new Date();
+            const twelveMonthsAgo = new Date(now);
+            twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+            
+            // Format as YYYY-MM-DD
+            const startDate = twelveMonthsAgo.toISOString().split("T")[0];
+            const endDate = now.toISOString().split("T")[0];
+
+            const results = await Promise.all(
+                args.cities.map(async (cityStr) => {
+                    const city = cityStr as City;
+                    
+                    // Get all permits for this city in the last 12 months
+                    const permits = await prisma.permit.findMany({
+                        where: {
+                            city,
+                            appliedDateString: {
+                                gte: startDate,
+                                lte: endDate,
+                            },
+                        },
+                        select: {
+                            appliedDateString: true,
+                        },
+                    });
+
+                    // Group by month (YYYY-MM)
+                    const monthlyMap = new Map<string, number>();
+                    permits.forEach((permit) => {
+                        if (permit.appliedDateString) {
+                            const month = permit.appliedDateString.substring(0, 7); // YYYY-MM
+                            monthlyMap.set(month, (monthlyMap.get(month) || 0) + 1);
+                        }
+                    });
+
+                    // Generate all 12 months with counts (fill in zeros for months with no permits)
+                    const monthlyCounts: Array<{ month: string; count: number }> = [];
+                    for (let i = 11; i >= 0; i--) {
+                        const date = new Date(now);
+                        date.setMonth(date.getMonth() - i);
+                        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+                        monthlyCounts.push({
+                            month,
+                            count: monthlyMap.get(month) || 0,
+                        });
+                    }
+
+                    return {
+                        city,
+                        monthlyCounts,
+                        totalCount: permits.length,
+                    };
+                })
+            );
+
+            return results;
         },
     },
     Mutation: {
