@@ -254,6 +254,7 @@ function HomeContent() {
     });
 
     const [isInitialMount, setIsInitialMount] = useState(true);
+    const [hasAutoSearched, setHasAutoSearched] = useState(false);
 
     // Helper function to update URL with filters and sort
     const updateUrl = React.useCallback((filtersToUse: FilterState, sortToUse: SortState) => {
@@ -290,9 +291,10 @@ function HomeContent() {
         updateUrl(filters, sort);
     }, [sort,sort.field, sort.order, filters, updateUrl, isInitialMount]);
 
-    // Auto-search on mount if URL has filter params or sort params
+    // Auto-search ONLY on initial mount if URL has filter params or sort params
     React.useEffect(() => {
-        if (hasSearched) return; // Already searched, don't run again
+        // Only run once on mount, never again
+        if (hasAutoSearched) return;
         
         // Check if URL has sort parameters (non-default)
         const sortByParam = searchParams.get("sortBy");
@@ -303,7 +305,10 @@ function HomeContent() {
         const hasFilters = hasFiltersInUrl(searchParams);
         
         // If no filters and no sort params, don't auto-search
-        if (!hasFilters && !hasSortInUrl) return;
+        if (!hasFilters && !hasSortInUrl) {
+            setHasAutoSearched(true);
+            return;
+        }
         
         // Wait for userTimezone and user data to load so premium status is correct
         if (!userTimezone) return;
@@ -328,8 +333,11 @@ function HomeContent() {
         if (hasAnyFilters || hasSortInUrl) {
             fetchPermits(1);
         }
+        
+        // Mark as auto-searched so this never runs again
+        setHasAutoSearched(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userTimezone, user, session, filters.cities, filters.statuses, filters.propertyTypes, filters.permitTypes, filters.minAppliedDate, filters.maxAppliedDate, filters.minValue, filters.maxValue, filters.hasContractor, searchParams, sort.field, sort.order]);
+    }, [userTimezone, user, session]);
 
 
 
