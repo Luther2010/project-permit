@@ -38,3 +38,17 @@ export function getCityDisplayName(city: City): string {
     return CITY_DISPLAY_NAMES[city] || city;
 }
 
+/**
+ * Convert City enum to URL-friendly format (e.g., LOS_GATOS -> los-gatos)
+ */
+export function cityToUrlParam(city: City): string {
+    return city.toLowerCase().replace(/_/g, "-");
+}
+
+/**
+ * Get city page URL for a city
+ */
+export function getCityPageUrl(city: City): string {
+    return `/cities/${cityToUrlParam(city)}`;
+}
+

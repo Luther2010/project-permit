@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import * as React from "react";
+import Link from "next/link";
 import type { Permit } from "@/types/permit";
 import { PermitDetailView } from "./permit-detail-view";
-import { getCityDisplayName } from "@/lib/cities";
+import { getCityDisplayName, getCityPageUrl } from "@/lib/cities";
 import type { City } from "@prisma/client";
 import { getPermitBadges } from "@/lib/badges/permit-badges";
 import { PermitBadges } from "./permit-badge";
@@ -106,7 +107,19 @@ function PermitRow({
                     {formatPropertyType(permit.propertyType)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
-                    {permit.city ? getCityDisplayName(permit.city as City) : "-"}
+                    {permit.city ? (
+                        <Link
+                            href={getCityPageUrl(permit.city as City)}
+                            onClick={(e) => e.stopPropagation()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                            {getCityDisplayName(permit.city as City)}
+                        </Link>
+                    ) : (
+                        "-"
+                    )}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
                     {formatCurrency(permit.value)}

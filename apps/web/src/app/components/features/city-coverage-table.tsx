@@ -1,6 +1,7 @@
 "use client";
 
-import { getCityDisplayName } from "@/lib/cities";
+import Link from "next/link";
+import { getCityDisplayName, getCityPageUrl } from "@/lib/cities";
 import { getAllCityCadences } from "@/lib/city-cadence";
 import type { City } from "@prisma/client";
 
@@ -74,7 +75,14 @@ export function CityCoverageTable({ cityDataCoverage, loading = false }: CityCov
                         {cityDataWithCadence.map((city) => (
                             <tr key={city.city} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {getCityDisplayName(city.city)}
+                                    <Link
+                                        href={getCityPageUrl(city.city)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800 hover:underline"
+                                    >
+                                        {getCityDisplayName(city.city)}
+                                    </Link>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
