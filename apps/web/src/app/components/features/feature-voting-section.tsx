@@ -17,7 +17,7 @@ export function FeatureVotingSection({ onOpenModal }: FeatureVotingSectionProps)
 
     return (
         <>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <div id="voting" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 scroll-mt-24">
                 <div className="text-center">
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">Help Us Build the Future</h2>
                     <p className="text-gray-600 mb-6 max-w-2xl mx-auto">

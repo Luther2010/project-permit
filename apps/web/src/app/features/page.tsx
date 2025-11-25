@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Header } from "../components/header";
 import { FeatureCard } from "../components/features/feature-card";
 import { CityCoverageTable } from "../components/features/city-coverage-table";
@@ -9,6 +11,25 @@ import { FEATURES } from "@/lib/features-data";
 
 export default function FeaturesPage() {
     const { cityDataCoverage, loading } = useFeaturesData();
+    const searchParams = useSearchParams();
+    
+    // Scroll to voting section after data loads if hash is present
+    useEffect(() => {
+        // Check if we have a hash in the URL (from the link)
+        const hash = typeof window !== "undefined" ? window.location.hash : "";
+        
+        if (hash === "#voting" && !loading) {
+            // Wait a bit for the DOM to settle after data loads
+            const timer = setTimeout(() => {
+                const element = document.getElementById("voting");
+                if (element) {
+                    element.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+            }, 100);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [loading]);
 
     return (
         <div className="min-h-screen bg-blue-50">

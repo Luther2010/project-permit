@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export function HeroSection() {
     return (
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
@@ -121,7 +123,14 @@ export function HeroSection() {
                                 <div>
                                     <h3 className="font-semibold text-blue-50 mb-1">Your Voice Matters</h3>
                                     <p className="text-blue-100 text-sm">
-                                        Vote on which cities we should add next
+                                        <Link 
+                                            href="/features#voting" 
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline hover:text-blue-50 transition-colors"
+                                        >
+                                            Vote on which cities we should add next
+                                        </Link>
                                     </p>
                                 </div>
                             </div>
