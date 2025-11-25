@@ -177,51 +177,56 @@ export function PermitDetailView({
                         Contractors:
                     </span>
                     <div className="mt-2 space-y-2">
-                        {displayPermit.contractors.map((link, idx) => (
-                            <div
-                                key={link.contractor.id + idx}
-                                className="rounded border border-gray-200 p-3"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="text-sm font-medium text-gray-900">
-                                        {link.contractor.name || "Unknown Contractor"}
+                        {displayPermit.contractors
+                            .filter((link) => link.contractor)
+                            .map((link, idx) => {
+                                const contractor = link.contractor!; // Safe after filter
+                                return (
+                                    <div
+                                        key={contractor.id + idx}
+                                        className="rounded border border-gray-200 p-3"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-sm font-medium text-gray-900">
+                                                {contractor.name || "Unknown Contractor"}
+                                            </div>
+                                            {link.role && (
+                                                <span className="text-xs text-gray-600">{link.role}</span>
+                                            )}
+                                        </div>
+                                        <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-gray-700">
+                                            <div>
+                                                <span className="text-gray-500">License:</span>
+                                                <span className="ml-1">{contractor.licenseNo}</span>
+                                            </div>
+                                            {contractor.phone && (
+                                                <div>
+                                                    <span className="text-gray-500">Phone:</span>
+                                                    <span className="ml-1">{contractor.phone}</span>
+                                                </div>
+                                            )}
+                                            {(contractor.city || contractor.state) && (
+                                                <div>
+                                                    <span className="text-gray-500">Location:</span>
+                                                    <span className="ml-1">
+                                                        {contractor.city || ""} {contractor.state || ""}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {contractor.classifications?.length > 0 && (
+                                                <div className="col-span-2">
+                                                    <span className="text-gray-500">Classifications:</span>
+                                                    <span className="ml-1">
+                                                        {contractor.classifications
+                                                            .map((c) => c.classification)
+                                                            .join(", ")}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    {link.role && (
-                                        <span className="text-xs text-gray-600">{link.role}</span>
-                                    )}
-                                </div>
-                                <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-gray-700">
-                                    <div>
-                                        <span className="text-gray-500">License:</span>
-                                        <span className="ml-1">{link.contractor.licenseNo}</span>
-                                    </div>
-                                    {link.contractor.phone && (
-                                        <div>
-                                            <span className="text-gray-500">Phone:</span>
-                                            <span className="ml-1">{link.contractor.phone}</span>
-                                        </div>
-                                    )}
-                                    {(link.contractor.city || link.contractor.state) && (
-                                        <div>
-                                            <span className="text-gray-500">Location:</span>
-                                            <span className="ml-1">
-                                                {link.contractor.city || ""} {link.contractor.state || ""}
-                                            </span>
-                                        </div>
-                                    )}
-                                    {link.contractor.classifications?.length > 0 && (
-                                        <div className="col-span-2">
-                                            <span className="text-gray-500">Classifications:</span>
-                                            <span className="ml-1">
-                                                {link.contractor.classifications
-                                                    .map((c) => c.classification)
-                                                    .join(", ")}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                                );
+                            })}
                     </div>
                 </div>
             )}

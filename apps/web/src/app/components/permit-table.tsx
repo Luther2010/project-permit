@@ -6,6 +6,8 @@ import type { Permit } from "@/types/permit";
 import { PermitDetailView } from "./permit-detail-view";
 import { getCityDisplayName } from "@/lib/cities";
 import type { City } from "@prisma/client";
+import { getPermitBadges } from "@/lib/badges/permit-badges";
+import { PermitBadges } from "./permit-badge";
 
 interface PermitRowProps {
     permit: Permit;
@@ -89,8 +91,13 @@ function PermitRow({
                 onClick={onToggle}
                 className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
             >
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {permit.permitNumber}
+                <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1.5">
+                        <span className="text-sm font-medium text-gray-900">
+                            {permit.permitNumber}
+                        </span>
+                        <PermitBadges badges={getPermitBadges(permit)} />
+                    </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
                     {formatPermitType(permit.permitType)}

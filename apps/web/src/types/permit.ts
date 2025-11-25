@@ -19,7 +19,7 @@ export interface Contractor {
 
 export interface PermitContractorLink {
     role: string | null;
-    contractor: Contractor;
+    contractor?: Contractor; // Optional because basic query might not include full contractor details
 }
 
 export interface Permit {

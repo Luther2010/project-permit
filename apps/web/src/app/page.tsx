@@ -144,6 +144,11 @@ async function getPermits(
                     value
                     appliedDate
                     appliedDateString
+                    contractors {
+                        contractor {
+                            phone
+                        }
+                    }
                 }
                 totalCount
                 page
