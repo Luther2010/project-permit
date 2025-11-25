@@ -320,6 +320,7 @@ export const resolvers = {
             return {
                 permits,
                 totalCount: effectiveTotalCount,
+                actualTotalCount: totalCount, // Return actual total count before freemium limit
                 page,
                 pageSize: pageSize, // Return original pageSize, not effectiveLimit
                 hasNextPage,

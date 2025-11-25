@@ -88,6 +88,7 @@ export const typeDefs = `
   type PermitConnection {
     permits: [Permit!]!
     totalCount: Int!
+    actualTotalCount: Int! # Actual total count before freemium limit (for display purposes)
     page: Int!
     pageSize: Int!
     hasNextPage: Boolean!

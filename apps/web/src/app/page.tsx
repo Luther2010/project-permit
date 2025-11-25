@@ -23,6 +23,7 @@ const PAGE_SIZE = 10;
 interface PermitConnection {
     permits: Permit[];
     totalCount: number;
+    actualTotalCount: number; // Actual total count before freemium limit
     page: number;
     pageSize: number;
     hasNextPage: boolean;
@@ -151,6 +152,7 @@ async function getPermits(
                     }
                 }
                 totalCount
+                actualTotalCount
                 page
                 pageSize
                 hasNextPage
@@ -165,6 +167,7 @@ async function getPermits(
             data.permits || {
                 permits: [],
                 totalCount: 0,
+                actualTotalCount: 0,
                 page: 1,
                 pageSize: pageSize,
                 hasNextPage: false,
@@ -176,6 +179,7 @@ async function getPermits(
         return {
             permits: [],
             totalCount: 0,
+            actualTotalCount: 0,
             page: 1,
             pageSize: pageSize,
             hasNextPage: false,
@@ -346,6 +350,7 @@ function HomeContent() {
         setPagination({
             permits: [],
             totalCount: result.totalCount,
+            actualTotalCount: result.actualTotalCount,
             page: result.page,
             pageSize: result.pageSize,
             hasNextPage: result.hasNextPage,
@@ -473,8 +478,16 @@ function HomeContent() {
                                                         <p>
                                                             You&apos;re viewing a limited
                                                             set of results (max 3 permits).
-                                                            Upgrade to Premium for unlimited
-                                                            access to all permit data.
+                                                            {pagination.actualTotalCount > 3 && (
+                                                                <> Your search found <strong>{pagination.actualTotalCount}</strong> permit{pagination.actualTotalCount !== 1 ? "s" : ""} total.
+                                                                    {" "}Upgrade to Premium to see all {pagination.actualTotalCount} permit{pagination.actualTotalCount !== 1 ? "s" : ""}.
+                                                                </>
+                                                            )}
+                                                            {pagination.actualTotalCount <= 3 && (
+                                                                <> Upgrade to Premium for unlimited
+                                                                    access to all permit data.
+                                                                </>
+                                                            )}
                                                         </p>
                                                     </div>
                                                     <div className="mt-3">
