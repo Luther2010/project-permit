@@ -185,7 +185,7 @@ export default function CityPage() {
 
                         {/* Time Series Chart */}
                         <div className="mb-8">
-                            <TimeSeriesChart data={data} selectedCities={selectedCities} />
+                            <TimeSeriesChart data={data} />
                         </div>
 
                         {/* City Selector */}

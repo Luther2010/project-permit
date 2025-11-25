@@ -16,7 +16,6 @@ interface CityData {
 
 interface TimeSeriesChartProps {
     data: CityData[];
-    selectedCities: City[];
 }
 
 const COLORS = [
@@ -30,7 +29,7 @@ const COLORS = [
     "#84CC16", // lime
 ];
 
-export function TimeSeriesChart({ data, selectedCities }: TimeSeriesChartProps) {
+export function TimeSeriesChart({ data }: TimeSeriesChartProps) {
     if (data.length === 0) {
         return (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
@@ -72,7 +71,7 @@ export function TimeSeriesChart({ data, selectedCities }: TimeSeriesChartProps) 
     };
 
     // Generate path for a city's data
-    const getPath = (cityData: CityData, color: string) => {
+    const getPath = (cityData: CityData) => {
         const points = cityData.monthlyCounts.map((monthData, index) => {
             const x = getX(index);
             const y = getY(monthData.count);
@@ -158,7 +157,7 @@ export function TimeSeriesChart({ data, selectedCities }: TimeSeriesChartProps) 
                         return (
                             <g key={cityData.city}>
                                 <path
-                                    d={getPath(cityData, color)}
+                                    d={getPath(cityData)}
                                     fill="none"
                                     stroke={color}
                                     strokeWidth={2}
