@@ -4,10 +4,12 @@
  */
 
 import { CityConfig, ScraperType } from "../types";
+import { City } from "@prisma/client";
 
 export const citiesConfig: CityConfig[] = [
     {
         city: "Los Gatos",
+        cityEnum: City.LOS_GATOS,
         state: "CA",
         extractor: "LosGatosExtractor",
         url: "https://aca-prod.accela.com/TLG/Cap/CapHome.aspx?module=Building&TabName=HOME",
@@ -16,6 +18,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Saratoga",
+        cityEnum: City.SARATOGA,
         state: "CA",
         extractor: "SaratogaExtractor",
         url: "https://sara.csqrcloud.com/community-etrakit/Search/permit.aspx",
@@ -24,6 +27,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Santa Clara",
+        cityEnum: City.SANTA_CLARA,
         state: "CA",
         extractor: "SantaClaraExtractor",
         url: "https://aca-prod.accela.com/SANTACLARA/Cap/CapHome.aspx?module=Building&TabName=Building",
@@ -32,6 +36,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Cupertino",
+        cityEnum: City.CUPERTINO,
         state: "CA",
         extractor: "CupertinoExtractor",
         url: "https://aca-prod.accela.com/CUPERTINO/Cap/CapHome.aspx?module=Building&TabName=Home",
@@ -40,6 +45,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Palo Alto",
+        cityEnum: City.PALO_ALTO,
         state: "CA",
         extractor: "PaloAltoExtractor",
         url: "https://aca-prod.accela.com/PALOALTO/Cap/CapHome.aspx?module=Building&TabName=Building",
@@ -48,6 +54,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Los Altos Hills",
+        cityEnum: City.LOS_ALTOS_HILLS,
         state: "CA",
         extractor: "LosAltosHillsExtractor",
         url: "https://trakit.losaltoshills.ca.gov/etrakit/Search/permit.aspx",
@@ -56,6 +63,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Sunnyvale",
+        cityEnum: City.SUNNYVALE,
         state: "CA",
         extractor: "SunnyvaleExtractor",
         url: "https://sunnyvaleca-energovpub.tylerhost.net/apps/SelfService#/search",
@@ -64,6 +72,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "San Jose",
+        cityEnum: City.SAN_JOSE,
         state: "CA",
         extractor: "SanJoseExtractor",
         url: "https://data.sanjoseca.gov/api/3/action/datastore_search",
@@ -72,6 +81,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Campbell",
+        cityEnum: City.CAMPBELL,
         state: "CA",
         extractor: "CampbellExtractor",
         url: "https://www.mgoconnect.org/cp/search",
@@ -80,6 +90,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Mountain View",
+        cityEnum: City.MOUNTAIN_VIEW,
         state: "CA",
         extractor: "MountainViewExtractor",
         url: "https://www.mountainview.gov/our-city/departments/community-development/building-fire-inspection/building-general-information/permit-history/-folder-637",
@@ -88,6 +99,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Gilroy",
+        cityEnum: City.GILROY,
         state: "CA",
         extractor: "GilroyExtractor",
         url: "https://gilroyca-energovweb.tylerhost.net/apps/SelfService#/search",
@@ -96,6 +108,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Milpitas",
+        cityEnum: City.MILPITAS,
         state: "CA",
         extractor: "MilpitasExtractor",
         url: "https://trakit.ci.milpitas.ca.gov/ETRAKIT3/Search/permit.aspx",
@@ -104,6 +117,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Morgan Hill",
+        cityEnum: City.MORGAN_HILL,
         state: "CA",
         extractor: "MorganHillExtractor",
         url: "https://morg-trk.aspgov.com/etrakit/Search/permit.aspx",
@@ -112,6 +126,7 @@ export const citiesConfig: CityConfig[] = [
     },
     {
         city: "Los Altos",
+        cityEnum: City.LOS_ALTOS,
         state: "CA",
         extractor: "LosAltosExtractor",
         url: "https://trakit.losaltosca.gov/etrakit/Search/Permit.aspx",

@@ -8,8 +8,11 @@ export enum ScraperType {
   ID_BASED = "ID_BASED", // Must search by permit ID/number (cannot search by date)
 }
 
+import { City } from "@prisma/client";
+
 export interface CityConfig {
-  city: string;
+  city: string; // Display name (e.g., "Los Gatos")
+  cityEnum: City; // Prisma City enum value
   state: string;
   extractor: string; // Name of the extractor class
   url: string; // Base URL for the permit website

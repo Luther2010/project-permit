@@ -1,8 +1,9 @@
 /**
  * City update cadence configuration
- * Maps cities to their scraper type (update frequency)
+ * Derived from the scraper configuration to avoid duplication
  */
 import { City } from "@prisma/client";
+import { citiesConfig } from "../../../scraper/src/config/cities";
 
 export type ScraperType = "DAILY" | "MONTHLY" | "ID_BASED";
 
@@ -29,25 +30,22 @@ function getCadenceDescription(cadence: ScraperType): string {
 }
 
 /**
- * City to scraper type mapping
- * This should match the scraper configuration
+ * Build city cadence map from scraper config
+ * This ensures we always use the source of truth from the scraper
  */
-const CITY_CADENCE_MAP: Record<City, ScraperType> = {
-    LOS_GATOS: "DAILY",
-    SARATOGA: "ID_BASED",
-    SANTA_CLARA: "DAILY",
-    CUPERTINO: "DAILY",
-    PALO_ALTO: "DAILY",
-    LOS_ALTOS_HILLS: "ID_BASED",
-    SUNNYVALE: "DAILY",
-    SAN_JOSE: "DAILY",
-    CAMPBELL: "DAILY",
-    MOUNTAIN_VIEW: "DAILY",
-    GILROY: "DAILY",
-    MILPITAS: "DAILY",
-    MORGAN_HILL: "MONTHLY",
-    LOS_ALTOS: "ID_BASED",
-};
+function buildCityCadenceMap(): Record<City, ScraperType> {
+    const map: Partial<Record<City, ScraperType>> = {};
+    
+    for (const cityConfig of citiesConfig) {
+        if (!cityConfig.enabled) continue;
+        
+        map[cityConfig.cityEnum] = cityConfig.scraperType as ScraperType;
+    }
+    
+    return map as Record<City, ScraperType>;
+}
+
+const CITY_CADENCE_MAP = buildCityCadenceMap();
 
 /**
  * Get cadence information for all cities
