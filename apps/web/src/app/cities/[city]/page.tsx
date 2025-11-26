@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Header } from "../../components/header";
 import { TimeSeriesChart } from "../../components/cities/time-series-chart";
 import { CitySelector } from "../../components/cities/city-selector";
+import { DataAvailabilityNote } from "../../components/data-availability-note";
 import { graphqlFetch } from "@/lib/graphql-client";
 import { getCityDisplayName, getEnabledCities } from "@/lib/cities";
 import type { City } from "@prisma/client";
@@ -156,23 +157,8 @@ function CityPageContent() {
                     <p className="text-gray-600 mb-3">
                         Permit application trends over the last 12 months
                     </p>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 inline-flex items-center gap-2">
-                        <svg
-                            className="w-5 h-5 text-blue-600 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        <p className="text-sm text-blue-800">
-                            <strong>Note:</strong> Data is available starting from January 2025
-                        </p>
+                    <div className="mb-8">
+                        <DataAvailabilityNote />
                     </div>
                 </div>
 

@@ -68,7 +68,7 @@ export function CityCoverageTable({ cityDataCoverage, loading = false }: CityCov
                                 Latest Permit Date
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Total Permits
+                                Total Permits (Last 12 Months)
                             </th>
                         </tr>
                     </thead>

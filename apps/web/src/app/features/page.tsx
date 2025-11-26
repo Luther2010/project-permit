@@ -5,6 +5,7 @@ import { Header } from "../components/header";
 import { FeatureCard } from "../components/features/feature-card";
 import { CityCoverageTable } from "../components/features/city-coverage-table";
 import { FeatureVotingSection } from "../components/features/feature-voting-section";
+import { DataAvailabilityNote } from "../components/data-availability-note";
 import { useFeaturesData } from "@/lib/hooks/use-features-data";
 import { FEATURES } from "@/lib/features-data";
 
@@ -62,6 +63,11 @@ function FeaturesPageContent() {
                         We cover 14+ cities across the Bay Area with different update frequencies based on 
                         data availability from each city&apos;s permit system.
                     </p>
+                    
+                    <div className="mb-6">
+                        <DataAvailabilityNote />
+                    </div>
+                    
                     <CityCoverageTable cityDataCoverage={cityDataCoverage} loading={loading} />
                 </div>
 
