@@ -137,10 +137,9 @@ export const typeDefs = `
     message: String!
   }
 
-  type CityDataCoverage {
-    city: City!
-    latestPermitDate: String
-    permitCount: Int!
+  enum TimeRange {
+    ALL_TIME
+    LAST_12_MONTHS
   }
 
   type MonthlyPermitCount {
@@ -148,10 +147,11 @@ export const typeDefs = `
     count: Int!
   }
 
-  type CityPermitStats {
+  type CityStats {
     city: City!
-    monthlyCounts: [MonthlyPermitCount!]!
-    totalCount: Int!
+    permitCount: Int!
+    latestPermitDate: String # Only populated when timeRange is ALL_TIME
+    monthlyCounts: [MonthlyPermitCount!] # Only populated when includeMonthlyBreakdown is true
   }
 
   type Query {
@@ -180,8 +180,11 @@ export const typeDefs = `
     permitByNumber(permitNumber: String!): Permit
     me: User
     activeFeatures: [FeatureOption!]!
-    cityDataCoverage: [CityDataCoverage!]!
-    cityPermitStats(cities: [City!]!): [CityPermitStats!]!
+    cityStats(
+      cities: [City!]
+      includeMonthlyBreakdown: Boolean
+      timeRange: TimeRange
+    ): [CityStats!]!
   }
 
   type Mutation {

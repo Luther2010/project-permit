@@ -5,14 +5,15 @@ import { getCityDisplayName, getCityPageUrl } from "@/lib/cities";
 import { getAllCityCadences } from "@/lib/city-cadence";
 import type { City } from "@prisma/client";
 
-interface CityDataCoverage {
+interface CityStats {
     city: City;
     latestPermitDate: string | null;
     permitCount: number;
+    monthlyCounts: Array<{ month: string; count: number }> | null;
 }
 
 interface CityCoverageTableProps {
-    cityDataCoverage: CityDataCoverage[];
+    cityDataCoverage: CityStats[];
     loading?: boolean;
 }
 

@@ -14,10 +14,11 @@ interface MonthlyCount {
     count: number;
 }
 
-interface CityPermitStats {
+interface CityStats {
     city: City;
-    monthlyCounts: MonthlyCount[];
-    totalCount: number;
+    monthlyCounts: MonthlyCount[] | null;
+    permitCount: number;
+    latestPermitDate: string | null;
 }
 
 // Convert URL param to City enum (handle both "los-gatos" and "LOS_GATOS" formats)
@@ -68,7 +69,7 @@ function CityPageContent() {
     };
 
     const [selectedCities, setSelectedCities] = useState<City[]>(getInitialCities);
-    const [data, setData] = useState<CityPermitStats[]>([]);
+    const [data, setData] = useState<CityStats[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -81,23 +82,27 @@ function CityPageContent() {
             try {
                 const result = await graphqlFetch(
                     `
-                    query GetCityPermitStats($cities: [City!]!) {
-                        cityPermitStats(cities: $cities) {
+                    query GetCityStats($cities: [City!]!) {
+                        cityStats(
+                            cities: $cities
+                            includeMonthlyBreakdown: true
+                            timeRange: LAST_12_MONTHS
+                        ) {
                             city
+                            permitCount
                             monthlyCounts {
                                 month
                                 count
                             }
-                            totalCount
                         }
                     }
                     `,
                     { cities: selectedCities }
                 );
 
-                setData(result.cityPermitStats || []);
+                setData(result.cityStats || []);
             } catch (err) {
-                console.error("Error fetching city permit stats:", err);
+                console.error("Error fetching city stats:", err);
                 setError("Failed to load city data. Please try again.");
             } finally {
                 setLoading(false);
@@ -192,7 +197,7 @@ function CityPageContent() {
                                         {getCityDisplayName(cityData.city)}
                                     </h3>
                                     <p className="text-3xl font-bold text-gray-900">
-                                        {cityData.totalCount.toLocaleString()}
+                                        {cityData.permitCount.toLocaleString()}
                                     </p>
                                     <p className="text-sm text-gray-600 mt-1">
                                         Total permits (last 12 months)

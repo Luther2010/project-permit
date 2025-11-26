@@ -10,8 +10,8 @@ interface MonthlyCount {
 
 interface CityData {
     city: City;
-    monthlyCounts: MonthlyCount[];
-    totalCount: number;
+    monthlyCounts: MonthlyCount[] | null;
+    permitCount: number;
 }
 
 interface TimeSeriesChartProps {
@@ -38,12 +38,23 @@ export function TimeSeriesChart({ data }: TimeSeriesChartProps) {
         );
     }
 
+    // Filter out cities without monthly breakdown data
+    const citiesWithData = data.filter((d) => d.monthlyCounts !== null && d.monthlyCounts.length > 0);
+    
+    if (citiesWithData.length === 0) {
+        return (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                <p className="text-gray-500">No monthly data available</p>
+            </div>
+        );
+    }
+
     // Get all unique months from all cities
-    const allMonths = data[0]?.monthlyCounts.map((m) => m.month) || [];
+    const allMonths = citiesWithData[0]?.monthlyCounts?.map((m) => m.month) || [];
     
     // Find max count for scaling
     const maxCount = Math.max(
-        ...data.flatMap((d) => d.monthlyCounts.map((m) => m.count)),
+        ...citiesWithData.flatMap((d) => (d.monthlyCounts || []).map((m) => m.count)),
         1
     );
 
@@ -72,6 +83,7 @@ export function TimeSeriesChart({ data }: TimeSeriesChartProps) {
 
     // Generate path for a city's data
     const getPath = (cityData: CityData) => {
+        if (!cityData.monthlyCounts) return "";
         const points = cityData.monthlyCounts.map((monthData, index) => {
             const x = getX(index);
             const y = getY(monthData.count);
@@ -152,7 +164,7 @@ export function TimeSeriesChart({ data }: TimeSeriesChartProps) {
                     })}
 
                     {/* Plot lines for each city */}
-                    {data.map((cityData, cityIndex) => {
+                    {citiesWithData.map((cityData, cityIndex) => {
                         const color = COLORS[cityIndex % COLORS.length];
                         return (
                             <g key={cityData.city}>
@@ -165,7 +177,7 @@ export function TimeSeriesChart({ data }: TimeSeriesChartProps) {
                                     strokeLinejoin="round"
                                 />
                                 {/* Data points */}
-                                {cityData.monthlyCounts.map((monthData, index) => {
+                                {cityData.monthlyCounts?.map((monthData, index) => {
                                     const x = getX(index);
                                     const y = getY(monthData.count);
                                     return (
@@ -186,7 +198,7 @@ export function TimeSeriesChart({ data }: TimeSeriesChartProps) {
 
             {/* Legend */}
             <div className="mt-6 flex flex-wrap gap-4 justify-center">
-                {data.map((cityData, index) => {
+                {citiesWithData.map((cityData, index) => {
                     const color = COLORS[index % COLORS.length];
                     return (
                         <div key={cityData.city} className="flex items-center gap-2">
@@ -195,7 +207,7 @@ export function TimeSeriesChart({ data }: TimeSeriesChartProps) {
                                 style={{ backgroundColor: color }}
                             />
                             <span className="text-sm text-gray-700">
-                                {getCityDisplayName(cityData.city)} ({cityData.totalCount.toLocaleString()})
+                                {getCityDisplayName(cityData.city)} ({cityData.permitCount.toLocaleString()})
                             </span>
                         </div>
                     );

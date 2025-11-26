@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { graphqlFetch } from "@/lib/graphql-client";
 import type { City } from "@prisma/client";
 
-interface CityDataCoverage {
+interface CityStats {
     city: City;
     latestPermitDate: string | null;
     permitCount: number;
+    monthlyCounts: Array<{ month: string; count: number }> | null;
 }
 
 interface FeatureOption {
@@ -16,7 +17,7 @@ interface FeatureOption {
 }
 
 interface UseFeaturesDataReturn {
-    cityDataCoverage: CityDataCoverage[];
+    cityDataCoverage: CityStats[];
     features: FeatureOption[];
     loading: boolean;
     error: Error | null;
@@ -26,7 +27,7 @@ interface UseFeaturesDataReturn {
  * Custom hook to fetch features page data
  */
 export function useFeaturesData(): UseFeaturesDataReturn {
-    const [cityDataCoverage, setCityDataCoverage] = useState<CityDataCoverage[]>([]);
+    const [cityDataCoverage, setCityDataCoverage] = useState<CityStats[]>([]);
     const [features, setFeatures] = useState<FeatureOption[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -38,8 +39,11 @@ export function useFeaturesData(): UseFeaturesDataReturn {
             try {
                 const [coverageData, featuresData] = await Promise.all([
                     graphqlFetch(`
-                        query GetCityDataCoverage {
-                            cityDataCoverage {
+                        query GetCityStats {
+                            cityStats(
+                                includeMonthlyBreakdown: false
+                                timeRange: LAST_12_MONTHS
+                            ) {
                                 city
                                 latestPermitDate
                                 permitCount
@@ -58,7 +62,7 @@ export function useFeaturesData(): UseFeaturesDataReturn {
                     `),
                 ]);
 
-                setCityDataCoverage(coverageData.cityDataCoverage || []);
+                setCityDataCoverage(coverageData.cityStats || []);
                 setFeatures(featuresData.activeFeatures || []);
             } catch (err) {
                 const error = err instanceof Error ? err : new Error("Failed to fetch features data");

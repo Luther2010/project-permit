@@ -373,92 +373,146 @@ export const resolvers = {
                 status: feature.status,
             }));
         },
-        cityDataCoverage: async () => {
-            // Get latest permit date and count for each city
-            const cityData = await prisma.permit.groupBy({
-                by: ["city"],
-                where: {
-                    city: { not: null },
-                },
-                _max: {
-                    appliedDateString: true,
-                },
-                _count: {
-                    id: true,
-                },
-            });
+        cityStats: async (
+            _: unknown,
+            args: {
+                cities?: string[] | null;
+                includeMonthlyBreakdown?: boolean | null;
+                timeRange?: "ALL_TIME" | "LAST_12_MONTHS" | null;
+            }
+        ) => {
+            const {
+                cities = null,
+                includeMonthlyBreakdown = false,
+                timeRange = "LAST_12_MONTHS",
+            } = args;
 
-            return cityData
-                .filter((item) => item.city !== null)
-                .map((item) => ({
-                    city: item.city,
-                    latestPermitDate: item._max.appliedDateString,
-                    permitCount: item._count.id,
-                }));
-        },
-        cityPermitStats: async (_: unknown, args: { cities: string[] }) => {
-            // Calculate date range for last 12 months
-            // Note: This uses the same filtering logic as the permits query:
-            // - Uses appliedDateString (YYYY-MM-DD format) for timezone-safe filtering
-            // - Uses gte/lte for inclusive date ranges
-            // - Monthly counts are grouped by YYYY-MM prefix of appliedDateString
-            // This ensures consistency: if a user filters by 10/01/2025 - 10/31/2025,
-            // the count will match the October 2025 count shown in the monthly breakdown
-            const now = new Date();
-            const twelveMonthsAgo = new Date(now);
-            twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-            
-            // Format as YYYY-MM-DD (same format used in permits query filtering)
-            const startDate = twelveMonthsAgo.toISOString().split("T")[0];
-            const endDate = now.toISOString().split("T")[0];
+            const isAllTime = timeRange === "ALL_TIME";
+            const needsMonthlyBreakdown = includeMonthlyBreakdown === true;
+
+            // Determine which cities to query
+            let citiesToQuery: City[];
+            if (cities && cities.length > 0) {
+                citiesToQuery = cities as City[];
+            } else {
+                // If no cities specified, get all cities from the database
+                const allCitiesData = await prisma.permit.groupBy({
+                    by: ["city"],
+                    where: {
+                        city: { not: null },
+                    },
+                });
+                citiesToQuery = allCitiesData
+                    .map((item) => item.city)
+                    .filter((city): city is City => city !== null);
+            }
+
+            // Calculate date range if needed
+            let startDate: string | undefined;
+            let endDate: string | undefined;
+            if (!isAllTime) {
+                const now = new Date();
+                const twelveMonthsAgo = new Date(now);
+                twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+                startDate = twelveMonthsAgo.toISOString().split("T")[0];
+                endDate = now.toISOString().split("T")[0];
+            }
 
             const results = await Promise.all(
-                args.cities.map(async (cityStr) => {
-                    const city = cityStr as City;
-                    
-                    // Get all permits for this city in the last 12 months
-                    // Uses appliedDateString with gte/lte - same logic as permits query filter
-                    const permits = await prisma.permit.findMany({
-                        where: {
-                            city,
-                            appliedDateString: {
-                                gte: startDate,
-                                lte: endDate,
-                            },
-                        },
-                        select: {
-                            appliedDateString: true,
-                        },
-                    });
+                citiesToQuery.map(async (city) => {
+                    // Build where clause
+                    const where: {
+                        city: City;
+                        appliedDateString?: {
+                            gte?: string;
+                            lte?: string;
+                        };
+                    } = {
+                        city,
+                    };
 
-                    // Group by month (YYYY-MM) - extracts first 7 characters from appliedDateString
-                    // This ensures permits with appliedDateString like "2025-10-15" are counted in "2025-10"
-                    // which matches how the permits query filters by date range
-                    const monthlyMap = new Map<string, number>();
-                    permits.forEach((permit) => {
-                        if (permit.appliedDateString) {
-                            const month = permit.appliedDateString.substring(0, 7); // YYYY-MM
-                            monthlyMap.set(month, (monthlyMap.get(month) || 0) + 1);
-                        }
-                    });
-
-                    // Generate all 12 months with counts (fill in zeros for months with no permits)
-                    const monthlyCounts: Array<{ month: string; count: number }> = [];
-                    for (let i = 11; i >= 0; i--) {
-                        const date = new Date(now);
-                        date.setMonth(date.getMonth() - i);
-                        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-                        monthlyCounts.push({
-                            month,
-                            count: monthlyMap.get(month) || 0,
-                        });
+                    if (!isAllTime && startDate && endDate) {
+                        where.appliedDateString = {
+                            gte: startDate,
+                            lte: endDate,
+                        };
                     }
 
-                    return {
-                        city,
-                        monthlyCounts,
-                        totalCount: permits.length,
-                    };
+                    if (isAllTime && !needsMonthlyBreakdown) {
+                        // Optimized path: use groupBy for all-time stats without monthly breakdown
+                        const cityData = await prisma.permit.groupBy({
+                            by: ["city"],
+                            where,
+                            _max: {
+                                appliedDateString: true,
+                            },
+                            _count: {
+                                id: true,
+                            },
+                        });
+
+                        const data = cityData[0];
+                        return {
+                            city,
+                            permitCount: data?._count.id || 0,
+                            latestPermitDate: data?._max.appliedDateString || null,
+                            monthlyCounts: null,
+                        };
+                    } else {
+                        // Need to fetch permits for monthly breakdown or date filtering
+                        const permits = await prisma.permit.findMany({
+                            where,
+                            select: {
+                                appliedDateString: true,
+                            },
+                        });
+
+                        let monthlyCounts: Array<{ month: string; count: number }> | null = null;
+                        if (needsMonthlyBreakdown) {
+                            // Group by month (YYYY-MM) - extracts first 7 characters from appliedDateString
+                            // This ensures permits with appliedDateString like "2025-10-15" are counted in "2025-10"
+                            // which matches how the permits query filters by date range
+                            const monthlyMap = new Map<string, number>();
+                            permits.forEach((permit) => {
+                                if (permit.appliedDateString) {
+                                    const month = permit.appliedDateString.substring(0, 7); // YYYY-MM
+                                    monthlyMap.set(month, (monthlyMap.get(month) || 0) + 1);
+                                }
+                            });
+
+                            // Generate all 12 months with counts (fill in zeros for months with no permits)
+                            const now = new Date();
+                            monthlyCounts = [];
+                            const monthsToGenerate = isAllTime ? 12 : 12; // For now, always generate 12 months
+                            for (let i = monthsToGenerate - 1; i >= 0; i--) {
+                                const date = new Date(now);
+                                date.setMonth(date.getMonth() - i);
+                                const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+                                monthlyCounts.push({
+                                    month,
+                                    count: monthlyMap.get(month) || 0,
+                                });
+                            }
+                        }
+
+                        // Get latest permit date for all-time queries
+                        let latestPermitDate: string | null = null;
+                        if (isAllTime) {
+                            const latestPermit = await prisma.permit.findFirst({
+                                where: { city },
+                                orderBy: { appliedDateString: "desc" },
+                                select: { appliedDateString: true },
+                            });
+                            latestPermitDate = latestPermit?.appliedDateString || null;
+                        }
+
+                        return {
+                            city,
+                            permitCount: permits.length,
+                            latestPermitDate,
+                            monthlyCounts,
+                        };
+                    }
                 })
             );
 
