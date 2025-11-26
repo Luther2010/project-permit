@@ -1291,73 +1291,104 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 break;
             }
 
-            // Check if there's a next page
-            // Try multiple pagination patterns: Energov-specific (#link-NextPage) and generic AngularJS patterns
-            const hasNextPage = await page.evaluate(() => {
-                // Try Energov-specific pagination (Sunnyvale, Gilroy, etc.)
+            // Check if there's a next page by looking for the next page number button
+            const paginationInfo = await page.evaluate((currentPageNum) => {
+                // Find the next page number button (e.g., link-Page2, link-Page3, etc.)
+                const nextPageId = `link-Page${currentPageNum + 1}`;
+                const nextPageBtn = (globalThis as any).document.getElementById(nextPageId);
+                
+                if (nextPageBtn) {
+                    // Check if the parent <li> has 'disabled' class
+                    const parentLi = nextPageBtn.closest('li');
+                    const isDisabled = parentLi && parentLi.classList.contains('disabled');
+                    return {
+                        hasNextPage: !isDisabled,
+                        nextPageId,
+                        nextPageBtn: nextPageBtn ? true : false,
+                    };
+                }
+                
+                // Fallback: check if Next button is enabled (for cases where page numbers aren't shown)
                 const nextBtnEnergov = (globalThis as any).document.getElementById('link-NextPage');
                 if (nextBtnEnergov) {
-                    // Check if the parent <li> has 'disabled' class
                     const parentLi = nextBtnEnergov.closest('li');
-                    return parentLi && !parentLi.classList.contains('disabled');
+                    const isDisabled = parentLi && parentLi.classList.contains('disabled');
+                    return {
+                        hasNextPage: !isDisabled,
+                        nextPageId: 'link-NextPage',
+                        nextPageBtn: true,
+                    };
                 }
                 
-                // Fallback to AngularJS patterns
-                const nextBtn = (globalThis as any).document.querySelector('button[ng-click*="next"], a[ng-click*="next"]');
-                if (nextBtn) {
-                    return !(nextBtn as any).disabled && !(nextBtn as any).classList.contains('disabled');
-                }
-                
-                return false;
-            });
+                return {
+                    hasNextPage: false,
+                    nextPageId: null,
+                    nextPageBtn: false,
+                };
+            }, pageNum);
 
-            if (!hasNextPage) {
+            if (!paginationInfo.hasNextPage) {
                 console.log(`[${extractorName}] No more pages available`);
                 break;
             }
 
-            // Navigate to next page
+            // Navigate to next page by clicking the specific page number button
             console.log(`[${extractorName}] Navigating to page ${pageNum + 1}...`);
-            const clicked = await page.evaluate(() => {
-                // Try Energov-specific pagination first
-                const nextBtnEnergov = (globalThis as any).document.getElementById('link-NextPage');
-                if (nextBtnEnergov) {
-                    const parentLi = nextBtnEnergov.closest('li');
+            const clicked = await page.evaluate((nextPageId) => {
+                if (!nextPageId) return false;
+                
+                // Try clicking the specific page number button first
+                const pageBtn = (globalThis as any).document.getElementById(nextPageId);
+                if (pageBtn) {
+                    const parentLi = pageBtn.closest('li');
                     if (parentLi && !parentLi.classList.contains('disabled')) {
                         const angular = (globalThis as any).window.angular;
                         if (angular) {
-                            const element = angular.element(nextBtnEnergov);
+                            const element = angular.element(pageBtn);
                             const scope = element.scope();
-                            if (scope && scope.vm && scope.vm.nextPage) {
-                                scope.$apply(() => {
-                                    scope.vm.nextPage();
-                                });
+                            if (scope && scope.vm) {
+                                // Try to call a method to go to the specific page
+                                const pageNum = parseInt(nextPageId.replace('link-Page', ''), 10);
+                                if (scope.vm.goToPage && typeof scope.vm.goToPage === 'function') {
+                                    scope.$apply(() => {
+                                        scope.vm.goToPage(pageNum);
+                                    });
+                                } else if (scope.vm.setPage && typeof scope.vm.setPage === 'function') {
+                                    scope.$apply(() => {
+                                        scope.vm.setPage(pageNum);
+                                    });
+                                }
                             }
                         }
-                        nextBtnEnergov.click();
+                        pageBtn.click();
                         return true;
                     }
                 }
                 
-                // Fallback to generic AngularJS patterns
-                const nextBtn = (globalThis as any).document.querySelector('button[ng-click*="next"], a[ng-click*="next"]');
-                if (nextBtn) {
-                    const angular = (globalThis as any).window.angular;
-                    if (angular) {
-                        const element = angular.element(nextBtn);
-                        const scope = element.scope();
-                        if (scope && scope.vm && scope.vm.nextPage) {
-                            scope.$apply(() => {
-                                scope.vm.nextPage();
-                            });
+                // Fallback: use Next button if page number button doesn't work
+                if (nextPageId === 'link-NextPage') {
+                    const nextBtnEnergov = (globalThis as any).document.getElementById('link-NextPage');
+                    if (nextBtnEnergov) {
+                        const parentLi = nextBtnEnergov.closest('li');
+                        if (parentLi && !parentLi.classList.contains('disabled')) {
+                            const angular = (globalThis as any).window.angular;
+                            if (angular) {
+                                const element = angular.element(nextBtnEnergov);
+                                const scope = element.scope();
+                                if (scope && scope.vm && scope.vm.nextPage) {
+                                    scope.$apply(() => {
+                                        scope.vm.nextPage();
+                                    });
+                                }
+                            }
+                            nextBtnEnergov.click();
+                            return true;
                         }
                     }
-                    nextBtn.click();
-                    return true;
                 }
                 
                 return false;
-            });
+            }, paginationInfo.nextPageId);
             
             if (!clicked) {
                 console.warn(`[${extractorName}] Could not find or click next page button`);
