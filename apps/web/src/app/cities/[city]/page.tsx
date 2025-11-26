@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Header } from "../../components/header";
 import { TimeSeriesChart } from "../../components/cities/time-series-chart";
@@ -47,7 +47,7 @@ function buildCitiesQuery(cities: City[]): string {
     return cities.map(cityToUrlParam).join(",");
 }
 
-export default function CityPage() {
+function CityPageContent() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -215,6 +215,23 @@ export default function CityPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function CityPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-blue-50">
+                <Header />
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div className="text-center py-12">
+                        <p className="text-gray-500">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        }>
+            <CityPageContent />
+        </Suspense>
     );
 }
 

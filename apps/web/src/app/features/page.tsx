@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, Suspense } from "react";
 import { Header } from "../components/header";
 import { FeatureCard } from "../components/features/feature-card";
 import { CityCoverageTable } from "../components/features/city-coverage-table";
@@ -9,9 +8,8 @@ import { FeatureVotingSection } from "../components/features/feature-voting-sect
 import { useFeaturesData } from "@/lib/hooks/use-features-data";
 import { FEATURES } from "@/lib/features-data";
 
-export default function FeaturesPage() {
+function FeaturesPageContent() {
     const { cityDataCoverage, loading } = useFeaturesData();
-    const searchParams = useSearchParams();
     
     // Scroll to voting section after data loads if hash is present
     useEffect(() => {
@@ -71,6 +69,23 @@ export default function FeaturesPage() {
                 <FeatureVotingSection />
             </div>
         </div>
+    );
+}
+
+export default function FeaturesPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-blue-50">
+                <Header />
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div className="text-center py-12">
+                        <p className="text-gray-500">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        }>
+            <FeaturesPageContent />
+        </Suspense>
     );
 }
 
