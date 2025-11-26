@@ -361,11 +361,6 @@ export const resolvers = {
         activeFeatures: async () => {
             const features = await prisma.featureOption.findMany({
                 where: { status: "ACTIVE" },
-                include: {
-                    _count: {
-                        select: { votes: true },
-                    },
-                },
                 orderBy: {
                     createdAt: "asc",
                 },
@@ -376,7 +371,6 @@ export const resolvers = {
                 title: feature.title,
                 description: feature.description,
                 status: feature.status,
-                voteCount: feature._count.votes,
             }));
         },
         cityDataCoverage: async () => {

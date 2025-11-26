@@ -130,7 +130,6 @@ export const typeDefs = `
     title: String!
     description: String
     status: FeatureStatus!
-    voteCount: Int!
   }
 
   type FeatureVoteResponse {

@@ -13,7 +13,6 @@ interface FeatureOption {
     title: string;
     description: string | null;
     status: string;
-    voteCount: number;
 }
 
 interface UseFeaturesDataReturn {
@@ -54,7 +53,6 @@ export function useFeaturesData(): UseFeaturesDataReturn {
                                 title
                                 description
                                 status
-                                voteCount
                             }
                         }
                     `),

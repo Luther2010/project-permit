@@ -16,7 +16,6 @@ interface FeatureOption {
     title: string;
     description: string | null;
     status: string;
-    voteCount: number;
 }
 
 export function FeaturesVotingModal({ isOpen, onClose }: FeaturesVotingModalProps) {
@@ -54,7 +53,6 @@ export function FeaturesVotingModal({ isOpen, onClose }: FeaturesVotingModalProp
                         title
                         description
                         status
-                        voteCount
                     }
                 }
                 `
@@ -285,13 +283,8 @@ export function FeaturesVotingModal({ isOpen, onClose }: FeaturesVotingModalProp
                                                         className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                     />
                                                     <div className="flex-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="text-sm font-medium text-gray-900">
-                                                                {feature.title}
-                                                            </div>
-                                                            <div className="text-xs text-gray-500 ml-2">
-                                                                {feature.voteCount} vote{feature.voteCount !== 1 ? "s" : ""}
-                                                            </div>
+                                                        <div className="text-sm font-medium text-gray-900">
+                                                            {feature.title}
                                                         </div>
                                                         {feature.description && (
                                                             <div className="text-xs text-gray-500 mt-1">
