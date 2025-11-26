@@ -495,16 +495,29 @@ export const resolvers = {
                             }
                         }
 
-                        // Get latest permit date for all-time queries
+                        // Get latest permit date
                         let latestPermitDate: string | null = null;
-                        if (isAllTime) {
-                            const latestPermit = await prisma.permit.findFirst({
-                                where: { city },
-                                orderBy: { appliedDateString: "desc" },
-                                select: { appliedDateString: true },
-                            });
-                            latestPermitDate = latestPermit?.appliedDateString || null;
+                        const latestPermitWhere: {
+                            city: City;
+                            appliedDateString?: {
+                                gte?: string;
+                                lte?: string;
+                            };
+                        } = { city };
+                        
+                        if (!isAllTime && startDate && endDate) {
+                            latestPermitWhere.appliedDateString = {
+                                gte: startDate,
+                                lte: endDate,
+                            };
                         }
+                        
+                        const latestPermit = await prisma.permit.findFirst({
+                            where: latestPermitWhere,
+                            orderBy: { appliedDateString: "desc" },
+                            select: { appliedDateString: true },
+                        });
+                        latestPermitDate = latestPermit?.appliedDateString || null;
 
                         return {
                             city,
