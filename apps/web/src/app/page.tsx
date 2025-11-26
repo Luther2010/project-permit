@@ -255,6 +255,41 @@ function HomeContent() {
 
     const [isInitialMount, setIsInitialMount] = useState(true);
     const [hasAutoSearched, setHasAutoSearched] = useState(false);
+    const previousSearchParamsRef = React.useRef<string>(searchParams.toString());
+
+    // Reset everything when navigating to root with no params (e.g., clicking logo)
+    React.useEffect(() => {
+        const currentParams = searchParams.toString();
+        const previousParams = previousSearchParamsRef.current;
+        
+        // If we navigated from a page with params to root with no params, reset everything
+        // This handles the case when user clicks the logo
+        if (previousParams.length > 0 && currentParams.length === 0) {
+            // Reset filters
+            setFilters({
+                propertyTypes: [],
+                permitTypes: [],
+                statuses: [],
+                cities: [],
+                hasContractor: null,
+                minValue: "",
+                maxValue: "",
+                minAppliedDate: "",
+                maxAppliedDate: "",
+            });
+            // Reset sort
+            setSort({
+                field: "APPLIED_DATE",
+                order: "DESC",
+            });
+            // Clear table
+            setPermits([]);
+            setHasSearched(false);
+            setPagination(null);
+        }
+        
+        previousSearchParamsRef.current = currentParams;
+    }, [searchParams]);
 
     // Helper function to update URL with filters and sort
     const updateUrl = React.useCallback((filtersToUse: FilterState, sortToUse: SortState) => {
