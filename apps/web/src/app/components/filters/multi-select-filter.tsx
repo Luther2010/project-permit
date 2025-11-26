@@ -27,12 +27,40 @@ export function MultiSelectFilter<T extends string | number>({
         onChange(newSelection);
     };
 
+    const allSelected = options.length > 0 && selectedValues.length === options.length;
+    const someSelected = selectedValues.length > 0 && selectedValues.length < options.length;
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            onChange(options.map((opt) => opt.value));
+        } else {
+            onChange([]);
+        }
+    };
+
     return (
         <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
                 {label}
             </label>
             <div className="border border-gray-300 rounded-md p-3 max-h-48 overflow-y-auto bg-white">
+                {/* Select All option */}
+                <label
+                    className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-gray-50 rounded px-2 border-b border-gray-200 mb-1 pb-2"
+                >
+                    <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={(input) => {
+                            if (input) input.indeterminate = someSelected;
+                        }}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900">
+                        Select All
+                    </span>
+                </label>
                 {options.map((option) => (
                     <label
                         key={String(option.value)}
