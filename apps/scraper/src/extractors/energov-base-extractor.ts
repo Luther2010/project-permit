@@ -82,6 +82,10 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             console.log(`[${extractorName}] Performing search...`);
             await this.performSearch(this.page);
 
+            // Set page size to 100 to get all permits on one page (avoids pagination issues)
+            console.log(`[${extractorName}] Setting page size to 100...`);
+            await this.setPageSize(this.page, 100);
+
             // Parse permits from all pages
             console.log(`[${extractorName}] Extracting permits from search results...`);
             const permits = await this.navigatePages(this.page, limit);
@@ -219,6 +223,173 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
         } catch (e) {
             // If AngularJS detection fails, just wait a bit for page to stabilize
             await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+    }
+
+    /**
+     * Set the page size for search results
+     * Changes the pageSizeList dropdown to the specified value (e.g., 100)
+     */
+    protected async setPageSize(page: Page, pageSize: number): Promise<void> {
+        const extractorName = this.getName();
+        
+        try {
+            // Wait for the page size dropdown to be available
+            await page.waitForSelector('#pageSizeList', { timeout: 10000 });
+            
+            // Use Puppeteer's select method which properly triggers change events
+            try {
+                await page.select('#pageSizeList', String(pageSize));
+                console.log(`[${extractorName}] Selected page size ${pageSize} using Puppeteer select`);
+            } catch (error: any) {
+                console.warn(`[${extractorName}] Puppeteer select failed: ${error.message}, trying AngularJS approach...`);
+                
+                // Fallback: Manual approach with AngularJS
+                const changed = await page.evaluate((size) => {
+                    const select = (globalThis as any).document.getElementById('pageSizeList') as any;
+                    if (!select) {
+                        return { success: false, reason: 'Dropdown not found' };
+                    }
+                    
+                    // Check if AngularJS is available
+                    const angular = (globalThis as any).window.angular;
+                    if (angular) {
+                        try {
+                            const element = angular.element(select);
+                            const scope = element.scope();
+                            if (scope) {
+                                // Use AngularJS to change the value
+                                scope.$apply(() => {
+                                    // Update the model value if it exists
+                                    if (scope.vm && scope.vm.pageSize !== undefined) {
+                                        scope.vm.pageSize = parseInt(String(size), 10);
+                                    }
+                                    // Also try to find and call a page size change method
+                                    if (scope.vm && typeof scope.vm.changePageSize === 'function') {
+                                        scope.vm.changePageSize(parseInt(String(size), 10));
+                                    } else if (scope.vm && typeof scope.vm.setPageSize === 'function') {
+                                        scope.vm.setPageSize(parseInt(String(size), 10));
+                                    }
+                                    // Set the select value
+                                    select.value = String(size);
+                                });
+                                return { success: true };
+                            }
+                        } catch (e) {
+                            console.error('AngularJS approach failed:', e);
+                        }
+                    }
+                    
+                    // Direct DOM manipulation fallback
+                    select.value = String(size);
+                    const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+                    select.dispatchEvent(changeEvent);
+                    
+                    return { success: true };
+                }, pageSize);
+                
+                if (!changed || !changed.success) {
+                    console.warn(`[${extractorName}] Could not change page size: ${changed?.reason || 'Unknown error'}`);
+                    return;
+                }
+            }
+            
+            // Wait for AngularJS to process the change and reload results
+            await this.waitForAngular(page);
+            
+            // Get initial count before change to compare later
+            const initialStatus = await page.evaluate(() => {
+                const countSpan = (globalThis as any).document.getElementById('startAndEndCount') as any;
+                const permitDivs = (globalThis as any).document.querySelectorAll('div[name="label-SearchResult"][ng-repeat*="record"], div[ng-repeat*="getEntityRecords"]');
+                return {
+                    countText: countSpan ? countSpan.textContent?.trim() : null,
+                    permitCount: permitDivs.length,
+                };
+            });
+            
+            // Wait for results to reload - check that count text changed to show all results
+            let retries = 0;
+            const maxRetries = 10;
+            let resultsUpdated = false;
+            
+            while (retries < maxRetries && !resultsUpdated) {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                await this.waitForAngular(page);
+                
+                const status = await page.evaluate((initialCountText, initialPermitCount) => {
+                    const countSpan = (globalThis as any).document.getElementById('startAndEndCount') as any;
+                    const permitDivs = (globalThis as any).document.querySelectorAll('div[name="label-SearchResult"][ng-repeat*="record"], div[ng-repeat*="getEntityRecords"]');
+                    
+                    const countText = countSpan ? countSpan.textContent?.trim() : null;
+                    const currentPermitCount = permitDivs.length;
+                    
+                    // Check if results reloaded - count text changed or more permits visible
+                    const countChanged = countText !== initialCountText;
+                    const morePermitsVisible = currentPermitCount > initialPermitCount;
+                    
+                    // Parse the count text to see if it shows all results (e.g., "1 - 17 of 17" means all are shown)
+                    let showsAllResults = false;
+                    if (countText) {
+                        // Match pattern like "1 - 17 of 17" or "1 - 100 of 610"
+                        const match = countText.match(/(\d+)\s*-\s*(\d+)\s+of\s+(\d+)/);
+                        if (match) {
+                            const start = parseInt(match[1], 10);
+                            const end = parseInt(match[2], 10);
+                            const total = parseInt(match[3], 10);
+                            // If end equals total, all results are shown
+                            showsAllResults = (end === total && start === 1);
+                        }
+                    }
+                    
+                    return {
+                        countText,
+                        currentPermitCount,
+                        countChanged,
+                        morePermitsVisible,
+                        showsAllResults,
+                    };
+                }, initialStatus.countText, initialStatus.permitCount);
+                
+                // Results are updated if count text changed or we're showing all results
+                if (status.countChanged || status.showsAllResults || status.morePermitsVisible) {
+                    resultsUpdated = true;
+                    console.log(`[${extractorName}] ✅ Results updated: ${status.countText} (${status.currentPermitCount} permits visible)`);
+                } else {
+                    retries++;
+                    console.log(`[${extractorName}] ⏳ Waiting for results to reload (attempt ${retries}/${maxRetries})... Count: ${status.countText}, Visible: ${status.currentPermitCount}`);
+                }
+            }
+            
+            // Take screenshot after page size change to verify it worked
+            const screenshotPath: string = `/tmp/${extractorName.toLowerCase()}-after-page-size-change.png`;
+            try {
+                await page.screenshot({ path: screenshotPath as any, fullPage: true });
+                console.log(`[${extractorName}] 📸 Screenshot after page size change saved to ${screenshotPath}`);
+            } catch (e) {
+                // Don't fail if screenshot fails
+            }
+            
+            // Final verification
+            const finalStatus = await page.evaluate((size) => {
+                const select = (globalThis as any).document.getElementById('pageSizeList') as any;
+                const countSpan = (globalThis as any).document.getElementById('startAndEndCount') as any;
+                const permitDivs = (globalThis as any).document.querySelectorAll('div[name="label-SearchResult"][ng-repeat*="record"], div[ng-repeat*="getEntityRecords"]');
+                
+                return {
+                    selectedValue: select ? select.value : null,
+                    countText: countSpan ? countSpan.textContent?.trim() : null,
+                    visiblePermits: permitDivs.length,
+                };
+            }, pageSize);
+            
+            console.log(`[${extractorName}] ✅ Page size change complete - Selected: ${finalStatus.selectedValue}, Count: ${finalStatus.countText}, Visible permits: ${finalStatus.visiblePermits}`);
+            
+            if (finalStatus.selectedValue !== String(pageSize)) {
+                console.warn(`[${extractorName}] ⚠️  Page size may not have changed correctly. Expected: ${pageSize}, Got: ${finalStatus.selectedValue}`);
+            }
+        } catch (error: any) {
+            console.warn(`[${extractorName}] ⚠️  Failed to set page size to ${pageSize}: ${error.message}`);
+            // Don't throw - continue with default page size if this fails
         }
     }
 
@@ -867,23 +1038,28 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
         for (let i = 0; i < permitDivs.length; i++) {
             if (limit && permits.length >= limit) break;
             
-            if ((i + 1) % 10 === 0 || i === permitDivs.length - 1) {
-                console.log(`[${extractorName}] Processing permit ${i + 1}/${totalPermits}...`);
-            }
-
+            const permitStartTime = Date.now();
             const permitDiv = permitDivs[i];
 
             try {
                 // Extract permit number
+                const permitNumberStartTime = Date.now();
                 const permitNumberEl = await permitDiv.$('div[name="label-CaseNumber"] a, div[id*="entityRecord"] a[href*="permit"]');
                 const permitNumber = permitNumberEl
                     ? await this.page.evaluate((el) => el.textContent?.trim() || "", permitNumberEl)
                     : undefined;
+                const permitNumberTime = Date.now() - permitNumberStartTime;
 
                 if (!permitNumber) {
+                    console.log(`[${extractorName}] ⚠️  Permit ${i + 1}/${totalPermits}: No permit number found (${permitNumberTime}ms)`);
                     continue;
                 }
+                
+                console.log(`[${extractorName}] 📋 Processing permit ${i + 1}/${totalPermits}: ${permitNumber} (permit number extraction: ${permitNumberTime}ms)`);
 
+                // Extract basic fields from search results page
+                const basicFieldsStartTime = Date.now();
+                
                 // Extract applied date
                 const appliedDateEl = await permitDiv.$('div[name="label-ApplyDate"] span, div[label*="Applied Date"] span');
                 const appliedDateString = appliedDateEl
@@ -957,19 +1133,35 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                         sourceUrl = href;
                     }
                 }
+                
+                const basicFieldsTime = Date.now() - basicFieldsStartTime;
+                console.log(`[${extractorName}]   ✓ Basic fields extracted (${basicFieldsTime}ms)`);
 
                 // Extract Valuation and Contractor License from detail page
+                // SKIPPED FOR TESTING: Detail page extraction is slow (~30s per permit)
+                // Set ENABLE_DETAIL_PAGE_EXTRACTION to true to re-enable
+                const ENABLE_DETAIL_PAGE_EXTRACTION = false;
+                
                 let value: number | undefined;
                 let contractorLicense: string | undefined;
-                if (sourceUrl) {
+                
+                // Skip detail page extraction for now to speed up testing
+                if (ENABLE_DETAIL_PAGE_EXTRACTION && sourceUrl) {
+                    const detailPageStartTime = Date.now();
                     try {
+                        console.log(`[${extractorName}]   🔍 Opening detail page for ${permitNumber}...`);
                         const detailData = await this.extractDetailPageData(sourceUrl);
+                        const detailPageTime = Date.now() - detailPageStartTime;
                         value = detailData.value;
                         contractorLicense = detailData.contractorLicense;
+                        console.log(`[${extractorName}]   ✓ Detail page extracted (${detailPageTime}ms) - value: ${value || 'N/A'}, contractor: ${contractorLicense || 'N/A'}`);
                     } catch (error: any) {
+                        const detailPageTime = Date.now() - detailPageStartTime;
                         // Ignore errors extracting detail data
-                        console.log(`[${extractorName}] ⚠️  Could not extract detail data for ${permitNumber}: ${error.message}`);
+                        console.log(`[${extractorName}]   ⚠️  Could not extract detail data for ${permitNumber} (${detailPageTime}ms): ${error.message}`);
                     }
+                } else {
+                    console.log(`[${extractorName}]   ⏭️  Skipping detail page extraction for ${permitNumber} (disabled for testing)`);
                 }
 
                 const permit: PermitData = {
@@ -992,8 +1184,15 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
 
                 if (this.validatePermitData(permit)) {
                     permits.push(permit);
+                    const permitTotalTime = Date.now() - permitStartTime;
+                    console.log(`[${extractorName}]   ✅ Permit ${permitNumber} completed (total: ${permitTotalTime}ms)`);
+                } else {
+                    const permitTotalTime = Date.now() - permitStartTime;
+                    console.log(`[${extractorName}]   ⚠️  Permit ${permitNumber} failed validation (total: ${permitTotalTime}ms)`);
                 }
             } catch (error: any) {
+                const permitTotalTime = Date.now() - permitStartTime;
+                console.log(`[${extractorName}]   ❌ Error processing permit ${i + 1}/${totalPermits} (${permitTotalTime}ms): ${error.message}`);
                 // Continue on error for individual permits
             }
         }
@@ -1007,13 +1206,85 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
     protected async navigatePages(page: Page, limit?: number): Promise<PermitData[]> {
         const extractorName = this.getName();
         const allPermits: PermitData[] = [];
+        const seenPermitNumbers = new Set<string>();
         let pageNum = 1;
+        
+        // Set up console error and page error listeners
+        const consoleErrors: string[] = [];
+        const pageErrors: string[] = [];
+        
+        page.on('console', (msg) => {
+            if (msg.type() === 'error') {
+                const errorText = msg.text();
+                consoleErrors.push(errorText);
+                console.error(`[${extractorName}] Browser console error: ${errorText}`);
+            }
+        });
+        
+        page.on('pageerror', (error: unknown) => {
+            const errorText = error instanceof Error ? error.message : String(error);
+            pageErrors.push(errorText);
+            console.error(`[${extractorName}] Page error: ${errorText}`);
+        });
+        
+        page.on('requestfailed', (request) => {
+            const failure = request.failure();
+            const failureText = `${request.url()} - ${failure?.errorText || 'Unknown error'}`;
+            console.error(`[${extractorName}] Request failed: ${failureText}`);
+            
+            // Log response if available
+            const response = request.response();
+            if (response) {
+                console.error(`[${extractorName}] Response status: ${response.status()} ${response.statusText()}`);
+            }
+        });
+        
+        // Also listen for responses with error status codes
+        page.on('response', (response) => {
+            const status = response.status();
+            if (status >= 400) {
+                console.error(`[${extractorName}] HTTP ${status} error for: ${response.url()}`);
+            }
+        });
 
         while (true) {
             console.log(`[${extractorName}] 📄 Processing page ${pageNum}...`);
+            
+            // Get the first permit number on current page before extracting (for verification)
+            const firstPermitNumberBefore = await page.evaluate(() => {
+                const firstPermitDiv = (globalThis as any).document.querySelector('div[name="label-SearchResult"][ng-repeat*="record"], div[ng-repeat*="getEntityRecords"]');
+                if (firstPermitDiv) {
+                    const permitNumberEl = firstPermitDiv.querySelector('div[name="label-CaseNumber"] a, div[id*="entityRecord"] a[href*="permit"]');
+                    return permitNumberEl ? permitNumberEl.textContent?.trim() : null;
+                }
+                return null;
+            });
+            
             const permits = await this.parsePermitData(limit ? limit - allPermits.length : undefined);
-            allPermits.push(...permits);
-            console.log(`[${extractorName}] Page ${pageNum} complete: ${permits.length} permit(s) extracted (total: ${allPermits.length})`);
+            
+            // Deduplicate permits by permitNumber
+            const uniquePermits = permits.filter((permit) => {
+                if (seenPermitNumbers.has(permit.permitNumber)) {
+                    console.log(`[${extractorName}] ⚠️  Skipping duplicate permit ${permit.permitNumber} on page ${pageNum}`);
+                    return false;
+                }
+                seenPermitNumbers.add(permit.permitNumber);
+                return true;
+            });
+            
+            if (uniquePermits.length > 0) {
+                console.log(`[${extractorName}] Extracted permit numbers from page ${pageNum}:`);
+                uniquePermits.forEach((permit, index) => {
+                    console.log(`   ${index + 1}. ${permit.permitNumber}${permit.appliedDateString ? ` (applied: ${permit.appliedDateString})` : ""}`);
+                });
+            }
+            
+            if (uniquePermits.length < permits.length) {
+                console.log(`[${extractorName}] ⚠️  Filtered out ${permits.length - uniquePermits.length} duplicate permit(s) on page ${pageNum}`);
+            }
+            
+            allPermits.push(...uniquePermits);
+            console.log(`[${extractorName}] Page ${pageNum} complete: ${uniquePermits.length} unique permit(s) extracted (total: ${allPermits.length})`);
 
             if (limit && allPermits.length >= limit) {
                 console.log(`[${extractorName}] Reached limit of ${limit} permits`);
@@ -1093,12 +1364,225 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 break;
             }
 
+            // Take screenshot immediately after clicking next
+            const screenshotAfterClickPath: string = `/tmp/${extractorName.toLowerCase()}-after-click-page${pageNum + 1}.png`;
+            try {
+                await page.screenshot({ path: screenshotAfterClickPath as any, fullPage: true });
+                console.log(`[${extractorName}] 📸 Screenshot after clicking next saved to ${screenshotAfterClickPath}`);
+            } catch (e) {
+                // Don't fail the scrape if screenshot fails
+            }
+
+            // Check for error modals and console errors
+            const checkForErrors = async () => {
+                // Check for error modal
+                const errorModalInfo = await page.evaluate(() => {
+                    // Look for common error modal patterns - more comprehensive
+                    const errorSelectors = [
+                        '.modal[class*="error"]',
+                        '.modal[class*="Error"]',
+                        '[class*="error-modal"]',
+                        '[class*="ErrorModal"]',
+                        '.alert-danger',
+                        '.alert[class*="error"]',
+                        '[role="alert"]',
+                        '.ui-dialog[class*="error"]',
+                        '.modal-body',
+                        '.modal-content',
+                        '[class*="modal"]',
+                        '[id*="modal"]',
+                        '[id*="Modal"]',
+                        '.dialog',
+                        '[role="dialog"]',
+                    ];
+                    
+                    for (const selector of errorSelectors) {
+                        try {
+                            const modals = (globalThis as any).document.querySelectorAll(selector);
+                            for (const modal of modals) {
+                                // Check if visible (not display:none or hidden)
+                                const style = (globalThis as any).window.getComputedStyle(modal);
+                                const isVisible = style.display !== 'none' && 
+                                                style.visibility !== 'hidden' && 
+                                                modal.offsetParent !== null;
+                                
+                                if (isVisible) {
+                                    const text = (modal.textContent || modal.innerText || '').toLowerCase();
+                                    // Check if it contains error-related keywords
+                                    if (text.includes('error') || 
+                                        text.includes('occurred') || 
+                                        text.includes('failed') ||
+                                        text.includes('problem') ||
+                                        text.includes('unable') ||
+                                        text.includes('cannot')) {
+                                        return {
+                                            found: true,
+                                            selector,
+                                            text: modal.textContent?.trim() || modal.innerText?.trim() || '',
+                                            html: modal.innerHTML.substring(0, 1000), // Increased to 1000 chars
+                                        };
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            // Continue with next selector
+                        }
+                    }
+                    
+                    // Also check all visible elements with z-index (likely modals)
+                    const allElements = (globalThis as any).document.querySelectorAll('*');
+                    for (const el of allElements) {
+                        const style = (globalThis as any).window.getComputedStyle(el);
+                        const zIndex = parseInt(style.zIndex || '0', 10);
+                        if (zIndex > 1000) { // High z-index likely means modal/overlay
+                            const text = (el.textContent || el.innerText || '').toLowerCase();
+                            if ((text.includes('error') || text.includes('occurred') || text.includes('failed')) &&
+                                style.display !== 'none' && el.offsetParent !== null) {
+                                return {
+                                    found: true,
+                                    selector: 'high-z-index-element',
+                                    text: el.textContent?.trim() || el.innerText?.trim() || '',
+                                    html: el.innerHTML.substring(0, 1000),
+                                };
+                            }
+                        }
+                    }
+                    
+                    return { found: false };
+                });
+                
+                if (errorModalInfo.found) {
+                    console.error(`[${extractorName}] ⚠️  ERROR MODAL DETECTED:`);
+                    console.error(`[${extractorName}]    Selector: ${errorModalInfo.selector}`);
+                    console.error(`[${extractorName}]    Text: ${errorModalInfo.text}`);
+                    console.error(`[${extractorName}]    HTML snippet: ${errorModalInfo.html}`);
+                }
+                
+                return { errorModalInfo };
+            };
+
+            // Check for errors after a short wait
             await new Promise((resolve) => setTimeout(resolve, 2000));
+            const errorCheck = await checkForErrors();
+            
+            if (errorCheck.errorModalInfo.found) {
+                // Try to dismiss the modal and log details
+                const dismissed = await page.evaluate(() => {
+                    // Try to find and click close/dismiss buttons
+                    const closeSelectors = [
+                        '.modal .close',
+                        '.modal button[aria-label*="close" i]',
+                        '.modal button[aria-label*="dismiss" i]',
+                        '.ui-dialog .ui-dialog-titlebar-close',
+                        'button:contains("OK")',
+                        'button:contains("Close")',
+                        'button:contains("Dismiss")',
+                    ];
+                    
+                    for (const selector of closeSelectors) {
+                        try {
+                            const btn = (globalThis as any).document.querySelector(selector);
+                            if (btn && btn.offsetParent !== null) {
+                                btn.click();
+                                return true;
+                            }
+                        } catch (e) {
+                            // Continue trying other selectors
+                        }
+                    }
+                    return false;
+                });
+                
+                if (dismissed) {
+                    console.log(`[${extractorName}] ✅ Dismissed error modal`);
+                } else {
+                    console.warn(`[${extractorName}] ⚠️  Could not dismiss error modal automatically`);
+                }
+            }
+
+            // Increased initial wait time after clicking next page
+            console.log(`[${extractorName}] Waiting for page to load after clicking next...`);
+            await new Promise((resolve) => setTimeout(resolve, 5000)); // Increased from 2000ms to 5000ms
             await this.waitForAngular(page);
+            
+            // Check for errors again after waiting
+            const errorCheckAfterWait = await checkForErrors();
+            if (errorCheckAfterWait.errorModalInfo.found && !errorCheck.errorModalInfo.found) {
+                console.error(`[${extractorName}] ⚠️  Error modal appeared after waiting`);
+            }
+            
+            // Log accumulated console and page errors if any
+            if (consoleErrors.length > 0) {
+                console.error(`[${extractorName}] Total console errors so far: ${consoleErrors.length}`);
+                consoleErrors.slice(-5).forEach((err, idx) => {
+                    console.error(`[${extractorName}]   ${idx + 1}. ${err}`);
+                });
+            }
+            if (pageErrors.length > 0) {
+                console.error(`[${extractorName}] Total page errors so far: ${pageErrors.length}`);
+                pageErrors.slice(-5).forEach((err, idx) => {
+                    console.error(`[${extractorName}]   ${idx + 1}. ${err}`);
+                });
+            }
+            
+            // Verify that the page actually changed by checking the first permit number
+            // Retry with longer wait if page hasn't changed (may still be loading)
+            let firstPermitNumberAfter: string | null = null;
+            let pageChanged = false;
+            const maxRetries = 5; // Increased from 3 to 5
+            
+            for (let retry = 0; retry < maxRetries; retry++) {
+                firstPermitNumberAfter = await page.evaluate(() => {
+                    const firstPermitDiv = (globalThis as any).document.querySelector('div[name="label-SearchResult"][ng-repeat*="record"], div[ng-repeat*="getEntityRecords"]');
+                    if (firstPermitDiv) {
+                        const permitNumberEl = firstPermitDiv.querySelector('div[name="label-CaseNumber"] a, div[id*="entityRecord"] a[href*="permit"]');
+                        return permitNumberEl ? permitNumberEl.textContent?.trim() : null;
+                    }
+                    return null;
+                });
+                
+                if (firstPermitNumberBefore && firstPermitNumberAfter && firstPermitNumberBefore !== firstPermitNumberAfter) {
+                    pageChanged = true;
+                    console.log(`[${extractorName}] ✅ Verified page changed: first permit changed from ${firstPermitNumberBefore} to ${firstPermitNumberAfter}`);
+                    break;
+                }
+                
+                if (retry < maxRetries - 1) {
+                    console.log(`[${extractorName}] ⏳ Page content hasn't changed yet (retry ${retry + 1}/${maxRetries}), waiting longer...`);
+                    await new Promise((resolve) => setTimeout(resolve, 4000)); // Increased from 2000ms to 4000ms
+                    await this.waitForAngular(page);
+                }
+            }
+            
+            if (firstPermitNumberBefore && firstPermitNumberAfter && !pageChanged) {
+                // Take screenshot for debugging
+                const screenshotPath: string = `/tmp/${extractorName.toLowerCase()}-pagination-failed-page${pageNum + 1}.png`;
+                try {
+                    await page.screenshot({ path: screenshotPath as any, fullPage: true });
+                    console.log(`[${extractorName}] 📸 Screenshot saved to ${screenshotPath}`);
+                } catch (e) {
+                    console.warn(`[${extractorName}] Failed to take screenshot: ${e}`);
+                }
+                
+                console.warn(`[${extractorName}] ⚠️  Page ${pageNum + 1} still shows the same first permit (${firstPermitNumberBefore}) as page ${pageNum} after ${maxRetries} retries. Pagination may not have worked. Stopping.`);
+                break;
+            }
+            
+            // Take screenshot after successful page change for verification
+            if (pageChanged) {
+                const screenshotPath: string = `/tmp/${extractorName.toLowerCase()}-page${pageNum + 1}.png`;
+                try {
+                    await page.screenshot({ path: screenshotPath as any, fullPage: true });
+                    console.log(`[${extractorName}] 📸 Screenshot saved to ${screenshotPath}`);
+                } catch (e) {
+                    // Don't fail the scrape if screenshot fails
+                }
+            }
+            
             pageNum++;
         }
 
-        console.log(`[${extractorName}] ✅ Finished processing all pages: ${allPermits.length} total permit(s)`);
+        console.log(`[${extractorName}] ✅ Finished processing all pages: ${allPermits.length} total unique permit(s)`);
         return allPermits;
     }
 

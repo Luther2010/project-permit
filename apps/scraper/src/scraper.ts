@@ -172,6 +172,8 @@ async function savePermits(permits: any[]): Promise<void> {
     let withContractorText = 0;
     let matchedContractors = 0;
 
+    console.log(`💾 Attempting to save ${permits.length} permit(s) to database...`);
+
     for (const permit of permits) {
         try {
             // Track contractor text availability
@@ -278,6 +280,7 @@ async function savePermits(permits: any[]): Promise<void> {
                 },
             });
             saved++;
+            console.log(`✅ Saved permit ${permit.permitNumber} to database`);
 
             // Link contractors if license info is present
             try {
@@ -349,7 +352,7 @@ async function savePermits(permits: any[]): Promise<void> {
                 );
             }
         } catch (error) {
-            console.error(`Error saving permit ${permit.permitNumber}:`, error);
+            console.error(`❌ Error saving permit ${permit.permitNumber}:`, error);
             skipped++;
         }
     }
@@ -544,6 +547,14 @@ export async function scrapeCity(
             const result = await extractor.scrape(limit, startDate, endDate);
             
             if (result.success && result.permits.length > 0) {
+                console.log(
+                    `📋 Scraped ${result.permits.length} permit(s) from ${cityName}:`
+                );
+                result.permits.forEach((permit, index) => {
+                    console.log(
+                        `   ${index + 1}. ${permit.permitNumber}${permit.appliedDateString ? ` (applied: ${permit.appliedDateString})` : ""}`
+                    );
+                });
                 await savePermits(result.permits);
                 console.log(
                     `✅ ${cityName} scrape complete: ${result.permits.length} permits`
@@ -560,6 +571,14 @@ export async function scrapeCity(
             const result = await extractor.scrape(limit, startDate, endDate);
 
             if (result.success && result.permits.length > 0) {
+                console.log(
+                    `📋 Scraped ${result.permits.length} permit(s) from ${cityName}:`
+                );
+                result.permits.forEach((permit, index) => {
+                    console.log(
+                        `   ${index + 1}. ${permit.permitNumber}${permit.appliedDateString ? ` (applied: ${permit.appliedDateString})` : ""}`
+                    );
+                });
                 await savePermits(result.permits);
                 console.log(
                     `✅ ${cityName} scrape complete: ${result.permits.length} permits`
