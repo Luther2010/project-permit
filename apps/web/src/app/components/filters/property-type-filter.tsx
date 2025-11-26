@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { PropertyType } from "@prisma/client";
 import { formatEnumLabel } from "./utils";
+import { MultiSelectFilter } from "./multi-select-filter";
 
 interface PropertyTypeFilterProps {
     selectedTypes: PropertyType[];
@@ -24,39 +25,13 @@ export function PropertyTypeFilter({
             }));
     }, []);
 
-    const handleToggle = (value: PropertyType, checked: boolean) => {
-        const newSelection = checked
-            ? [...selectedTypes, value]
-            : selectedTypes.filter((v) => v !== value);
-        onChange(newSelection);
-    };
-
     return (
-        <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-                Property Type (select multiple)
-            </label>
-            <div className="border border-gray-300 rounded-md p-3 max-h-48 overflow-y-auto bg-white">
-                {PROPERTY_TYPES.map((type) => (
-                    <label
-                        key={type.value}
-                        className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-gray-50 rounded px-2"
-                    >
-                        <input
-                            type="checkbox"
-                            checked={selectedTypes.includes(type.value)}
-                            onChange={(e) =>
-                                handleToggle(type.value, e.target.checked)
-                            }
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">
-                            {type.label}
-                        </span>
-                    </label>
-                ))}
-            </div>
-        </div>
+        <MultiSelectFilter
+            label="Property Type (select multiple)"
+            options={PROPERTY_TYPES}
+            selectedValues={selectedTypes}
+            onChange={onChange}
+        />
     );
 }
 
