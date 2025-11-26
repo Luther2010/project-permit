@@ -404,11 +404,17 @@ export const resolvers = {
         },
         cityPermitStats: async (_: unknown, args: { cities: string[] }) => {
             // Calculate date range for last 12 months
+            // Note: This uses the same filtering logic as the permits query:
+            // - Uses appliedDateString (YYYY-MM-DD format) for timezone-safe filtering
+            // - Uses gte/lte for inclusive date ranges
+            // - Monthly counts are grouped by YYYY-MM prefix of appliedDateString
+            // This ensures consistency: if a user filters by 10/01/2025 - 10/31/2025,
+            // the count will match the October 2025 count shown in the monthly breakdown
             const now = new Date();
             const twelveMonthsAgo = new Date(now);
             twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
             
-            // Format as YYYY-MM-DD
+            // Format as YYYY-MM-DD (same format used in permits query filtering)
             const startDate = twelveMonthsAgo.toISOString().split("T")[0];
             const endDate = now.toISOString().split("T")[0];
 
@@ -417,6 +423,7 @@ export const resolvers = {
                     const city = cityStr as City;
                     
                     // Get all permits for this city in the last 12 months
+                    // Uses appliedDateString with gte/lte - same logic as permits query filter
                     const permits = await prisma.permit.findMany({
                         where: {
                             city,
@@ -430,7 +437,9 @@ export const resolvers = {
                         },
                     });
 
-                    // Group by month (YYYY-MM)
+                    // Group by month (YYYY-MM) - extracts first 7 characters from appliedDateString
+                    // This ensures permits with appliedDateString like "2025-10-15" are counted in "2025-10"
+                    // which matches how the permits query filters by date range
                     const monthlyMap = new Map<string, number>();
                     permits.forEach((permit) => {
                         if (permit.appliedDateString) {
