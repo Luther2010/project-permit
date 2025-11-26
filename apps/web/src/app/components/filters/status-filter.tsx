@@ -27,6 +27,7 @@ export function StatusFilter({
             options={PERMIT_STATUSES}
             selectedValues={selectedStatuses}
             onChange={onChange}
+            showClearButton={true}
         />
     );
 }

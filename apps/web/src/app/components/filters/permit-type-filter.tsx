@@ -27,6 +27,7 @@ export function PermitTypeFilter({
             options={PERMIT_TYPES}
             selectedValues={selectedTypes}
             onChange={onChange}
+            showClearButton={true}
         />
     );
 }

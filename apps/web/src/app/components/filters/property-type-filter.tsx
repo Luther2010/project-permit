@@ -31,6 +31,7 @@ export function PropertyTypeFilter({
             options={PROPERTY_TYPES}
             selectedValues={selectedTypes}
             onChange={onChange}
+            showClearButton={true}
         />
     );
 }
