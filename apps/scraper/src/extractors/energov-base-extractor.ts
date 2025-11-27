@@ -448,20 +448,112 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             const permitMatch = detailUrl.match(/[A-Z0-9-]+$/);
             const permitId = permitMatch ? permitMatch[0] : "unknown";
 
+            // Take screenshot after page loads
+            const screenshotAfterLoadPath: string = `/tmp/${extractorName.toLowerCase()}-valuation-${permitId}-after-load.png`;
+            try {
+                await detailPage.screenshot({ path: screenshotAfterLoadPath as any, fullPage: true });
+                console.log(`[${extractorName}] 📸 Screenshot after detail page load saved to ${screenshotAfterLoadPath}`);
+            } catch (e) {
+                // Don't fail if screenshot fails
+            }
+
+            // Wait for "No records to display" message to disappear (indicates content is loading)
+            console.log(`[${extractorName}] ⏳ Waiting for content to load (checking for "No records to display" message)...`);
+            try {
+                await detailPage.waitForFunction(
+                    () => {
+                        // Check if "No records to display" message exists and is visible
+                        const noRecordsElements = (globalThis as any).document.querySelectorAll('*');
+                        let hasNoRecordsMessage = false;
+                        for (const el of noRecordsElements) {
+                            const text = (el.textContent || el.innerText || '').toLowerCase();
+                            if (text.includes('no records to display') || text.includes('no records')) {
+                                const style = (globalThis as any).window.getComputedStyle(el);
+                                if (style.display !== 'none' && el.offsetParent !== null) {
+                                    hasNoRecordsMessage = true;
+                                    break;
+                                }
+                            }
+                        }
+                        // Return true when the message is gone (or never existed)
+                        return !hasNoRecordsMessage;
+                    },
+                    { timeout: 30000 } // Wait up to 30 seconds for content to load
+                );
+                console.log(`[${extractorName}] ✅ "No records to display" message disappeared or never appeared`);
+            } catch (e) {
+                console.log(`[${extractorName}] ⚠️  Timeout waiting for "No records to display" to disappear, continuing anyway...`);
+            }
+
+            // Wait a bit more for Angular to finish rendering
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            await this.waitForAngular(detailPage);
+
             // Extract Valuation
             let value: number | undefined;
             const maxRetries = 3;
             for (let attempt = 0; attempt < maxRetries; attempt++) {
                 try {
-                    // Wait for Valuation field to appear
-                    await detailPage.waitForSelector(
-                        'div[name="label-Valuation"] span, div[label*="Valuation"] span, input[name*="Valuation"]',
-                        { timeout: 5000 }
-                    );
+                    // Wait for Valuation field to appear with actual content - try multiple selector patterns
+                    // Increase timeout significantly since content takes time to load
+                    try {
+                        await detailPage.waitForFunction(
+                            () => {
+                                const selectors = [
+                                    '#label-PermitDetail-Valuation p.form-control-static',
+                                    '#label-PermitDetail-Valuation p.ng-binding',
+                                    '#label-PermitDetail-Valuation p',
+                                    'div[id="label-PermitDetail-Valuation"] p.form-control-static',
+                                    'div[id*="Valuation"] p.form-control-static',
+                                    'div[id*="Valuation"] p.ng-binding',
+                                ];
+                                
+                                for (const selector of selectors) {
+                                    const el = (globalThis as any).document.querySelector(selector);
+                                    if (el) {
+                                        const text = (el.textContent || el.value || '').trim();
+                                        if (text && text !== 'No records to display' && !text.toLowerCase().includes('no records')) {
+                                            // Check if it's a valid number
+                                            const cleaned = text.replace(/[$,\s]/g, '');
+                                            const parsed = parseFloat(cleaned);
+                                            if (!isNaN(parsed) && parsed > 0) {
+                                                return true;
+                                            }
+                                        }
+                                    }
+                                }
+                                return false;
+                            },
+                            { timeout: 15000 } // Wait up to 15 seconds for valuation to appear with content
+                        );
+                    } catch (e) {
+                        // Fallback: wait for the form-group div itself (even if empty)
+                        await detailPage.waitForSelector(
+                            '#label-PermitDetail-Valuation, div[id*="Valuation"]',
+                            { timeout: 10000 }
+                        );
+                    }
+
+                    // Take screenshot after waiting for Valuation selector
+                    const screenshotAfterSelectorPath: string = `/tmp/${extractorName.toLowerCase()}-valuation-${permitId}-after-selector-wait.png`;
+                    try {
+                        await detailPage.screenshot({ path: screenshotAfterSelectorPath as any, fullPage: true });
+                        console.log(`[${extractorName}] 📸 Screenshot after waiting for Valuation selector saved to ${screenshotAfterSelectorPath}`);
+                    } catch (e) {
+                        // Don't fail if screenshot fails
+                    }
 
                     value = await detailPage.evaluate(() => {
                         // Try multiple selectors for Valuation
+                        // Based on actual HTML structure: id="label-PermitDetail-Valuation" with <p class="form-control-static ng-binding">
                         const selectors = [
+                            '#label-PermitDetail-Valuation p.form-control-static',
+                            '#label-PermitDetail-Valuation p.ng-binding',
+                            '#label-PermitDetail-Valuation p',
+                            'div[id="label-PermitDetail-Valuation"] p.form-control-static',
+                            'div[id*="Valuation"] p.form-control-static',
+                            'div[id*="Valuation"] p.ng-binding',
+                            // Fallback selectors (old format)
                             'div[name="label-Valuation"] span',
                             'div[label*="Valuation"] span',
                             'input[name*="Valuation"]',
@@ -473,7 +565,11 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                             const el = document.querySelector(selector);
                             if (el) {
                                 const text = (el.textContent || el.value || '').trim();
-                                if (text) {
+                                // Filter out "No records to display" and similar loading messages
+                                if (text && 
+                                    text !== 'No records to display' && 
+                                    !text.toLowerCase().includes('no records') &&
+                                    !text.toLowerCase().includes('loading')) {
                                     // Remove $, commas, and parse
                                     const cleaned = text.replace(/[$,\s]/g, '');
                                     const parsed = parseFloat(cleaned);
@@ -486,13 +582,45 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                         return undefined;
                     });
 
+                    // Take screenshot after extraction attempt
+                    const screenshotAfterExtractionPath: string = `/tmp/${extractorName.toLowerCase()}-valuation-${permitId}-after-extraction-attempt${attempt + 1}.png`;
+                    try {
+                        await detailPage.screenshot({ path: screenshotAfterExtractionPath as any, fullPage: true });
+                        console.log(`[${extractorName}] 📸 Screenshot after extraction attempt ${attempt + 1} saved to ${screenshotAfterExtractionPath} (value: ${value || 'not found'})`);
+                    } catch (e) {
+                        // Don't fail if screenshot fails
+                    }
+
                     if (value !== undefined) {
                         break; // Success, exit retry loop
                     }
                 } catch (e) {
-                    if (attempt < maxRetries - 1) {
-                        await new Promise((resolve) => setTimeout(resolve, 1000));
+                    // Take screenshot on error
+                    const screenshotOnErrorPath: string = `/tmp/${extractorName.toLowerCase()}-valuation-${permitId}-error-attempt${attempt + 1}.png`;
+                    try {
+                        await detailPage.screenshot({ path: screenshotOnErrorPath as any, fullPage: true });
+                        console.log(`[${extractorName}] 📸 Screenshot on error (attempt ${attempt + 1}) saved to ${screenshotOnErrorPath}`);
+                    } catch (screenshotError) {
+                        // Don't fail if screenshot fails
                     }
+                    
+                    if (attempt < maxRetries - 1) {
+                        // Wait longer between retries to give content more time to load
+                        console.log(`[${extractorName}] ⏳ Waiting 3 seconds before retry ${attempt + 2}...`);
+                        await new Promise((resolve) => setTimeout(resolve, 3000));
+                        await this.waitForAngular(detailPage);
+                    }
+                }
+            }
+
+            // Take final screenshot if valuation was not found
+            if (value === undefined) {
+                const screenshotFinalPath: string = `/tmp/${extractorName.toLowerCase()}-valuation-${permitId}-final-not-found.png`;
+                try {
+                    await detailPage.screenshot({ path: screenshotFinalPath as any, fullPage: true });
+                    console.log(`[${extractorName}] 📸 Final screenshot (valuation not found) saved to ${screenshotFinalPath}`);
+                } catch (e) {
+                    // Don't fail if screenshot fails
                 }
             }
 
@@ -583,9 +711,22 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
         await this.waitForAngular(page);
 
         // Step 1: Select "Permit" from Search dropdown
-        await page.waitForSelector('#SearchModule', {
-            timeout: 10000,
-        });
+        const extractorName = this.getName();
+        try {
+            await page.waitForSelector('#SearchModule', {
+                timeout: 10000,
+            });
+        } catch (error: any) {
+            // Take screenshot when SearchModule selector times out
+            const screenshotPath: string = `/tmp/${extractorName.toLowerCase()}-searchmodule-timeout.png`;
+            try {
+                await page.screenshot({ path: screenshotPath as any, fullPage: true });
+                console.error(`[${extractorName}] ❌ Timeout waiting for #SearchModule selector. Screenshot saved to ${screenshotPath}`);
+            } catch (screenshotError) {
+                console.error(`[${extractorName}] ❌ Failed to take screenshot: ${screenshotError}`);
+            }
+            throw error; // Re-throw the original error
+        }
 
         // Wait a bit for Angular to populate options
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -1140,7 +1281,7 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 // Extract Valuation and Contractor License from detail page
                 // SKIPPED FOR TESTING: Detail page extraction is slow (~30s per permit)
                 // Set ENABLE_DETAIL_PAGE_EXTRACTION to true to re-enable
-                const ENABLE_DETAIL_PAGE_EXTRACTION = false;
+                const ENABLE_DETAIL_PAGE_EXTRACTION = true;
                 
                 let value: number | undefined;
                 let contractorLicense: string | undefined;
