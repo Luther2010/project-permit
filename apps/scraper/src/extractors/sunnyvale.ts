@@ -22,4 +22,11 @@ export class SunnyvaleExtractor extends EnergovBaseExtractor {
     protected shouldExtractContractorInfo(): boolean {
         return false;
     }
+
+    /**
+     * Temporarily disable detail page extraction for Sunnyvale to avoid rate limiting
+     */
+    protected shouldExtractDetailPageData(): boolean {
+        return false;
+    }
 }

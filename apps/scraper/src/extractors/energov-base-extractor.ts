@@ -27,6 +27,15 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
     }
 
     /**
+     * Whether to extract detail page data (valuation, contractor license)
+     * Can be overridden by subclasses to disable detail page extraction
+     * Defaults to true for backward compatibility
+     */
+    protected shouldExtractDetailPageData(): boolean {
+        return true;
+    }
+
+    /**
      * Default scrape implementation for Energov-based extractors
      * Can be overridden by subclasses if needed
      */
@@ -1219,19 +1228,15 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 console.log(`[${extractorName}]   ✓ Basic fields extracted (${basicFieldsTime}ms)`);
 
                 // Extract Valuation and Contractor License from detail page
-                // SKIPPED FOR TESTING: Detail page extraction is slow (~30s per permit)
-                // Set ENABLE_DETAIL_PAGE_EXTRACTION to true to re-enable
-                const ENABLE_DETAIL_PAGE_EXTRACTION = true;
-                
                 let value: number | undefined;
                 let contractorLicense: string | undefined;
                 
-                // Skip detail page extraction for now to speed up testing
-                if (ENABLE_DETAIL_PAGE_EXTRACTION && sourceUrl) {
-                    // Wait 5 seconds between detail pages to avoid rate limiting (skip for first permit)
+                // Check if detail page extraction is enabled for this extractor
+                if (this.shouldExtractDetailPageData() && sourceUrl) {
+                    // Wait 10 seconds between detail pages to avoid rate limiting (skip for first permit)
                     if (i > 0) {
-                        console.log(`[${extractorName}]   ⏳ Waiting 5 seconds before opening next detail page...`);
-                        await new Promise((resolve) => setTimeout(resolve, 5000));
+                        console.log(`[${extractorName}]   ⏳ Waiting 10 seconds before opening next detail page...`);
+                        await new Promise((resolve) => setTimeout(resolve, 10000));
                     }
                     
                     const detailPageStartTime = Date.now();
@@ -1248,7 +1253,7 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                         console.log(`[${extractorName}]   ⚠️  Could not extract detail data for ${permitNumber} (${detailPageTime}ms): ${error.message}`);
                     }
                 } else {
-                    console.log(`[${extractorName}]   ⏭️  Skipping detail page extraction for ${permitNumber} (disabled for testing)`);
+                    console.log(`[${extractorName}]   ⏭️  Skipping detail page extraction for ${permitNumber} (disabled by extractor configuration)`);
                 }
 
                 const permit: PermitData = {
