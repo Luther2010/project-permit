@@ -360,15 +360,6 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 }
             }
             
-            // Take screenshot after page size change to verify it worked
-            const screenshotPath: string = `/tmp/${extractorName.toLowerCase()}-after-page-size-change.png`;
-            try {
-                await page.screenshot({ path: screenshotPath as any, fullPage: true });
-                console.log(`[${extractorName}] 📸 Screenshot after page size change saved to ${screenshotPath}`);
-            } catch (e) {
-                // Don't fail if screenshot fails
-            }
-            
             // Final verification
             const finalStatus = await page.evaluate((size) => {
                 const select = (globalThis as any).document.getElementById('pageSizeList') as any;
@@ -448,15 +439,6 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             const permitMatch = detailUrl.match(/[A-Z0-9-]+$/);
             const permitId = permitMatch ? permitMatch[0] : "unknown";
 
-            // Take screenshot after page loads
-            const screenshotAfterLoadPath: string = `/tmp/${extractorName.toLowerCase()}-valuation-${permitId}-after-load.png`;
-            try {
-                await detailPage.screenshot({ path: screenshotAfterLoadPath as any, fullPage: true });
-                console.log(`[${extractorName}] 📸 Screenshot after detail page load saved to ${screenshotAfterLoadPath}`);
-            } catch (e) {
-                // Don't fail if screenshot fails
-            }
-
             // Wait for "No records to display" message to disappear (indicates content is loading)
             console.log(`[${extractorName}] ⏳ Waiting for content to load (checking for "No records to display" message)...`);
             try {
@@ -534,15 +516,6 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                         );
                     }
 
-                    // Take screenshot after waiting for Valuation selector
-                    const screenshotAfterSelectorPath: string = `/tmp/${extractorName.toLowerCase()}-valuation-${permitId}-after-selector-wait.png`;
-                    try {
-                        await detailPage.screenshot({ path: screenshotAfterSelectorPath as any, fullPage: true });
-                        console.log(`[${extractorName}] 📸 Screenshot after waiting for Valuation selector saved to ${screenshotAfterSelectorPath}`);
-                    } catch (e) {
-                        // Don't fail if screenshot fails
-                    }
-
                     value = await detailPage.evaluate(() => {
                         // Try multiple selectors for Valuation
                         // Based on actual HTML structure: id="label-PermitDetail-Valuation" with <p class="form-control-static ng-binding">
@@ -582,45 +555,16 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                         return undefined;
                     });
 
-                    // Take screenshot after extraction attempt
-                    const screenshotAfterExtractionPath: string = `/tmp/${extractorName.toLowerCase()}-valuation-${permitId}-after-extraction-attempt${attempt + 1}.png`;
-                    try {
-                        await detailPage.screenshot({ path: screenshotAfterExtractionPath as any, fullPage: true });
-                        console.log(`[${extractorName}] 📸 Screenshot after extraction attempt ${attempt + 1} saved to ${screenshotAfterExtractionPath} (value: ${value || 'not found'})`);
-                    } catch (e) {
-                        // Don't fail if screenshot fails
-                    }
-
                     if (value !== undefined) {
                         break; // Success, exit retry loop
                     }
                 } catch (e) {
-                    // Take screenshot on error
-                    const screenshotOnErrorPath: string = `/tmp/${extractorName.toLowerCase()}-valuation-${permitId}-error-attempt${attempt + 1}.png`;
-                    try {
-                        await detailPage.screenshot({ path: screenshotOnErrorPath as any, fullPage: true });
-                        console.log(`[${extractorName}] 📸 Screenshot on error (attempt ${attempt + 1}) saved to ${screenshotOnErrorPath}`);
-                    } catch (screenshotError) {
-                        // Don't fail if screenshot fails
-                    }
-                    
                     if (attempt < maxRetries - 1) {
                         // Wait longer between retries to give content more time to load
                         console.log(`[${extractorName}] ⏳ Waiting 3 seconds before retry ${attempt + 2}...`);
                         await new Promise((resolve) => setTimeout(resolve, 3000));
                         await this.waitForAngular(detailPage);
                     }
-                }
-            }
-
-            // Take final screenshot if valuation was not found
-            if (value === undefined) {
-                const screenshotFinalPath: string = `/tmp/${extractorName.toLowerCase()}-valuation-${permitId}-final-not-found.png`;
-                try {
-                    await detailPage.screenshot({ path: screenshotFinalPath as any, fullPage: true });
-                    console.log(`[${extractorName}] 📸 Final screenshot (valuation not found) saved to ${screenshotFinalPath}`);
-                } catch (e) {
-                    // Don't fail if screenshot fails
                 }
             }
 
@@ -686,6 +630,8 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                         }
                         return undefined;
                     });
+                } else {
+                    // More Info button not found
                 }
                 } catch (e) {
                     // Ignore errors extracting Contractor License
@@ -711,22 +657,9 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
         await this.waitForAngular(page);
 
         // Step 1: Select "Permit" from Search dropdown
-        const extractorName = this.getName();
-        try {
-            await page.waitForSelector('#SearchModule', {
-                timeout: 10000,
-            });
-        } catch (error: any) {
-            // Take screenshot when SearchModule selector times out
-            const screenshotPath: string = `/tmp/${extractorName.toLowerCase()}-searchmodule-timeout.png`;
-            try {
-                await page.screenshot({ path: screenshotPath as any, fullPage: true });
-                console.error(`[${extractorName}] ❌ Timeout waiting for #SearchModule selector. Screenshot saved to ${screenshotPath}`);
-            } catch (screenshotError) {
-                console.error(`[${extractorName}] ❌ Failed to take screenshot: ${screenshotError}`);
-            }
-            throw error; // Re-throw the original error
-        }
+        await page.waitForSelector('#SearchModule', {
+            timeout: 10000,
+        });
 
         // Wait a bit for Angular to populate options
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -1536,15 +1469,6 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 break;
             }
 
-            // Take screenshot immediately after clicking next
-            const screenshotAfterClickPath: string = `/tmp/${extractorName.toLowerCase()}-after-click-page${pageNum + 1}.png`;
-            try {
-                await page.screenshot({ path: screenshotAfterClickPath as any, fullPage: true });
-                console.log(`[${extractorName}] 📸 Screenshot after clicking next saved to ${screenshotAfterClickPath}`);
-            } catch (e) {
-                // Don't fail the scrape if screenshot fails
-            }
-
             // Check for error modals and console errors
             const checkForErrors = async () => {
                 // Check for error modal
@@ -1727,28 +1651,8 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             }
             
             if (firstPermitNumberBefore && firstPermitNumberAfter && !pageChanged) {
-                // Take screenshot for debugging
-                const screenshotPath: string = `/tmp/${extractorName.toLowerCase()}-pagination-failed-page${pageNum + 1}.png`;
-                try {
-                    await page.screenshot({ path: screenshotPath as any, fullPage: true });
-                    console.log(`[${extractorName}] 📸 Screenshot saved to ${screenshotPath}`);
-                } catch (e) {
-                    console.warn(`[${extractorName}] Failed to take screenshot: ${e}`);
-                }
-                
                 console.warn(`[${extractorName}] ⚠️  Page ${pageNum + 1} still shows the same first permit (${firstPermitNumberBefore}) as page ${pageNum} after ${maxRetries} retries. Pagination may not have worked. Stopping.`);
                 break;
-            }
-            
-            // Take screenshot after successful page change for verification
-            if (pageChanged) {
-                const screenshotPath: string = `/tmp/${extractorName.toLowerCase()}-page${pageNum + 1}.png`;
-                try {
-                    await page.screenshot({ path: screenshotPath as any, fullPage: true });
-                    console.log(`[${extractorName}] 📸 Screenshot saved to ${screenshotPath}`);
-                } catch (e) {
-                    // Don't fail the scrape if screenshot fails
-                }
             }
             
             pageNum++;
