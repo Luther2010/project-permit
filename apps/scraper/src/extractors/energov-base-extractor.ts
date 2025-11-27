@@ -427,10 +427,16 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
         // Open detail page in a new tab
         const detailPage = await this.browser.newPage();
         try {
-            await detailPage.goto(absoluteUrl, {
+            const response = await detailPage.goto(absoluteUrl, {
                 waitUntil: "networkidle2",
                 timeout: 30000,
             });
+
+            // Check for 403 Forbidden (rate limiting)
+            if (response && response.status() === 403) {
+                console.error(`[${extractorName}] ❌ 403 Forbidden detected for ${absoluteUrl}`);
+                throw new Error(`403 Forbidden - Rate limiting detected for ${absoluteUrl}`);
+            }
 
             // Wait for AngularJS to be ready
             await this.waitForAngular(detailPage);
@@ -471,101 +477,102 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
             await new Promise((resolve) => setTimeout(resolve, 2000));
             await this.waitForAngular(detailPage);
 
+            // Check if page shows 403 Forbidden (sometimes response status is 200 but page content shows 403)
+            const pageContent = await detailPage.content();
+            if (pageContent.includes('403 Forbidden') || (pageContent.includes('403') && pageContent.toLowerCase().includes('forbidden'))) {
+                console.error(`[${extractorName}] ❌ 403 Forbidden detected in page content for ${absoluteUrl}`);
+                throw new Error(`403 Forbidden - Rate limiting detected (page content shows 403)`);
+            }
+
             // Extract Valuation
             let value: number | undefined;
-            const maxRetries = 3;
-            for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                // Wait for Valuation field to appear with actual content - try multiple selector patterns
+                // Increase timeout significantly since content takes time to load
                 try {
-                    // Wait for Valuation field to appear with actual content - try multiple selector patterns
-                    // Increase timeout significantly since content takes time to load
-                    try {
-                        await detailPage.waitForFunction(
-                            () => {
-                                const selectors = [
-                                    '#label-PermitDetail-Valuation p.form-control-static',
-                                    '#label-PermitDetail-Valuation p.ng-binding',
-                                    '#label-PermitDetail-Valuation p',
-                                    'div[id="label-PermitDetail-Valuation"] p.form-control-static',
-                                    'div[id*="Valuation"] p.form-control-static',
-                                    'div[id*="Valuation"] p.ng-binding',
-                                ];
-                                
-                                for (const selector of selectors) {
-                                    const el = (globalThis as any).document.querySelector(selector);
-                                    if (el) {
-                                        const text = (el.textContent || el.value || '').trim();
-                                        if (text && text !== 'No records to display' && !text.toLowerCase().includes('no records')) {
-                                            // Check if it's a valid number
-                                            const cleaned = text.replace(/[$,\s]/g, '');
-                                            const parsed = parseFloat(cleaned);
-                                            if (!isNaN(parsed) && parsed > 0) {
-                                                return true;
-                                            }
+                    await detailPage.waitForFunction(
+                        () => {
+                            const selectors = [
+                                '#label-PermitDetail-Valuation p.form-control-static',
+                                '#label-PermitDetail-Valuation p.ng-binding',
+                                '#label-PermitDetail-Valuation p',
+                                'div[id="label-PermitDetail-Valuation"] p.form-control-static',
+                                'div[id*="Valuation"] p.form-control-static',
+                                'div[id*="Valuation"] p.ng-binding',
+                            ];
+                            
+                            for (const selector of selectors) {
+                                const el = (globalThis as any).document.querySelector(selector);
+                                if (el) {
+                                    const text = (el.textContent || el.value || '').trim();
+                                    if (text && text !== 'No records to display' && !text.toLowerCase().includes('no records')) {
+                                        // Check if it's a valid number
+                                        const cleaned = text.replace(/[$,\s]/g, '');
+                                        const parsed = parseFloat(cleaned);
+                                        if (!isNaN(parsed) && parsed > 0) {
+                                            return true;
                                         }
                                     }
                                 }
-                                return false;
-                            },
-                            { timeout: 15000 } // Wait up to 15 seconds for valuation to appear with content
-                        );
-                    } catch (e) {
-                        // Fallback: wait for the form-group div itself (even if empty)
-                        await detailPage.waitForSelector(
-                            '#label-PermitDetail-Valuation, div[id*="Valuation"]',
-                            { timeout: 10000 }
-                        );
-                    }
+                            }
+                            return false;
+                        },
+                        { timeout: 15000 } // Wait up to 15 seconds for valuation to appear with content
+                    );
+                } catch (e) {
+                    // Fallback: wait for the form-group div itself (even if empty)
+                    await detailPage.waitForSelector(
+                        '#label-PermitDetail-Valuation, div[id*="Valuation"]',
+                        { timeout: 10000 }
+                    );
+                }
 
-                    value = await detailPage.evaluate(() => {
-                        // Try multiple selectors for Valuation
-                        // Based on actual HTML structure: id="label-PermitDetail-Valuation" with <p class="form-control-static ng-binding">
-                        const selectors = [
-                            '#label-PermitDetail-Valuation p.form-control-static',
-                            '#label-PermitDetail-Valuation p.ng-binding',
-                            '#label-PermitDetail-Valuation p',
-                            'div[id="label-PermitDetail-Valuation"] p.form-control-static',
-                            'div[id*="Valuation"] p.form-control-static',
-                            'div[id*="Valuation"] p.ng-binding',
-                            // Fallback selectors (old format)
-                            'div[name="label-Valuation"] span',
-                            'div[label*="Valuation"] span',
-                            'input[name*="Valuation"]',
-                            '[name*="Valuation"]',
-                        ];
+                value = await detailPage.evaluate(() => {
+                    // Try multiple selectors for Valuation
+                    // Based on actual HTML structure: id="label-PermitDetail-Valuation" with <p class="form-control-static ng-binding">
+                    const selectors = [
+                        '#label-PermitDetail-Valuation p.form-control-static',
+                        '#label-PermitDetail-Valuation p.ng-binding',
+                        '#label-PermitDetail-Valuation p',
+                        'div[id="label-PermitDetail-Valuation"] p.form-control-static',
+                        'div[id*="Valuation"] p.form-control-static',
+                        'div[id*="Valuation"] p.ng-binding',
+                        // Fallback selectors (old format)
+                        'div[name="label-Valuation"] span',
+                        'div[label*="Valuation"] span',
+                        'input[name*="Valuation"]',
+                        '[name*="Valuation"]',
+                    ];
 
-                        for (const selector of selectors) {
-                            // @ts-expect-error - page.evaluate runs in browser context
-                            const el = document.querySelector(selector);
-                            if (el) {
-                                const text = (el.textContent || el.value || '').trim();
-                                // Filter out "No records to display" and similar loading messages
-                                if (text && 
-                                    text !== 'No records to display' && 
-                                    !text.toLowerCase().includes('no records') &&
-                                    !text.toLowerCase().includes('loading')) {
-                                    // Remove $, commas, and parse
-                                    const cleaned = text.replace(/[$,\s]/g, '');
-                                    const parsed = parseFloat(cleaned);
-                                    if (!isNaN(parsed) && parsed > 0) {
-                                        return parsed;
-                                    }
+                    for (const selector of selectors) {
+                        // @ts-expect-error - page.evaluate runs in browser context
+                        const el = document.querySelector(selector);
+                        if (el) {
+                            const text = (el.textContent || el.value || '').trim();
+                            // Filter out "No records to display" and similar loading messages
+                            if (text && 
+                                text !== 'No records to display' && 
+                                !text.toLowerCase().includes('no records') &&
+                                !text.toLowerCase().includes('loading')) {
+                                // Remove $, commas, and parse
+                                const cleaned = text.replace(/[$,\s]/g, '');
+                                const parsed = parseFloat(cleaned);
+                                if (!isNaN(parsed) && parsed > 0) {
+                                    return parsed;
                                 }
                             }
                         }
-                        return undefined;
-                    });
+                    }
+                    return undefined;
+                });
 
-                    if (value !== undefined) {
-                        break; // Success, exit retry loop
-                    }
-                } catch (e) {
-                    if (attempt < maxRetries - 1) {
-                        // Wait longer between retries to give content more time to load
-                        console.log(`[${extractorName}] ⏳ Waiting 3 seconds before retry ${attempt + 2}...`);
-                        await new Promise((resolve) => setTimeout(resolve, 3000));
-                        await this.waitForAngular(detailPage);
-                    }
+                if (value !== undefined) {
+                    console.log(`[${extractorName}]   ✓ Valuation extracted: $${value.toLocaleString()}`);
+                } else {
+                    console.log(`[${extractorName}]   ⚠️  Valuation not found`);
                 }
+            } catch (e) {
+                console.log(`[${extractorName}]   ⚠️  Error extracting valuation: ${e instanceof Error ? e.message : String(e)}`);
             }
 
             // Extract Contractor License # from More Info tab (if enabled)
@@ -1221,6 +1228,12 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
                 
                 // Skip detail page extraction for now to speed up testing
                 if (ENABLE_DETAIL_PAGE_EXTRACTION && sourceUrl) {
+                    // Wait 5 seconds between detail pages to avoid rate limiting (skip for first permit)
+                    if (i > 0) {
+                        console.log(`[${extractorName}]   ⏳ Waiting 5 seconds before opening next detail page...`);
+                        await new Promise((resolve) => setTimeout(resolve, 5000));
+                    }
+                    
                     const detailPageStartTime = Date.now();
                     try {
                         console.log(`[${extractorName}]   🔍 Opening detail page for ${permitNumber}...`);
