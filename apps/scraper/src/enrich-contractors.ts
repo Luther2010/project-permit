@@ -123,13 +123,16 @@ export async function enrichPermitsForCity(
     let contractorsLinked = 0;
     let errors = 0;
 
+    // Sort contractors by permit count (descending) to prioritize high-value contractors
+    const sortedContractors = [...activeContractors].sort((a, b) => b.permitCount - a.permitCount);
+
     // Process contractors (with optional limit for testing)
     const contractorsToProcess = limit
-        ? activeContractors.slice(0, limit)
-        : activeContractors;
+        ? sortedContractors.slice(0, limit)
+        : sortedContractors;
 
     console.log(
-        `[enrich-contractors] Processing ${contractorsToProcess.length} contractors...`
+        `[enrich-contractors] Processing ${contractorsToProcess.length} contractors (sorted by permit count, highest first)...`
     );
 
     for (const contractor of contractorsToProcess) {
