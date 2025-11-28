@@ -61,23 +61,72 @@ tail -f /tmp/scrape-*.log
 
 ## Step 2: Manually Fill in Energov Data
 
-Energov-based cities (Sunnyvale and Gilroy) may experience rate limiting (403 errors) when scraping detail pages. When this happens, permits are still saved but without:
+Energov-based cities (Sunnyvale and Gilroy) have detail page extraction disabled to avoid rate limiting. Permits are saved but without:
 - **Valuation** (`value` field)
 - **Contractor License** (`licensedProfessionalText` field)
 
-### What to Do
-1. Check the scrape logs for permits that hit 403 errors
-2. Manually update these permits in the database with:
-   - Project valuation (if available from the source)
-   - Contractor license number (if available from the source)
+### Workflow
 
-### Database Update
-You can update permits directly in the database or create a script to bulk update them.
+#### 1. Generate CSV Template
+Generate a CSV template for the previous day's Energov permits:
+
+```bash
+cd apps/web
+pnpm exec dotenv -e .env -- tsx scripts/generate-energov-template.ts YYYY-MM-DD ../../data/energov-manual-data-YYYY-MM-DD.csv
+```
+
+**Example:**
+```bash
+pnpm exec dotenv -e .env -- tsx scripts/generate-energov-template.ts 2025-11-26 ../../data/energov-manual-data-2025-11-26.csv
+```
+
+This will:
+- Query all Sunnyvale and Gilroy permits for the specified date
+- Generate a CSV with columns: `permitNumber`, `value`, `contractorLicense`
+- Pre-fill existing values if any permits already have data
+
+#### 2. Fill in the CSV
+Open the generated CSV file and fill in:
+- **value**: Project valuation (numeric, e.g., `34100`)
+- **contractorLicense**: Contractor license number (e.g., `123456`)
+
+**CSV Format:**
+```csv
+permitNumber,value,contractorLicense
+BLDG-2025-5155,34100,123456
+BLDG-2025-5156,19482,
+BLDG-2025-5157,,
+```
+
+**Notes:**
+- Leave fields empty if you don't have the data (won't overwrite existing values)
+- Value should be numeric (no dollar signs or commas)
+- Contractor license should be the license number only
+
+#### 3. Import the CSV
+Import the filled CSV to update the database:
+
+```bash
+cd apps/web
+pnpm exec dotenv -e .env -- tsx scripts/import-energov-manual-data.ts ../../data/energov-manual-data-YYYY-MM-DD.csv
+```
+
+**Example:**
+```bash
+pnpm exec dotenv -e .env -- tsx scripts/import-energov-manual-data.ts ../../data/energov-manual-data-2025-11-26.csv
+```
+
+This will:
+- Update permit `value` fields
+- Update permit `licensedProfessionalText` fields
+- Automatically link contractors if license numbers are found in the database
+- Show a summary of updates, not found permits, and errors
 
 ### Notes
-- Permits are always saved even with 403 errors - only detail page data is missing
-- The first 1-2 permits usually succeed before rate limiting kicks in
-- Consider increasing wait times between detail page requests if rate limiting becomes too frequent
+- Permits are always saved even without detail page data
+- Empty CSV cells are skipped (won't overwrite existing data)
+- Contractor license numbers will trigger automatic contractor matching and linking
+- The import script will show which permits were updated and which contractors were linked
 
 ---
 
@@ -207,7 +256,9 @@ pnpm exec dotenv -e .env -- tsx scripts/send-daily-permits.ts user@example.com 2
 
 - [ ] Run scrapes for all 14 cities (previous day's date)
 - [ ] Check scrape logs for errors
-- [ ] Manually fill in missing data for Energov cities (if needed)
+- [ ] Generate Energov CSV template for previous day
+- [ ] Fill in value and contractor license in CSV
+- [ ] Import Energov CSV to update database
 - [ ] Run top 100 contractor enrichment (daily)
 - [ ] Run full contractor enrichment (weekly only)
 - [ ] Dry-run sync script to review changes
