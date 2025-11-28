@@ -107,16 +107,26 @@ export const authOptions: NextAuthOptions = {
                 try {
                     const user = await prisma.user.findUnique({
                         where: { id: token.id as string },
-                        select: { id: true }, // Only select id to minimize query
+                        select: { id: true, email: true, name: true }, // Select fields we need
                     });
 
                     if (user) {
                         session.user.id = token.id as string;
+                        // Update email and name from database (in case they changed)
+                        session.user.email = user.email;
+                        session.user.name = user.name;
+                    } else {
+                        // User doesn't exist - clear all user data to invalidate session
+                        session.user.id = undefined as any;
+                        session.user.email = null;
+                        session.user.name = null;
                     }
-                    // If user doesn't exist, don't set id - session will be treated as invalid
                 } catch (error) {
-                    // If database query fails, don't set id
+                    // If database query fails, clear user data to be safe
                     console.error("Error verifying user in session:", error);
+                    session.user.id = undefined as any;
+                    session.user.email = null;
+                    session.user.name = null;
                 }
             }
             return session;

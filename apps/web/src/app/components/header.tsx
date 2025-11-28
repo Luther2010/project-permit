@@ -36,7 +36,8 @@ export function Header() {
     }, [session, pathname]);
 
     const isPremium = user?.isPremium ?? false;
-    const isAuthenticated = !!session;
+    // Check for session.user.id to ensure user still exists in database
+    const isAuthenticated = !!(session?.user?.id);
 
     return (
         <header className="bg-white border-b border-gray-200 shadow-sm">
