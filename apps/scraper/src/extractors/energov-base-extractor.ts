@@ -28,11 +28,11 @@ export abstract class EnergovBaseExtractor extends BaseDailyExtractor {
 
     /**
      * Whether to extract detail page data (valuation, contractor license)
-     * Can be overridden by subclasses to disable detail page extraction
-     * Defaults to true for backward compatibility
+     * Can be overridden by subclasses to enable detail page extraction
+     * Defaults to false to avoid rate limiting issues
      */
     protected shouldExtractDetailPageData(): boolean {
-        return true;
+        return false;
     }
 
     /**

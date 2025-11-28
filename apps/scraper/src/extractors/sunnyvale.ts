@@ -22,12 +22,4 @@ export class SunnyvaleExtractor extends EnergovBaseExtractor {
     protected shouldExtractContractorInfo(): boolean {
         return false;
     }
-
-    /**
-     * Enable detail page extraction for Sunnyvale
-     * Extracts valuation and contractor license information from permit detail pages
-     */
-    protected shouldExtractDetailPageData(): boolean {
-        return true;
-    }
 }
