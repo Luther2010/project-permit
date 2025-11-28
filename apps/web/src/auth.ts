@@ -9,7 +9,7 @@ import bcrypt from "bcrypt";
 declare module "next-auth" {
     interface Session {
         user: {
-            id: string;
+            id?: string;
             name?: string | null;
             email?: string | null;
             image?: string | null;
@@ -117,14 +117,14 @@ export const authOptions: NextAuthOptions = {
                         session.user.name = user.name;
                     } else {
                         // User doesn't exist - clear all user data to invalidate session
-                        session.user.id = undefined as any;
+                        session.user.id = undefined;
                         session.user.email = null;
                         session.user.name = null;
                     }
                 } catch (error) {
                     // If database query fails, clear user data to be safe
                     console.error("Error verifying user in session:", error);
-                    session.user.id = undefined as any;
+                    session.user.id = undefined;
                     session.user.email = null;
                     session.user.name = null;
                 }
