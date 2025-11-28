@@ -356,7 +356,7 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
      * Extract permits from the current page
      * Handles both single result (detail page) and multiple results (table) cases
      */
-    protected async extractPermitsFromPage(limit?: number): Promise<PermitData[]> {
+    protected async extractPermitsFromPage(limit?: number, skipDetailExtraction?: boolean): Promise<PermitData[]> {
         let permits: PermitData[] = [];
 
         // Check if we're on a detail page (single result redirect)
@@ -455,7 +455,7 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
 
                 // Extract data from current page
                 const pageContent = await this.page!.content();
-                const pagePermits = await this.parsePermitData(pageContent, limit);
+                const pagePermits = await this.parsePermitData(pageContent, limit, skipDetailExtraction);
                 console.log(
                     `${this.getLoggerPrefix()} Found ${pagePermits.length} permits on page ${currentPage}`
                 );
@@ -500,7 +500,7 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
         return permits;
     }
 
-    protected async parsePermitData(rawData: any, limit?: number): Promise<PermitData[]> {
+    protected async parsePermitData(rawData: any, limit?: number, skipDetailExtraction?: boolean): Promise<PermitData[]> {
         const permits: PermitData[] = [];
         const $ = cheerio.load(rawData);
 
@@ -576,6 +576,17 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
                 status: status,
             });
         });
+
+        // If skipDetailExtraction is true, return basic permits without detail extraction
+        // This is used for contractor enrichment where we only need permit numbers
+        if (skipDetailExtraction) {
+            const permitsToReturn = limit ? basicPermits.slice(0, limit) : basicPermits;
+            return permitsToReturn.map(permit => ({
+                ...permit,
+                value: undefined,
+                licensedProfessionalText: undefined,
+            }));
+        }
 
         // Second pass: extract additional details for each permit
         // Apply limit if specified (for testing)
@@ -1117,7 +1128,9 @@ export abstract class AccelaBaseExtractor extends BaseDailyExtractor {
             await new Promise((resolve) => setTimeout(resolve, 5000));
 
             // Extract permits (handles both single result detail page and multiple results table)
-            const permits = await this.extractPermitsFromPage(limit);
+            // Skip detail extraction since we only need permit numbers for contractor enrichment
+            // Details are already extracted by the date-based scrape
+            const permits = await this.extractPermitsFromPage(limit, true);
             
             // Debug: if no permits found, log page info
             if (permits.length === 0) {
