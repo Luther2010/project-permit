@@ -5,7 +5,7 @@ This document outlines the daily tasks required to maintain and update the permi
 ## Overview
 
 The daily workflow consists of:
-1. Running scrapes for all cities from the previous day
+1. Running scrapes for all cities for the last week (since permits are continuously updated)
 2. Manually filling in missing data for Energov-based cities
 3. Running contractor enrichment (daily: top 100, weekly: full)
 4. Dry-running the sync script to review changes
@@ -16,7 +16,7 @@ The daily workflow consists of:
 
 ## Step 1: Run Daily Scrapes
 
-Run scrapes for all 14 cities for the **previous day's date**.
+Run scrapes for all 14 cities for the **last week** (7 days). This ensures we capture any permits that were updated or backdated, since permits are continuously updated in city systems.
 
 ### Command Format
 ```bash
@@ -24,25 +24,35 @@ cd apps/scraper
 pnpm scrape "<City Name>" --start-date YYYY-MM-DD --end-date YYYY-MM-DD
 ```
 
-### Example (for November 26, 2025)
+### Calculate Date Range
+Calculate the date range for the last 7 days:
+- **End date**: Yesterday (or today if running in the morning)
+- **Start date**: 7 days before the end date
+
+### Example (for November 27, 2025 - scraping last 7 days: Nov 21-27)
 ```bash
 # Run all cities in parallel (background processes)
 cd apps/scraper
 
-pnpm scrape "Los Gatos" --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-los-gatos.log 2>&1 &
-pnpm scrape Saratoga --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-saratoga.log 2>&1 &
-pnpm scrape "Santa Clara" --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-santa-clara.log 2>&1 &
-pnpm scrape Cupertino --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-cupertino.log 2>&1 &
-pnpm scrape "Palo Alto" --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-palo-alto.log 2>&1 &
-pnpm scrape "Los Altos Hills" --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-los-altos-hills.log 2>&1 &
-pnpm scrape Sunnyvale --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-sunnyvale.log 2>&1 &
-pnpm scrape "San Jose" --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-san-jose.log 2>&1 &
-pnpm scrape Campbell --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-campbell.log 2>&1 &
-pnpm scrape "Mountain View" --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-mountain-view.log 2>&1 &
-pnpm scrape Gilroy --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-gilroy.log 2>&1 &
-pnpm scrape Milpitas --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-milpitas.log 2>&1 &
-pnpm scrape "Morgan Hill" --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-morgan-hill.log 2>&1 &
-pnpm scrape "Los Altos" --start-date 2025-11-26 --end-date 2025-11-26 > /tmp/scrape-los-altos.log 2>&1 &
+pnpm scrape "Los Gatos" --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-los-gatos.log 2>&1 &
+pnpm scrape Saratoga --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-saratoga.log 2>&1 &
+pnpm scrape "Santa Clara" --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-santa-clara.log 2>&1 &
+pnpm scrape Cupertino --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-cupertino.log 2>&1 &
+pnpm scrape "Palo Alto" --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-palo-alto.log 2>&1 &
+pnpm scrape "Los Altos Hills" --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-los-altos-hills.log 2>&1 &
+pnpm scrape Sunnyvale --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-sunnyvale.log 2>&1 &
+pnpm scrape "San Jose" --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-san-jose.log 2>&1 &
+pnpm scrape Campbell --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-campbell.log 2>&1 &
+pnpm scrape "Mountain View" --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-mountain-view.log 2>&1 &
+pnpm scrape Gilroy --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-gilroy.log 2>&1 &
+pnpm scrape Milpitas --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-milpitas.log 2>&1 &
+pnpm scrape "Morgan Hill" --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-morgan-hill.log 2>&1 &
+pnpm scrape "Los Altos" --start-date 2025-11-21 --end-date 2025-11-27 > /tmp/scrape-los-altos.log 2>&1 &
+```
+
+**Note**: For Mountain View (monthly scraper), use the month range instead:
+```bash
+pnpm scrape "Mountain View" --start-date 2025-11-01 --end-date 2025-11-30
 ```
 
 ### Monitor Progress
@@ -54,8 +64,10 @@ tail -f /tmp/scrape-*.log
 ### Notes
 - All cities run in parallel as background processes
 - Logs are saved to `/tmp/scrape-<city-name>.log`
-- Scrapes may take 10-30 minutes depending on the number of permits
+- Scrapes may take 30-60 minutes depending on the number of permits (longer for week-long ranges)
 - Some permits may have 403 errors (rate limiting) - these will still be saved but without `value` and `contractorLicense` fields
+- Running for the last week ensures we capture permits that were updated or backdated in city systems
+- The sync script will handle duplicates (permits already in the database will be updated, not duplicated)
 
 ---
 
@@ -68,17 +80,20 @@ Energov-based cities (Sunnyvale and Gilroy) have detail page extraction disabled
 ### Workflow
 
 #### 1. Generate CSV Template
-Generate a CSV template for the previous day's Energov permits:
+Generate a CSV template for Energov permits from the last week. You can generate templates for each day separately, or generate one for the entire week:
 
 ```bash
 cd apps/web
+# Generate for a specific date
 pnpm exec dotenv -e .env -- tsx scripts/generate-energov-template.ts YYYY-MM-DD ../../data/energov-manual-data-YYYY-MM-DD.csv
 ```
 
-**Example:**
+**Example (for November 27, 2025):**
 ```bash
-pnpm exec dotenv -e .env -- tsx scripts/generate-energov-template.ts 2025-11-26 ../../data/energov-manual-data-2025-11-26.csv
+pnpm exec dotenv -e .env -- tsx scripts/generate-energov-template.ts 2025-11-27 ../../data/energov-manual-data-2025-11-27.csv
 ```
+
+**Note**: Since scrapes run for the last week, you may want to generate templates for each day in the week to ensure all permits are covered.
 
 This will:
 - Query all Sunnyvale and Gilroy permits for the specified date
@@ -225,7 +240,7 @@ pnpm exec dotenv -e .env -- tsx scripts/sync-dev-to-prod.ts
 
 ## Step 6: Send Daily Permit Emails
 
-Send daily permit emails to subscribers for the previous day's permits.
+Send daily permit emails to subscribers for permits from the last week (or previous day, depending on your preference).
 
 ### Command
 ```bash
@@ -254,11 +269,11 @@ pnpm exec dotenv -e .env -- tsx scripts/send-daily-permits.ts user@example.com 2
 
 ## Quick Reference: Daily Checklist
 
-- [ ] Run scrapes for all 14 cities (previous day's date)
+- [ ] Run scrapes for all 14 cities (last 7 days)
 - [ ] Check scrape logs for errors
-- [ ] Generate Energov CSV template for previous day
-- [ ] Fill in value and contractor license in CSV
-- [ ] Import Energov CSV to update database
+- [ ] Generate Energov CSV templates for each day in the week
+- [ ] Fill in value and contractor license in CSV files
+- [ ] Import Energov CSV files to update database
 - [ ] Run top 100 contractor enrichment (daily)
 - [ ] Run full contractor enrichment (weekly only)
 - [ ] Dry-run sync script to review changes
@@ -341,7 +356,7 @@ AWS_SECRET_ACCESS_KEY=...
 
 ## Notes
 
-- All scrapes should be run for the **previous day's date**
+- All scrapes should be run for the **last 7 days** to capture any permits that were updated or backdated
 - Energov cities (Sunnyvale, Gilroy) may need manual data entry due to rate limiting
 - Contractor enrichment is expensive - use top 100 daily, full weekly
 - Always dry-run sync before syncing to production
