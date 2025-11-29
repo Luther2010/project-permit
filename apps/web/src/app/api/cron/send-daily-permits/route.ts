@@ -51,10 +51,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Get the date from 2 days ago in Pacific Time (America/Los_Angeles)
-    // Permits applied on day N become available/scraped on day N+1,
-    // so when email runs on day N+2, it should send permits from day N
-    // This ensures consistent behavior regardless of where the script runs
+    // Compute a rolling 7-day window in Pacific Time (America/Los_Angeles)
+    // We use "yesterday" as the end of the window, since permits applied today
+    // may not have been fully scraped/processed yet.
+    // Window: [yesterday - 6 days, yesterday] inclusive.
     const currentTime = new Date();
     
     // Format current date in Pacific Time to get the date components
@@ -70,14 +70,18 @@ export async function GET(request: Request) {
     const pacificMonth = parseInt(parts.find(p => p.type === "month")!.value);
     const pacificDay = parseInt(parts.find(p => p.type === "day")!.value);
     
-    // Create a date object for today in Pacific Time (using UTC to avoid timezone shifts)
-    // Calculate 2 days ago (minimum date) and yesterday (maximum date)
-    // We use yesterday as max because permits applied today may not have been scraped yet
-    const todayPacific = new Date(Date.UTC(pacificYear, pacificMonth - 1, pacificDay));
-    const minDate = new Date(todayPacific);
-    minDate.setUTCDate(minDate.getUTCDate() - 2);
+    // Create a date object for "today" in Pacific Time (using UTC to avoid timezone shifts)
+    const todayPacific = new Date(
+      Date.UTC(pacificYear, pacificMonth - 1, pacificDay)
+    );
+
+    // End of window: yesterday in Pacific time
     const maxDate = new Date(todayPacific);
-    maxDate.setUTCDate(maxDate.getUTCDate() - 1); // Use yesterday as maximum date
+    maxDate.setUTCDate(maxDate.getUTCDate() - 1);
+
+    // Start of window: 6 days before max (7 days total, inclusive)
+    const minDate = new Date(maxDate);
+    minDate.setUTCDate(minDate.getUTCDate() - 6);
 
     const minYear = minDate.getUTCFullYear();
     const minMonth = minDate.getUTCMonth() + 1;
@@ -89,9 +93,11 @@ export async function GET(request: Request) {
     // Format as YYYY-MM-DD for appliedDateString query (timezone-safe)
     const minDateString = `${minYear}-${String(minMonth).padStart(2, "0")}-${String(minDay).padStart(2, "0")}`;
     const maxDateString = `${maxYear}-${String(maxMonth).padStart(2, "0")}-${String(maxDay).padStart(2, "0")}`;
-    console.log(`[Cron] Processing daily permits email for permits applied between ${minDateString} and ${maxDateString} (2 days ago to yesterday in Pacific Time)`);
+    console.log(
+      `[Cron] Processing daily permits email for permits applied between ${minDateString} and ${maxDateString} (last 7 days ending yesterday, Pacific Time)`
+    );
 
-    // Query permits applied between 2 days ago and yesterday (most recent permits that have been scraped)
+    // Query permits applied in the last 7 days window (most recent permits that have been scraped)
     // Get total count and city breakdown
     const [permitCount, cityCounts] = await Promise.all([
       prisma.permit.count({
@@ -160,13 +166,25 @@ export async function GET(request: Request) {
       });
     }
 
-    // Format date for email (e.g., "October 27, 2025")
-    // Use the max date (yesterday) for the email subject
-    const formattedDate = new Date(maxYear, maxMonth - 1, maxDay).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
+    // Format date range for email subject/body, e.g. "Nov 22–Nov 28, 2025"
+    const formattedStart = new Date(
+      minYear,
+      minMonth - 1,
+      minDay
+    ).toLocaleDateString("en-US", {
+      month: "short",
       day: "numeric",
     });
+    const formattedEnd = new Date(
+      maxYear,
+      maxMonth - 1,
+      maxDay
+    ).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    const formattedRange = `${formattedStart}–${formattedEnd}`;
 
     const baseUrl =
       process.env.NEXT_PUBLIC_BASE_URL ||
@@ -180,7 +198,7 @@ export async function GET(request: Request) {
 
     // Generate email content (same for all users)
     const htmlBody = generateDailyPermitsEmail({
-      date: formattedDate,
+      date: formattedRange,
       minDateString,
       maxDateString,
       permitCount,
@@ -189,7 +207,7 @@ export async function GET(request: Request) {
     });
 
     const textBody = generateDailyPermitsEmailText({
-      date: formattedDate,
+      date: formattedRange,
       minDateString,
       maxDateString,
       permitCount,
@@ -208,7 +226,7 @@ export async function GET(request: Request) {
       try {
         await sendEmail({
           to: user.email,
-          subject: `New Permits - ${minDateString} to ${maxDateString} (${permitCount} permit${permitCount !== 1 ? "s" : ""})`,
+          subject: `New Permits - ${formattedRange} (${permitCount} permit${permitCount !== 1 ? "s" : ""})`,
           htmlBody,
           textBody,
         });

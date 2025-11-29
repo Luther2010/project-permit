@@ -28,23 +28,48 @@ async function sendDailyPermitsEmail(to: string, date: string) {
     throw new Error("Invalid date format. Use YYYY-MM-DD");
   }
 
-  // Validate date format (YYYY-MM-DD) - use as-is for appliedDateString
-  const dateString = date; // Already validated above
+  // Reference date (end of range) in YYYY-MM-DD
+  const endDateString = date; // Already validated above
 
-  console.log(`Querying permits for date: ${dateString}`);
+  // Compute start date string for the past week (7 days, inclusive)
+  const [year, month, day] = endDateString.split("-").map(Number);
+  if (!year || !month || !day) {
+    throw new Error("Invalid date value");
+  }
 
-  // Query permits applied on the specified date using appliedDateString
+  const endDate = new Date(year, month - 1, day);
+  const startDate = new Date(endDate);
+  startDate.setDate(startDate.getDate() - 6); // past 7 days: start + ... + end
+
+  const formatDateString = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+  };
+
+  const startDateString = formatDateString(startDate);
+
+  console.log(`Querying permits for date range: ${startDateString} to ${endDateString}`);
+
+  // Query permits applied in the specified date range using appliedDateString
   // Get total count and city breakdown
   const [permitCount, cityCounts] = await Promise.all([
     prisma.permit.count({
       where: {
-        appliedDateString: dateString,
+        appliedDateString: {
+          gte: startDateString,
+          lte: endDateString,
+        },
       },
     }),
     prisma.permit.groupBy({
       by: ['city'],
       where: {
-        appliedDateString: dateString,
+        appliedDateString: {
+          gte: startDateString,
+          lte: endDateString,
+        },
       },
       _count: {
         id: true,
@@ -52,25 +77,24 @@ async function sendDailyPermitsEmail(to: string, date: string) {
     }),
   ]);
 
-  console.log(`Found ${permitCount} permit(s) for ${dateString}`);
+  console.log(`Found ${permitCount} permit(s) for ${startDateString} to ${endDateString}`);
 
   if (permitCount === 0) {
-    console.log("No permits found. Email will not be sent.");
+    console.log("No permits found in range. Email will not be sent.");
     return;
   }
 
-  // Parse date for formatting
-  const [year, month, day] = dateString.split("-").map(Number);
-  if (!year || !month || !day) {
-    throw new Error("Invalid date value");
-  }
-
-  // Format date for email (e.g., "October 27, 2025")
-  const formattedDate = new Date(year, month - 1, day).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
+  // Format date range for email subject/body (e.g., "Nov 21–27, 2025")
+  const formattedStart = startDate.toLocaleDateString("en-US", {
+    month: "short",
     day: "numeric",
   });
+  const formattedEnd = endDate.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+  const formattedRange = `${formattedStart}–${formattedEnd}`;
 
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ||
@@ -84,18 +108,18 @@ async function sendDailyPermitsEmail(to: string, date: string) {
 
   // Generate email content
   const htmlBody = generateDailyPermitsEmail({
-    date: formattedDate,
-    minDateString: dateString,
-    maxDateString: dateString,
+    date: formattedRange,
+    minDateString: startDateString,
+    maxDateString: endDateString,
     permitCount,
     cityCounts: cityCountMap,
     baseUrl,
   });
 
   const textBody = generateDailyPermitsEmailText({
-    date: formattedDate,
-    minDateString: dateString,
-    maxDateString: dateString,
+    date: formattedRange,
+    minDateString: startDateString,
+    maxDateString: endDateString,
     permitCount,
     cityCounts: cityCountMap,
     baseUrl,
@@ -105,13 +129,13 @@ async function sendDailyPermitsEmail(to: string, date: string) {
   console.log(`Sending email to ${to}...`);
   await sendEmail({
     to,
-    subject: `New Permits - ${formattedDate} (${permitCount} permit${permitCount !== 1 ? "s" : ""})`,
+    subject: `New Permits - ${formattedRange} (${permitCount} permit${permitCount !== 1 ? "s" : ""})`,
     htmlBody,
     textBody,
   });
 
   console.log(`✅ Email sent successfully to ${to}`);
-  console.log(`   Date: ${formattedDate}`);
+  console.log(`   Date range: ${formattedRange}`);
   console.log(`   Permits: ${permitCount}`);
 }
 
