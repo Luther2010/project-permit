@@ -60,18 +60,39 @@ interface SyncStats {
 async function syncContractors(dryRun: boolean): Promise<SyncStats["contractors"]> {
   console.log("\n📦 Syncing Contractors...");
   
+  console.log("  📥 Fetching contractors from dev database...");
   const devContractors = await devPrisma.contractor.findMany({
     include: {
       classifications: true,
     },
   });
 
+  console.log("  📥 Fetching contractors from prod database...");
+  const prodContractors = await prodPrisma.contractor.findMany({
+    select: {
+      id: true,
+      licenseNo: true,
+      name: true,
+      mailingAddress: true,
+      city: true,
+      state: true,
+      zipCode: true,
+      phone: true,
+    },
+  });
+
+  // Create Maps for O(1) lookup
+  const prodContractorsMap = new Map(
+    prodContractors.map(c => [c.licenseNo, c])
+  );
+  const prodContractorIdMap = new Map(
+    prodContractors.map(c => [c.licenseNo, c.id])
+  );
+
   const stats = { created: 0, updated: 0, skipped: 0 };
 
   for (const contractor of devContractors) {
-    const existing = await prodPrisma.contractor.findUnique({
-      where: { licenseNo: contractor.licenseNo },
-    });
+    const existing = prodContractorsMap.get(contractor.licenseNo);
 
     if (existing) {
       // Check if update is needed
@@ -108,48 +129,54 @@ async function syncContractors(dryRun: boolean): Promise<SyncStats["contractors"
       } else {
         stats.skipped++;
       }
-    } else {
-      if (dryRun) {
-        console.log(`  ➕ Would create: ${contractor.licenseNo} - ${contractor.name}`);
-        stats.created++;
       } else {
-        await prodPrisma.contractor.create({
-          data: {
-            licenseNo: contractor.licenseNo,
-            name: contractor.name,
-            mailingAddress: contractor.mailingAddress,
-            city: contractor.city,
-            county: contractor.county,
-            state: contractor.state,
-            zipCode: contractor.zipCode,
-            phone: contractor.phone,
-            businessType: contractor.businessType,
-            issueDate: contractor.issueDate,
-            createdAt: contractor.createdAt,
-            updatedAt: new Date(),
-          },
-        });
-        console.log(`  ✅ Created: ${contractor.licenseNo} - ${contractor.name}`);
-        stats.created++;
+        if (dryRun) {
+          console.log(`  ➕ Would create: ${contractor.licenseNo} - ${contractor.name}`);
+          stats.created++;
+        } else {
+          const newContractor = await prodPrisma.contractor.create({
+            data: {
+              licenseNo: contractor.licenseNo,
+              name: contractor.name,
+              mailingAddress: contractor.mailingAddress,
+              city: contractor.city,
+              county: contractor.county,
+              state: contractor.state,
+              zipCode: contractor.zipCode,
+              phone: contractor.phone,
+              businessType: contractor.businessType,
+              issueDate: contractor.issueDate,
+              createdAt: contractor.createdAt,
+              updatedAt: new Date(),
+            },
+          });
+          // Update map so classifications can be synced
+          prodContractorIdMap.set(contractor.licenseNo, newContractor.id);
+          console.log(`  ✅ Created: ${contractor.licenseNo} - ${contractor.name}`);
+          stats.created++;
+        }
       }
-    }
 
     // Sync classifications
     if (!dryRun && contractor.classifications.length > 0) {
-      for (const classification of contractor.classifications) {
-        await prodPrisma.contractorClassification.upsert({
-          where: {
-            contractorId_classification: {
-              contractorId: contractor.id,
+      // Get prod contractor ID (either existing or newly created)
+      const prodContractorId = prodContractorIdMap.get(contractor.licenseNo);
+      if (prodContractorId) {
+        for (const classification of contractor.classifications) {
+          await prodPrisma.contractorClassification.upsert({
+            where: {
+              contractorId_classification: {
+                contractorId: prodContractorId,
+                classification: classification.classification,
+              },
+            },
+            create: {
+              contractorId: prodContractorId,
               classification: classification.classification,
             },
-          },
-          create: {
-            contractorId: contractor.id,
-            classification: classification.classification,
-          },
-          update: {},
-        });
+            update: {},
+          });
+        }
       }
     }
   }
@@ -160,14 +187,32 @@ async function syncContractors(dryRun: boolean): Promise<SyncStats["contractors"
 async function syncPermits(dryRun: boolean): Promise<SyncStats["permits"]> {
   console.log("\n📦 Syncing Permits...");
   
+  // Fetch all permits from both databases upfront
+  console.log("  📥 Fetching permits from dev database...");
   const devPermits = await devPrisma.permit.findMany();
+  
+  console.log("  📥 Fetching permits from prod database...");
+  const prodPermits = await prodPrisma.permit.findMany({
+    select: {
+      permitNumber: true,
+      title: true,
+      address: true,
+      status: true,
+      value: true,
+      appliedDateString: true,
+    },
+  });
+
+  // Create a Map for O(1) lookup
+  const prodPermitsMap = new Map(
+    prodPermits.map(p => [p.permitNumber, p])
+  );
+
   const stats = { created: 0, updated: 0, skipped: 0 };
   const cityCounts = new Map<string, number>(); // Track new permits by city (for dry-run summary)
 
   for (const permit of devPermits) {
-    const existing = await prodPrisma.permit.findUnique({
-      where: { permitNumber: permit.permitNumber },
-    });
+    const existing = prodPermitsMap.get(permit.permitNumber);
 
     if (existing) {
       // Check if update is needed
@@ -261,6 +306,7 @@ async function syncPermits(dryRun: boolean): Promise<SyncStats["permits"]> {
 async function syncPermitContractors(dryRun: boolean): Promise<SyncStats["permitContractors"]> {
   console.log("\n📦 Syncing Permit-Contractor Links...");
   
+  console.log("  📥 Fetching links from dev database...");
   const devLinks = await devPrisma.permitContractor.findMany({
     include: {
       permit: { select: { permitNumber: true } },
@@ -268,18 +314,42 @@ async function syncPermitContractors(dryRun: boolean): Promise<SyncStats["permit
     },
   });
 
+  // Fetch all prod permits and contractors upfront
+  console.log("  📥 Fetching permits and contractors from prod database...");
+  const [prodPermits, prodContractors, prodLinks] = await Promise.all([
+    prodPrisma.permit.findMany({
+      select: { id: true, permitNumber: true },
+    }),
+    prodPrisma.contractor.findMany({
+      select: { id: true, licenseNo: true },
+    }),
+    prodPrisma.permitContractor.findMany({
+      select: {
+        permitId: true,
+        contractorId: true,
+      },
+    }),
+  ]);
+
+  // Create Maps for O(1) lookup
+  const prodPermitsMap = new Map(
+    prodPermits.map(p => [p.permitNumber, p.id])
+  );
+  const prodContractorsMap = new Map(
+    prodContractors.map(c => [c.licenseNo, c.id])
+  );
+  const prodLinksSet = new Set(
+    prodLinks.map(l => `${l.permitId}_${l.contractorId}`)
+  );
+
   const stats = { created: 0, skipped: 0 };
 
   for (const link of devLinks) {
-    // Find permit and contractor IDs in prod DB
-    const prodPermit = await prodPrisma.permit.findUnique({
-      where: { permitNumber: link.permit.permitNumber },
-    });
-    const prodContractor = await prodPrisma.contractor.findUnique({
-      where: { licenseNo: link.contractor.licenseNo },
-    });
+    // Look up permit and contractor IDs in prod DB
+    const prodPermitId = prodPermitsMap.get(link.permit.permitNumber);
+    const prodContractorId = prodContractorsMap.get(link.contractor.licenseNo);
 
-    if (!prodPermit || !prodContractor) {
+    if (!prodPermitId || !prodContractorId) {
       if (dryRun) {
         console.log(`  ⚠️  Would skip link: Permit or contractor not found in prod (${link.permit.permitNumber} <-> ${link.contractor.licenseNo})`);
       }
@@ -287,32 +357,25 @@ async function syncPermitContractors(dryRun: boolean): Promise<SyncStats["permit
       continue;
     }
 
-    const existing = await prodPrisma.permitContractor.findUnique({
-      where: {
-        permitId_contractorId: {
-          permitId: prodPermit.id,
-          contractorId: prodContractor.id,
-        },
-      },
-    });
-
-    if (!existing) {
-      if (dryRun) {
-        console.log(`  ➕ Would create link: ${link.permit.permitNumber} <-> ${link.contractor.licenseNo}`);
-        stats.created++;
-      } else {
-        await prodPrisma.permitContractor.create({
-          data: {
-            permitId: prodPermit.id,
-            contractorId: prodContractor.id,
-            role: link.role,
-          },
-        });
-        console.log(`  ✅ Created link: ${link.permit.permitNumber} <-> ${link.contractor.licenseNo}`);
-        stats.created++;
-      }
-    } else {
+    const linkKey = `${prodPermitId}_${prodContractorId}`;
+    if (prodLinksSet.has(linkKey)) {
       stats.skipped++;
+      continue;
+    }
+
+    if (dryRun) {
+      console.log(`  ➕ Would create link: ${link.permit.permitNumber} <-> ${link.contractor.licenseNo}`);
+      stats.created++;
+    } else {
+      await prodPrisma.permitContractor.create({
+        data: {
+          permitId: prodPermitId,
+          contractorId: prodContractorId,
+          role: link.role,
+        },
+      });
+      console.log(`  ✅ Created link: ${link.permit.permitNumber} <-> ${link.contractor.licenseNo}`);
+      stats.created++;
     }
   }
 
