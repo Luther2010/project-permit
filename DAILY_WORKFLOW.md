@@ -179,7 +179,8 @@ pnpm tsx src/enrich-contractors.ts --start-date YYYY-MM-DD --end-date YYYY-MM-DD
 **Example:**
 ```bash
 # For the past week
-pnpm tsx src/enrich-contractors.ts --start-date 2025-11-20 --end-date 2025-11-26
+cd /Users/luyu/Desktop/project-permit/apps/scraper
+pnpm tsx src/enrich-contractors.ts --start-date 2025-11-21 --end-date 2025-11-27 --limit 100
 ```
 
 ### Notes
