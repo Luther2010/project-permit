@@ -52,9 +52,7 @@ export async function GET(request: Request) {
 
   try {
     // Compute a rolling 7-day window in Pacific Time (America/Los_Angeles)
-    // We use "yesterday" as the end of the window, since permits applied today
-    // may not have been fully scraped/processed yet.
-    // Window: [yesterday - 6 days, yesterday] inclusive.
+    // Window: [today - 6 days, today] inclusive (last 7 days including today)
     const currentTime = new Date();
     
     // Format current date in Pacific Time to get the date components
@@ -75,9 +73,8 @@ export async function GET(request: Request) {
       Date.UTC(pacificYear, pacificMonth - 1, pacificDay)
     );
 
-    // End of window: yesterday in Pacific time
+    // End of window: today in Pacific time
     const maxDate = new Date(todayPacific);
-    maxDate.setUTCDate(maxDate.getUTCDate() - 1);
 
     // Start of window: 6 days before max (7 days total, inclusive)
     const minDate = new Date(maxDate);
@@ -94,7 +91,7 @@ export async function GET(request: Request) {
     const minDateString = `${minYear}-${String(minMonth).padStart(2, "0")}-${String(minDay).padStart(2, "0")}`;
     const maxDateString = `${maxYear}-${String(maxMonth).padStart(2, "0")}-${String(maxDay).padStart(2, "0")}`;
     console.log(
-      `[Cron] Processing daily permits email for permits applied between ${minDateString} and ${maxDateString} (last 7 days ending yesterday, Pacific Time)`
+      `[Cron] Processing daily permits email for permits applied between ${minDateString} and ${maxDateString} (last 7 days including today, Pacific Time)`
     );
 
     // Query permits applied in the last 7 days window (most recent permits that have been scraped)
