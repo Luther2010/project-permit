@@ -224,8 +224,29 @@ async function syncPermits(dryRun: boolean): Promise<SyncStats["permits"]> {
         existing.appliedDateString !== permit.appliedDateString;
 
       if (needsUpdate) {
+        // Determine which fields changed
+        const changes: string[] = [];
+        if (existing.title !== permit.title) {
+          changes.push(`title: "${existing.title}" → "${permit.title}"`);
+        }
+        if (existing.address !== permit.address) {
+          changes.push(`address: "${existing.address}" → "${permit.address}"`);
+        }
+        if (existing.status !== permit.status) {
+          changes.push(`status: "${existing.status}" → "${permit.status}"`);
+        }
+        if (existing.value !== permit.value) {
+          changes.push(`value: ${existing.value} → ${permit.value}`);
+        }
+        if (existing.appliedDateString !== permit.appliedDateString) {
+          changes.push(`appliedDateString: "${existing.appliedDateString}" → "${permit.appliedDateString}"`);
+        }
+
         if (dryRun) {
           console.log(`  🔄 Would update: ${permit.permitNumber}`);
+          if (changes.length > 0) {
+            changes.forEach(change => console.log(`     ${change}`));
+          }
           stats.updated++;
         } else {
           await prodPrisma.permit.update({
