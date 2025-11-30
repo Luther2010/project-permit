@@ -80,23 +80,26 @@ Energov-based cities (Sunnyvale and Gilroy) have detail page extraction disabled
 ### Workflow
 
 #### 1. Generate CSV Template
-Generate a CSV template for Energov permits from the last week. You can generate templates for each day separately, or generate one for the entire week:
+Generate a CSV template for Energov permits from the last week. The script now supports date ranges, so you can generate one template for the entire week:
 
 ```bash
 cd apps/web
-# Generate for a specific date
+# Generate for a date range (recommended)
+pnpm exec dotenv -e .env -- tsx scripts/generate-energov-template.ts --start-date YYYY-MM-DD --end-date YYYY-MM-DD ../../data/energov-manual-data-YYYY-MM-DD-YYYY-MM-DD.csv
+
+# Or generate for a single date (backward compatible)
 pnpm exec dotenv -e .env -- tsx scripts/generate-energov-template.ts YYYY-MM-DD ../../data/energov-manual-data-YYYY-MM-DD.csv
 ```
 
-**Example (for November 27, 2025):**
+**Example (for November 22-28, 2025):**
 ```bash
-pnpm exec dotenv -e .env -- tsx scripts/generate-energov-template.ts 2025-11-27 ../../data/energov-manual-data-2025-11-27.csv
+pnpm exec dotenv -e .env -- tsx scripts/generate-energov-template.ts --start-date 2025-11-22 --end-date 2025-11-28 ../../data/energov-manual-data-2025-11-22-1128.csv
 ```
 
-**Note**: Since scrapes run for the last week, you may want to generate templates for each day in the week to ensure all permits are covered.
+**Note**: Since scrapes run for the last week, generating one template for the entire week is recommended.
 
 This will:
-- Query all Sunnyvale and Gilroy permits for the specified date
+- Query all Sunnyvale and Gilroy permits for the specified date range
 - Generate a CSV with columns: `permitNumber`, `value`, `contractorLicense`
 - Pre-fill existing values if any permits already have data
 
