@@ -163,7 +163,7 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   name          String?
-  password      String?   // Hashed password for credentials-based auth (null for OAuth users)
+  password      String? // Hashed password for credentials-based auth (null for OAuth users)
   emailVerified DateTime?
   image         String?
   createdAt     DateTime  @default(now())
@@ -231,7 +231,7 @@ model Permit {
   id String @id @default(cuid())
 
   // Basic info
-  permitNumber String  @unique
+  permitNumber String
   title        String?
   description  String?
 
@@ -242,7 +242,7 @@ model Permit {
   zipCode String?
 
   // Details
-  propertyType PropertyType @default(UNKNOWN)
+  propertyType PropertyType  @default(UNKNOWN)
   permitType   PermitType?
   status       PermitStatus?
   value        Float?
@@ -262,6 +262,7 @@ model Permit {
   // Relations
   contractors PermitContractor[]
 
+  @@unique([permitNumber, city])
   @@index([permitNumber])
   @@index([city])
   @@index([permitType])
@@ -342,11 +343,11 @@ model FeatureOption {
 }
 
 model FeatureVote {
-  id             String        @id @default(cuid())
-  email          String
+  id              String        @id @default(cuid())
+  email           String
   featureOptionId String
-  featureOption  FeatureOption @relation(fields: [featureOptionId], references: [id], onDelete: Cascade)
-  createdAt      DateTime      @default(now())
+  featureOption   FeatureOption @relation(fields: [featureOptionId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
 
   @@unique([email, featureOptionId])
   @@index([email])

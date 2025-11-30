@@ -51,8 +51,19 @@ async function main() {
     ];
 
     for (const permit of permits) {
+        // Skip permits without a city (can't use composite key)
+        if (!permit.city) {
+            console.log(`⚠️  Skipping permit ${permit.permitNumber}: city is null`);
+            continue;
+        }
+
         const created = await prisma.permit.upsert({
-            where: { permitNumber: permit.permitNumber },
+            where: {
+                permitNumber_city: {
+                    permitNumber: permit.permitNumber,
+                    city: permit.city,
+                }
+            },
             update: {},
             create: permit,
         });

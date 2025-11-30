@@ -242,7 +242,12 @@ async function savePermits(permits: any[]): Promise<void> {
             const validAppliedDateString = normalizeDateString(permit.appliedDateString);
 
             const savedPermit = await prisma.permit.upsert({
-                where: { permitNumber: permit.permitNumber },
+                where: { 
+                    permitNumber_city: {
+                        permitNumber: permit.permitNumber,
+                        city: city,
+                    }
+                },
                 update: {
                     // Update existing permits
                     title: permit.title,

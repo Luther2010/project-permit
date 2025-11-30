@@ -132,9 +132,20 @@ async function cloneData() {
     
     let permitsCloned = 0;
     for (const permit of prodPermits) {
+      // Skip permits without a city (can't use composite key)
+      if (!permit.city) {
+        console.log(`  ⚠️  Skipping permit ${permit.permitNumber}: city is null`);
+        continue;
+      }
+
       try {
         await devPrisma.permit.upsert({
-          where: { permitNumber: permit.permitNumber },
+          where: {
+            permitNumber_city: {
+              permitNumber: permit.permitNumber,
+              city: permit.city,
+            }
+          },
           create: {
             permitNumber: permit.permitNumber,
             title: permit.title,
@@ -189,17 +200,28 @@ async function cloneData() {
     console.log("📦 Cloning Permit-Contractor Links...");
     const prodLinks = await prodPrisma.permitContractor.findMany({
       include: {
-        permit: { select: { permitNumber: true } },
+        permit: { select: { permitNumber: true, city: true } },
         contractor: { select: { licenseNo: true } },
       },
     });
 
     let linksCloned = 0;
     for (const link of prodLinks) {
+      // Skip if permit has no city
+      if (!link.permit.city) {
+        console.log(`   ⚠️  Skipping link: Permit ${link.permit.permitNumber} has no city`);
+        continue;
+      }
+
       try {
         // Find permit and contractor IDs in dev DB
         const devPermit = await devPrisma.permit.findUnique({
-          where: { permitNumber: link.permit.permitNumber },
+          where: {
+            permitNumber_city: {
+              permitNumber: link.permit.permitNumber,
+              city: link.permit.city,
+            }
+          },
         });
         const devContractor = await devPrisma.contractor.findUnique({
           where: { licenseNo: link.contractor.licenseNo },

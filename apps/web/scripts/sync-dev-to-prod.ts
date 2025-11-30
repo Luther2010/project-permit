@@ -195,6 +195,7 @@ async function syncPermits(dryRun: boolean): Promise<SyncStats["permits"]> {
   const prodPermits = await prodPrisma.permit.findMany({
     select: {
       permitNumber: true,
+      city: true,
       title: true,
       address: true,
       status: true,
@@ -203,16 +204,24 @@ async function syncPermits(dryRun: boolean): Promise<SyncStats["permits"]> {
     },
   });
 
-  // Create a Map for O(1) lookup
+  // Create a Map for O(1) lookup using composite key (permitNumber + city)
   const prodPermitsMap = new Map(
-    prodPermits.map(p => [p.permitNumber, p])
+    prodPermits.map(p => [`${p.permitNumber}|${p.city}`, p])
   );
 
   const stats = { created: 0, updated: 0, skipped: 0 };
   const cityCounts = new Map<string, number>(); // Track new permits by city (for dry-run summary)
 
   for (const permit of devPermits) {
-    const existing = prodPermitsMap.get(permit.permitNumber);
+    // Skip permits without a city (can't use composite key)
+    if (!permit.city) {
+      console.log(`  ⚠️  Skipping permit ${permit.permitNumber}: city is null`);
+      stats.skipped++;
+      continue;
+    }
+
+    const compositeKey = `${permit.permitNumber}|${permit.city}`;
+    const existing = prodPermitsMap.get(compositeKey);
 
     if (existing) {
       // Check if update is needed
@@ -250,7 +259,12 @@ async function syncPermits(dryRun: boolean): Promise<SyncStats["permits"]> {
           stats.updated++;
         } else {
           await prodPrisma.permit.update({
-            where: { permitNumber: permit.permitNumber },
+            where: { 
+              permitNumber_city: {
+                permitNumber: permit.permitNumber,
+                city: permit.city,
+              }
+            },
             data: {
               title: permit.title,
               description: permit.description,
@@ -277,6 +291,19 @@ async function syncPermits(dryRun: boolean): Promise<SyncStats["permits"]> {
         stats.skipped++;
       }
     } else {
+      // Check if permit with same number exists in prod (different city scenario)
+      const existingPermitWithSameNumber = await prodPrisma.permit.findFirst({
+        where: { permitNumber: permit.permitNumber },
+        select: { permitNumber: true, city: true },
+      });
+
+      if (existingPermitWithSameNumber && existingPermitWithSameNumber.city !== permit.city) {
+        // Permit exists with same number but different city - skip it
+        console.log(`  ⚠️  Skipping ${permit.permitNumber}: exists in prod with city ${existingPermitWithSameNumber.city}, dev has city ${permit.city}`);
+        stats.skipped++;
+        continue;
+      }
+
       if (dryRun) {
         console.log(`  ➕ Would create: ${permit.permitNumber} - ${permit.address}`);
         stats.created++;
@@ -284,7 +311,8 @@ async function syncPermits(dryRun: boolean): Promise<SyncStats["permits"]> {
         const city = permit.city || "UNKNOWN";
         cityCounts.set(city, (cityCounts.get(city) || 0) + 1);
       } else {
-        await prodPrisma.permit.create({
+        try {
+          await prodPrisma.permit.create({
           data: {
             permitNumber: permit.permitNumber,
             title: permit.title,
@@ -308,6 +336,19 @@ async function syncPermits(dryRun: boolean): Promise<SyncStats["permits"]> {
         });
         console.log(`  ✅ Created: ${permit.permitNumber}`);
         stats.created++;
+        } catch (error: unknown) {
+          if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+            // Check if permit exists with same number but different city
+            const existingPermit = await prodPrisma.permit.findFirst({
+              where: { permitNumber: permit.permitNumber },
+              select: { permitNumber: true, city: true },
+            });
+            console.error(`  ❌ Failed to create ${permit.permitNumber} (city: ${permit.city}):`);
+            console.error(`     Existing permit in prod: ${existingPermit ? `${existingPermit.permitNumber} (city: ${existingPermit.city})` : 'not found'}`);
+            throw error;
+          }
+          throw error;
+        }
       }
     }
   }
@@ -330,7 +371,7 @@ async function syncPermitContractors(dryRun: boolean): Promise<SyncStats["permit
   console.log("  📥 Fetching links from dev database...");
   const devLinks = await devPrisma.permitContractor.findMany({
     include: {
-      permit: { select: { permitNumber: true } },
+      permit: { select: { permitNumber: true, city: true } },
       contractor: { select: { licenseNo: true } },
     },
   });
@@ -339,7 +380,7 @@ async function syncPermitContractors(dryRun: boolean): Promise<SyncStats["permit
   console.log("  📥 Fetching permits and contractors from prod database...");
   const [prodPermits, prodContractors, prodLinks] = await Promise.all([
     prodPrisma.permit.findMany({
-      select: { id: true, permitNumber: true },
+      select: { id: true, permitNumber: true, city: true },
     }),
     prodPrisma.contractor.findMany({
       select: { id: true, licenseNo: true },
@@ -352,9 +393,9 @@ async function syncPermitContractors(dryRun: boolean): Promise<SyncStats["permit
     }),
   ]);
 
-  // Create Maps for O(1) lookup
+  // Create Maps for O(1) lookup using composite key (permitNumber + city)
   const prodPermitsMap = new Map(
-    prodPermits.map(p => [p.permitNumber, p.id])
+    prodPermits.map(p => [`${p.permitNumber}|${p.city}`, p.id])
   );
   const prodContractorsMap = new Map(
     prodContractors.map(c => [c.licenseNo, c.id])
@@ -366,8 +407,9 @@ async function syncPermitContractors(dryRun: boolean): Promise<SyncStats["permit
   const stats = { created: 0, skipped: 0 };
 
   for (const link of devLinks) {
-    // Look up permit and contractor IDs in prod DB
-    const prodPermitId = prodPermitsMap.get(link.permit.permitNumber);
+    // Look up permit and contractor IDs in prod DB using composite key
+    const permitCompositeKey = `${link.permit.permitNumber}|${link.permit.city}`;
+    const prodPermitId = prodPermitsMap.get(permitCompositeKey);
     const prodContractorId = prodContractorsMap.get(link.contractor.licenseNo);
 
     if (!prodPermitId || !prodContractorId) {

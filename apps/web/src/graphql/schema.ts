@@ -177,7 +177,7 @@ export const typeDefs = `
       sortOrder: SortOrder
     ): PermitConnection!
     permit(id: String!): Permit
-    permitByNumber(permitNumber: String!): Permit
+    permitByNumber(permitNumber: String!, city: City!): Permit
     me: User
     activeFeatures: [FeatureOption!]!
     cityStats(

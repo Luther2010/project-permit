@@ -8,9 +8,9 @@
  *   pnpm exec dotenv -e .env -- tsx scripts/import-energov-manual-data.ts <csv-file-path>
  * 
  * CSV Format:
- *   permitNumber,value,contractorLicense
- *   BLDG-2025-5155,34100,123456
- *   BLDG-2025-5156,19482,
+ *   permitNumber,city,value,contractorLicense  (city is optional for backward compatibility)
+ *   BLDG-2025-5155,SUNNYVALE,34100,123456
+ *   BLDG-2025-5156,GILROY,19482,
  * 
  * Notes:
  *   - Empty values are skipped (won't overwrite existing data)
@@ -19,10 +19,12 @@
  */
 
 import { prisma } from "../src/lib/db";
+import { City } from "@prisma/client";
 import * as fs from "fs";
 
 interface CsvRow {
   permitNumber: string;
+  city?: string;
   value?: string;
   contractorLicense?: string;
 }
@@ -38,6 +40,7 @@ function parseCsv(filePath: string): CsvRow[] {
   // Parse header
   const headers = lines[0].split(",").map(h => h.trim());
   const permitNumberIndex = headers.indexOf("permitNumber");
+  const cityIndex = headers.indexOf("city");
   const valueIndex = headers.indexOf("value");
   const contractorLicenseIndex = headers.indexOf("contractorLicense");
 
@@ -52,6 +55,13 @@ function parseCsv(filePath: string): CsvRow[] {
     const row: CsvRow = {
       permitNumber: values[permitNumberIndex] || "",
     };
+
+    if (cityIndex !== -1 && values[cityIndex]) {
+      const cityStr = values[cityIndex].trim();
+      if (cityStr) {
+        row.city = cityStr;
+      }
+    }
 
     if (valueIndex !== -1 && values[valueIndex]) {
       const valueStr = values[valueIndex].trim();
@@ -92,22 +102,48 @@ async function importData(csvFilePath: string) {
 
   for (const row of rows) {
     try {
-      // Find permit by permit number
-      const permit = await prisma.permit.findUnique({
-        where: { permitNumber: row.permitNumber },
-        include: {
-          contractors: {
-            include: {
-              contractor: {
-                select: { licenseNo: true },
+      // Find permit by permit number and city (composite key)
+      // For backward compatibility: if city not provided, try Sunnyvale and Gilroy
+      let permit;
+      if (row.city) {
+        permit = await prisma.permit.findUnique({
+          where: {
+            permitNumber_city: {
+              permitNumber: row.permitNumber,
+              city: row.city as City,
+            }
+          },
+          include: {
+            contractors: {
+              include: {
+                contractor: {
+                  select: { licenseNo: true },
+                },
               },
             },
           },
-        },
-      });
+        });
+      } else {
+        // Backward compatibility: try both Energov cities
+        permit = await prisma.permit.findFirst({
+          where: {
+            permitNumber: row.permitNumber,
+            city: { in: [City.SUNNYVALE, City.GILROY] },
+          },
+          include: {
+            contractors: {
+              include: {
+                contractor: {
+                  select: { licenseNo: true },
+                },
+              },
+            },
+          },
+        });
+      }
 
       if (!permit) {
-        console.log(`⚠️  Permit not found: ${row.permitNumber}`);
+        console.log(`⚠️  Permit not found: ${row.permitNumber}${row.city ? ` (city: ${row.city})` : ""}`);
         notFound++;
         continue;
       }
@@ -143,7 +179,12 @@ async function importData(csvFilePath: string) {
       // Update permit value if provided
       if (hasValueUpdate) {
         await prisma.permit.update({
-          where: { permitNumber: row.permitNumber },
+          where: {
+            permitNumber_city: {
+              permitNumber: permit.permitNumber,
+              city: permit.city!,
+            }
+          },
           data: updateData,
         });
         console.log(`✅ Updated ${row.permitNumber} value: ${updateData.value}`);

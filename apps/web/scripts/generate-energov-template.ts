@@ -51,6 +51,7 @@ async function generateTemplate(startDate: string, endDate: string, outputFile?:
     },
     select: {
       permitNumber: true,
+      city: true,
       value: true,
       contractors: {
         include: {
@@ -70,15 +71,16 @@ async function generateTemplate(startDate: string, endDate: string, outputFile?:
   console.log(`📊 Found ${permits.length} Energov permit(s) for ${dateRangeText}\n`);
 
   // Generate CSV
-  const csvLines = ["permitNumber,value,contractorLicense"];
+  const csvLines = ["permitNumber,city,value,contractorLicense"];
 
   for (const permit of permits) {
+    const city = permit.city || "";
     const value = permit.value ? permit.value.toString() : "";
     // Get first contractor license number if any contractors are linked
     const contractorLicense = permit.contractors.length > 0 
       ? permit.contractors[0].contractor.licenseNo 
       : "";
-    csvLines.push(`${permit.permitNumber},${value},${contractorLicense}`);
+    csvLines.push(`${permit.permitNumber},${city},${value},${contractorLicense}`);
   }
 
   const csvContent = csvLines.join("\n") + "\n";

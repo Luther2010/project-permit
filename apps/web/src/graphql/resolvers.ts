@@ -344,9 +344,14 @@ export const resolvers = {
             });
         },
 
-        permitByNumber: async (_: unknown, args: { permitNumber: string }) => {
+        permitByNumber: async (_: unknown, args: { permitNumber: string; city: string }) => {
             return await prisma.permit.findUnique({
-                where: { permitNumber: args.permitNumber },
+                where: {
+                    permitNumber_city: {
+                        permitNumber: args.permitNumber,
+                        city: args.city as City,
+                    }
+                },
                 include: {
                     contractors: {
                         include: {
